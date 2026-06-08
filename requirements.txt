@@ -1,0 +1,9 @@
+aiohttp
+beautifulsoup4
+feedparser
+lxml
+openpyxl
+pandas
+requests
+selenium
+urllib3

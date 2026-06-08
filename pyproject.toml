@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "news-scraper"
+version = "0.1.0"
+description = "Taiwan government news weekly scraper"
+requires-python = ">=3.10"
+dependencies = [
+    "aiohttp",
+    "beautifulsoup4",
+    "feedparser",
+    "lxml",
+    "openpyxl",
+    "pandas",
+    "requests",
+    "selenium",
+    "urllib3",
+]
+
+[project.scripts]
+news-scraper = "news_scraper.main:main"
+
+[tool.setuptools.packages.find]
+include = ["news_scraper*"]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
