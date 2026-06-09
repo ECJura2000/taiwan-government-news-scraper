@@ -3,13 +3,13 @@ import logging
 import sys
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from datetime import datetime
+from pathlib import Path
 
 from .runtime import validate_runtime_environment
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 logger = logging.getLogger(__name__)
-
-LAST_FAILED_SOURCES = []
 
 
 def parse_args():
@@ -20,6 +20,10 @@ def parse_args():
     parser.add_argument("--output-dir", default=str(DEFAULT_OUTPUT_DIR), help="Excel 輸出資料夾")
     parser.add_argument("--max-workers", type=int, default=MAX_WORKERS, help="同時抓取的最大併發數")
     parser.add_argument("--dedupe-affiliated", action="store_true", help="合併部會與所屬機關重複發布的同標題新聞")
+    parser.add_argument("--report-dir", help="JSON 執行報告輸出資料夾；預設為 Excel 輸出資料夾下的執行紀錄")
+    parser.add_argument("--alert-webhook", help="異常時接收 JSON 告警的 webhook URL；也可使用 NEWS_SCRAPER_ALERT_WEBHOOK")
+    parser.add_argument("--report-retention-days", type=int, default=180, help="執行報告保留天數，預設 180 天")
+    parser.add_argument("--fail-on-source-error", action="store_true", help="任一來源重試後仍失敗時，以結束碼 3 結束")
     parser.add_argument("--list-sources", action="store_true", help="列出目前支援的來源後結束")
     return parser.parse_args()
 
@@ -66,23 +70,29 @@ def order_sources_for_scraping(source_names):
     )
 
 
-def run_scraper(source_name, scraper_func, log_exception=True):
+def run_scraper(source_name, scraper_func, log_exception=True, attempt=1, context=None):
+    from .monitoring import RunContext, use_run_context
+
+    context = context or RunContext()
     started_at = time.perf_counter()
-    try:
-        items = scraper_func()
-        elapsed = time.perf_counter() - started_at
-        logger.info("%s 完成，抓到 %s 筆，用時 %.2f 秒", source_name, len(items), elapsed)
-        return source_name, items, None
-    except Exception as exc:
-        elapsed = time.perf_counter() - started_at
-        if log_exception:
-            logger.exception("%s 失敗，用時 %.2f 秒", source_name, elapsed)
-        else:
-            logger.warning("%s 第一輪失敗，用時 %.2f 秒，將於本輪結束後重試：%s", source_name, elapsed, exc)
-        return source_name, [], exc
+    with use_run_context(context):
+        try:
+            items = scraper_func()
+            elapsed = time.perf_counter() - started_at
+            context.record_source_attempt(source_name, attempt, len(items), elapsed)
+            logger.info("%s 完成，抓到 %s 筆，用時 %.2f 秒", source_name, len(items), elapsed)
+            return source_name, items, None
+        except Exception as exc:
+            elapsed = time.perf_counter() - started_at
+            context.record_source_attempt(source_name, attempt, 0, elapsed, error=exc)
+            if log_exception:
+                logger.exception("%s 失敗，用時 %.2f 秒", source_name, elapsed)
+            else:
+                logger.warning("%s 第一輪失敗，用時 %.2f 秒，將於本輪結束後重試：%s", source_name, elapsed, exc)
+            return source_name, [], exc
 
 
-def collect_news_for_sources_once(source_names, worker_count, print_failures=True, log_exceptions=True):
+def collect_news_for_sources_once(source_names, worker_count, print_failures=True, log_exceptions=True, attempt=1, context=None):
     from .scrapers.registry import SCRAPER_REGISTRY
 
     if not source_names:
@@ -92,7 +102,7 @@ def collect_news_for_sources_once(source_names, worker_count, print_failures=Tru
     failed_sources = []
     with ThreadPoolExecutor(max_workers=worker_count) as executor:
         future_map = {
-            executor.submit(run_scraper, source_name, SCRAPER_REGISTRY[source_name], log_exceptions): source_name
+            executor.submit(run_scraper, source_name, SCRAPER_REGISTRY[source_name], log_exceptions, attempt, context): source_name
             for source_name in source_names
         }
         for future in as_completed(future_map):
@@ -115,12 +125,11 @@ def collect_news_for_sources_once(source_names, worker_count, print_failures=Tru
     return all_results, list(dict.fromkeys(failed_sources))
 
 
-def collect_all_this_week_news_concurrent(selected_sources=None, max_workers=None, dedupe_affiliated=False):
+def collect_all_this_week_news_concurrent(selected_sources=None, max_workers=None, dedupe_affiliated=False, context=None):
     from .config import FAILED_SOURCE_RETRY_TIMEOUT_EXTRA_SECONDS, MAX_WORKERS, SOURCE_ORDER
-    from .http.client import set_retry_timeout_extra_seconds
+    from .monitoring import RunContext
 
-    global LAST_FAILED_SOURCES
-
+    context = context or RunContext()
     source_names = normalize_selected_sources(selected_sources)
     scrape_source_names = order_sources_for_scraping(source_names)
     worker_count = max_workers if max_workers is not None else MAX_WORKERS
@@ -131,6 +140,7 @@ def collect_all_this_week_news_concurrent(selected_sources=None, max_workers=Non
         worker_count,
         print_failures=False,
         log_exceptions=False,
+        context=context,
     )
     retry_results = []
     final_failed_sources = list(failed_sources)
@@ -143,21 +153,23 @@ def collect_all_this_week_news_concurrent(selected_sources=None, max_workers=Non
                 "、".join(failed_sources),
             )
         )
-        set_retry_timeout_extra_seconds(FAILED_SOURCE_RETRY_TIMEOUT_EXTRA_SECONDS)
+        context.retry_timeout_extra_seconds = FAILED_SOURCE_RETRY_TIMEOUT_EXTRA_SECONDS
         try:
             retry_results, retry_failed_sources = collect_news_for_sources_once(
                 failed_sources,
                 retry_worker_count,
                 print_failures=True,
                 log_exceptions=True,
+                attempt=2,
+                context=context,
             )
         finally:
-            set_retry_timeout_extra_seconds(0)
+            context.retry_timeout_extra_seconds = 0
 
         final_failed_sources = list(retry_failed_sources)
         all_results.extend(retry_results)
 
-    LAST_FAILED_SOURCES = sorted(set(final_failed_sources), key=lambda name: SOURCE_ORDER.get(name, 999))
+    context.failed_sources = sorted(set(final_failed_sources), key=lambda name: SOURCE_ORDER.get(name, 999))
 
     if dedupe_affiliated:
         from .utils.dedupe import dedupe_affiliated_news
@@ -177,11 +189,12 @@ def collect_all_this_week_news_concurrent(selected_sources=None, max_workers=Non
     return all_results
 
 
-def collect_all_this_week_news(selected_sources=None, max_workers=None, dedupe_affiliated=False):
+def collect_all_this_week_news(selected_sources=None, max_workers=None, dedupe_affiliated=False, context=None):
     return collect_all_this_week_news_concurrent(
         selected_sources=selected_sources,
         max_workers=max_workers,
         dedupe_affiliated=dedupe_affiliated,
+        context=context,
     )
 
 
@@ -201,10 +214,10 @@ def build_table_data(news_list):
     ]
 
 
-def print_table(news_list):
+def print_table(news_list, failed_sources=None):
     table_rows = build_table_data(news_list)
-    if LAST_FAILED_SOURCES:
-        print("抓取失敗部會：{}".format("、".join(LAST_FAILED_SOURCES)))
+    if failed_sources:
+        print("抓取失敗部會：{}".format("、".join(failed_sources)))
     else:
         print("全部抓取成功")
 
@@ -230,6 +243,7 @@ def print_table(news_list):
 
 def main():
     args = parse_args()
+    run_started_at = datetime.now().astimezone()
 
     try:
         validate_runtime_environment(
@@ -241,8 +255,22 @@ def main():
         print(str(exc), file=sys.stderr)
         return 1
 
-    from .config import PARSER
+    from .config import PARSER, SSL_FALLBACK_HOSTS
     from .excel_exporter import export_to_excel
+    from .monitoring import (
+        RunContext,
+        build_alert_payload,
+        build_run_report,
+        build_trend_summary,
+        detect_run_anomalies,
+        load_recent_reports,
+        prune_old_reports,
+        send_webhook_alert,
+        should_send_alert,
+        write_json_file,
+        write_run_report,
+    )
+    from .quality import process_news_quality
     from .scrapers.registry import SCRAPER_REGISTRY
     from .utils.dates import get_this_week_range
 
@@ -272,13 +300,49 @@ def main():
         "、".join(selected_sources),
     )
 
+    context = RunContext()
     news = collect_all_this_week_news(
         selected_sources=selected_sources,
         max_workers=args.max_workers,
         dedupe_affiliated=args.dedupe_affiliated,
+        context=context,
     )
-    print_table(news)
-    export_to_excel(news, output_dir=args.output_dir, dedupe_affiliated=args.dedupe_affiliated)
+    news, context.quality_summary = process_news_quality(news, selected_sources)
+    print_table(news, failed_sources=context.failed_sources)
+    output_path = export_to_excel(news, output_dir=args.output_dir, dedupe_affiliated=args.dedupe_affiliated)
+
+    run_finished_at = datetime.now().astimezone()
+    report_dir = Path(args.report_dir) if args.report_dir else Path(args.output_dir) / "執行紀錄"
+    recent_reports = load_recent_reports(report_dir)
+    detect_run_anomalies(context, selected_sources, recent_reports)
+    report = build_run_report(
+        context=context,
+        started_at=run_started_at,
+        finished_at=run_finished_at,
+        selected_sources=selected_sources,
+        news_count=len(news),
+        output_path=output_path,
+    )
+    if should_send_alert(report):
+        try:
+            alert_result = send_webhook_alert(build_alert_payload(report), webhook_url=args.alert_webhook)
+        except Exception as exc:
+            alert_result = {"status": "failed", "error": str(exc)}
+            logger.exception("異常告警傳送失敗")
+        context.alerts.append(alert_result)
+        report["alerts"] = list(context.alerts)
+
+    report_path = write_run_report(report, report_dir)
+    prune_old_reports(report_dir, retention_days=args.report_retention_days)
+    trend_reports = [report] + recent_reports
+    write_json_file(
+        build_trend_summary(trend_reports[:52], allowed_ssl_hosts=SSL_FALLBACK_HOSTS),
+        report_dir / "trend_summary.json",
+    )
+    logger.info("執行報告已輸出：%s", report_path)
+
+    if args.fail_on_source_error and context.failed_sources:
+        return 3
     return 0
 
 

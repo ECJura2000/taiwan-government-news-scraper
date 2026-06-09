@@ -17,7 +17,6 @@ from ..config import (
     REQUEST_TIMEOUT,
     RETRY_BACKOFF_FACTOR,
     RETRY_TOTAL,
-    SSL_DIRECT_INSECURE_HOSTS,
     SSL_FALLBACK_HOSTS,
 )
 
@@ -25,20 +24,24 @@ logger = logging.getLogger(__name__)
 urllib3.disable_warnings(InsecureRequestWarning)
 
 THREAD_LOCAL = threading.local()
-RETRY_TIMEOUT_EXTRA_SECONDS = 0
-SSL_VERIFY_FAILED_HOSTS = set(SSL_DIRECT_INSECURE_HOSTS)
-SSL_VERIFY_FAILED_HOSTS_LOCK = threading.Lock()
 
 
 def set_retry_timeout_extra_seconds(seconds: int) -> None:
-    global RETRY_TIMEOUT_EXTRA_SECONDS
-    RETRY_TIMEOUT_EXTRA_SECONDS = max(0, int(seconds))
+    from ..monitoring import get_current_run_context
+
+    context = get_current_run_context()
+    if context is not None:
+        context.retry_timeout_extra_seconds = max(0, int(seconds))
 
 
 def get_effective_timeout(timeout: int | float | None) -> int | float | None:
+    from ..monitoring import get_current_run_context
+
     if timeout is None:
         return None
-    return timeout + RETRY_TIMEOUT_EXTRA_SECONDS
+    context = get_current_run_context()
+    extra_seconds = context.retry_timeout_extra_seconds if context is not None else 0
+    return timeout + extra_seconds
 
 
 def get_thread_session(verify: bool = True) -> requests.Session:
@@ -71,18 +74,27 @@ def should_fallback_ssl(url: str) -> bool:
     return urlparse(url).netloc.lower() in SSL_FALLBACK_HOSTS
 
 
-def should_skip_ssl_verify(url: str) -> bool:
+def is_insecure_ssl_allowed(url: str) -> bool:
     host = urlparse(url).netloc.lower()
-    with SSL_VERIFY_FAILED_HOSTS_LOCK:
-        return host in SSL_VERIFY_FAILED_HOSTS
+    return host in SSL_FALLBACK_HOSTS
+
+
+def should_skip_ssl_verify(url: str) -> bool:
+    del url
+    return False
 
 
 def remember_ssl_verify_failure(url: str) -> None:
+    del url
+
+
+def record_insecure_ssl_use(url: str) -> None:
+    from ..monitoring import get_current_run_context
+
     host = urlparse(url).netloc.lower()
-    if not host:
-        return
-    with SSL_VERIFY_FAILED_HOSTS_LOCK:
-        SSL_VERIFY_FAILED_HOSTS.add(host)
+    context = get_current_run_context()
+    if context is not None:
+        context.record_insecure_ssl_use(host)
 
 
 def apply_response_encoding(response: requests.Response) -> None:
@@ -98,7 +110,7 @@ def create_session(verify: bool = True) -> requests.Session:
 def merge_headers(session: requests.Session, extra_headers: Mapping[str, str] | None = None) -> dict[str, str] | None:
     if not extra_headers:
         return None
-    request_headers = dict(session.headers)
+    request_headers = {str(key): str(value) for key, value in session.headers.items()}
     request_headers.update(extra_headers)
     return request_headers
 
@@ -130,14 +142,17 @@ def fetch_response(
     timeout = get_effective_timeout(timeout)
     verify_ssl = not should_skip_ssl_verify(url)
     session = create_session(verify=verify_ssl)
+    if not verify_ssl:
+        record_insecure_ssl_use(url)
 
     try:
         response = send_request(session, method, url, timeout, data=data, extra_headers=extra_headers)
     except SSLError:
-        if (not verify_ssl) or (not should_fallback_ssl(url)):
+        if (not verify_ssl) or (not is_insecure_ssl_allowed(url)):
             raise
 
         remember_ssl_verify_failure(url)
+        record_insecure_ssl_use(url)
         logger.warning("SSL 驗證失敗，改用 verify=False：%s", url)
         insecure_session = create_session(verify=False)
         response = send_request(insecure_session, method, url, timeout, data=data, extra_headers=extra_headers)
@@ -160,7 +175,10 @@ def fetch_html_plain_insecure(
     timeout: int | float | None = REQUEST_TIMEOUT,
     extra_headers: Mapping[str, str] | None = None,
 ) -> str:
+    if not is_insecure_ssl_allowed(url):
+        raise SSLError("不允許對非白名單主機停用 SSL 驗證：{}".format(url))
     timeout = get_effective_timeout(timeout)
+    record_insecure_ssl_use(url)
     session = create_session(verify=False)
     response = send_request(session, "GET", url, timeout, extra_headers=extra_headers)
     response.raise_for_status()
@@ -182,6 +200,8 @@ def fetch_json_data(
 
 def fetch_html_by_curl(url: str, timeout: int | float | None = REQUEST_TIMEOUT) -> str:
     timeout = get_effective_timeout(timeout)
+    if timeout is None:
+        timeout = REQUEST_TIMEOUT
     command = [
         "curl",
         "-L",
@@ -217,6 +237,12 @@ def fetch_html_by_curl_with_headers(
     insecure: bool = False,
 ) -> str:
     timeout = get_effective_timeout(timeout)
+    if timeout is None:
+        timeout = REQUEST_TIMEOUT
+    if insecure:
+        if not is_insecure_ssl_allowed(url):
+            raise SSLError("不允許對非白名單主機停用 SSL 驗證：{}".format(url))
+        record_insecure_ssl_use(url)
     command = [
         "curl",
         "-L",
@@ -258,14 +284,13 @@ def fetch_html_resilient(
 ) -> str:
     errors = []
     fetchers = [lambda: fetch_html(url, timeout=timeout, extra_headers=extra_headers)]
-    if not should_skip_ssl_verify(url):
+    if is_insecure_ssl_allowed(url) and not should_skip_ssl_verify(url):
         fetchers.append(lambda: fetch_html_plain_insecure(url, timeout=timeout, extra_headers=extra_headers))
-    fetchers.extend(
-        [
-            lambda: fetch_html_by_curl_with_headers(url, timeout=timeout, extra_headers=extra_headers),
-            lambda: fetch_html_by_curl_with_headers(url, timeout=timeout, extra_headers=extra_headers, insecure=True),
-        ]
-    )
+    fetchers.append(lambda: fetch_html_by_curl_with_headers(url, timeout=timeout, extra_headers=extra_headers))
+    if is_insecure_ssl_allowed(url):
+        fetchers.append(
+            lambda: fetch_html_by_curl_with_headers(url, timeout=timeout, extra_headers=extra_headers, insecure=True)
+        )
 
     for fetcher in fetchers:
         try:

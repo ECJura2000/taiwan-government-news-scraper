@@ -16,13 +16,15 @@ from ..config import (
 from .client import (
     fetch_html,
     get_effective_timeout,
+    is_insecure_ssl_allowed,
+    record_insecure_ssl_use,
     remember_ssl_verify_failure,
-    should_fallback_ssl,
     should_skip_ssl_verify,
 )
 
 logger = logging.getLogger(__name__)
 
+AIOHTTP_IMPORT_ERROR: ImportError | None
 try:
     import aiohttp
 except ImportError as exc:
@@ -51,12 +53,13 @@ async def async_fetch_page_text_with_fallback(
     extra_headers: Mapping[str, str] | None = None,
 ) -> tuple[int, str]:
     aiohttp_module = _require_aiohttp()
-    timeout = get_effective_timeout(timeout)
+    effective_timeout = get_effective_timeout(timeout)
+    assert effective_timeout is not None
     request_headers = dict(HEADERS)
     if extra_headers:
         request_headers.update(extra_headers)
 
-    timeout_cfg = aiohttp_module.ClientTimeout(total=timeout)
+    timeout_cfg = aiohttp_module.ClientTimeout(total=effective_timeout)
     connector = aiohttp_module.TCPConnector(
         limit=ASYNC_MAX_CONNECTIONS,
         limit_per_host=ASYNC_MAX_PER_HOST,
@@ -64,9 +67,9 @@ async def async_fetch_page_text_with_fallback(
     )
     try:
         async with aiohttp_module.ClientSession(headers=request_headers, connector=connector, timeout=timeout_cfg) as session:
-            return await async_fetch_page_text(session, page, url, timeout=timeout)
+            return await async_fetch_page_text(session, page, url, timeout=effective_timeout)
     except aiohttp_module.ClientSSLError:
-        if not should_fallback_ssl(url):
+        if not is_insecure_ssl_allowed(url):
             raise
 
     insecure_connector = aiohttp_module.TCPConnector(
@@ -74,8 +77,10 @@ async def async_fetch_page_text_with_fallback(
         limit_per_host=ASYNC_MAX_PER_HOST,
         ssl=False,
     )
+    remember_ssl_verify_failure(url)
+    record_insecure_ssl_use(url)
     async with aiohttp_module.ClientSession(headers=request_headers, connector=insecure_connector, timeout=timeout_cfg) as session:
-        return await async_fetch_page_text(session, page, url, timeout=timeout)
+        return await async_fetch_page_text(session, page, url, timeout=effective_timeout)
 
 
 async def async_fetch_paginated_soups(
@@ -85,7 +90,8 @@ async def async_fetch_paginated_soups(
     max_connections: int = ASYNC_MAX_CONNECTIONS,
 ) -> dict[int, BeautifulSoup]:
     aiohttp_module = _require_aiohttp()
-    timeout = get_effective_timeout(timeout)
+    effective_timeout = get_effective_timeout(timeout)
+    assert effective_timeout is not None
     request_headers = dict(HEADERS)
     if extra_headers:
         request_headers.update(extra_headers)
@@ -98,9 +104,9 @@ async def async_fetch_paginated_soups(
             limit_per_host=max(1, min(ASYNC_MAX_PER_HOST, max_connections)),
             ssl=verify_ssl,
         )
-        timeout_cfg = aiohttp_module.ClientTimeout(total=timeout)
+        timeout_cfg = aiohttp_module.ClientTimeout(total=effective_timeout)
         async with aiohttp_module.ClientSession(headers=request_headers, connector=connector, timeout=timeout_cfg) as session:
-            tasks = [async_fetch_page_text(session, page, url, timeout=timeout) for page, url in pairs]
+            tasks = [async_fetch_page_text(session, page, url, timeout=effective_timeout) for page, url in pairs]
             return await asyncio.gather(*tasks, return_exceptions=True)
 
     collected: dict[int, BeautifulSoup] = {}
@@ -117,7 +123,7 @@ async def async_fetch_paginated_soups(
     secure_results = await fetch_pairs(secure_pairs, verify_ssl=True)
     for (page, url), result in zip(secure_pairs, secure_results):
         if isinstance(result, Exception):
-            if isinstance(result, aiohttp_module.ClientSSLError) and should_fallback_ssl(url):
+            if isinstance(result, aiohttp_module.ClientSSLError) and is_insecure_ssl_allowed(url):
                 remember_ssl_verify_failure(url)
                 ssl_retry_pairs.append((page, url))
             else:
@@ -127,6 +133,8 @@ async def async_fetch_paginated_soups(
         collected[result_page] = BeautifulSoup(html, PARSER)
 
     insecure_results = await fetch_pairs(insecure_pairs + ssl_retry_pairs, verify_ssl=False)
+    for page, url in insecure_pairs + ssl_retry_pairs:
+        record_insecure_ssl_use(url)
     for (page, _), result in zip(insecure_pairs + ssl_retry_pairs, insecure_results):
         if isinstance(result, Exception):
             errors.append(result)

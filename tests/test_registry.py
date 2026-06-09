@@ -6,6 +6,7 @@ from news_scraper.config import (
     SOURCE_ORDER,
 )
 from news_scraper.scrapers.registry import SCRAPER_REGISTRY
+from news_scraper.policy import load_policy
 
 
 def test_registry_contains_core_sources():
@@ -43,3 +44,7 @@ def test_affiliated_groups_are_derived_from_source_paths():
         assert source_name in AFFILIATED_GROUPS[parent_source]["members"]
         assert AFFILIATED_GROUPS[parent_source]["priority"][source_name] == 0
         assert AFFILIATED_GROUPS[parent_source]["priority"][parent_source] == 1
+
+
+def test_zero_item_policies_only_reference_known_sources():
+    assert set(load_policy()["zero_items"]["sources"]) <= set(SOURCE_ORDER)

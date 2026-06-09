@@ -1,8 +1,13 @@
 import requests
+import pytest
 
 from news_scraper.config import RETRY_BACKOFF_FACTOR, RETRY_TOTAL
 from news_scraper.http import async_client
-from news_scraper.http.client import get_thread_session
+from news_scraper.http.client import (
+    fetch_html_plain_insecure,
+    get_thread_session,
+)
+from news_scraper.monitoring import RunContext, use_run_context
 
 
 def test_thread_session_uses_configured_retries():
@@ -17,6 +22,30 @@ def test_thread_session_uses_configured_retries():
     assert retry.backoff_factor == RETRY_BACKOFF_FACTOR
     assert 429 in retry.status_forcelist
     assert 503 in retry.status_forcelist
+
+
+def test_insecure_fetch_rejects_non_allowlisted_host():
+    with pytest.raises(requests.exceptions.SSLError, match="非白名單"):
+        fetch_html_plain_insecure("https://example.com/news")
+
+
+def test_insecure_fetch_records_allowlisted_host(monkeypatch):
+    class FakeResponse:
+        headers = {"Content-Type": "text/html; charset=utf-8"}
+        text = "<html></html>"
+        apparent_encoding = "utf-8"
+        encoding = "utf-8"
+
+        def raise_for_status(self):
+            return None
+
+    context = RunContext()
+    monkeypatch.setattr("news_scraper.http.client.send_request", lambda *args, **kwargs: FakeResponse())
+
+    with use_run_context(context):
+        fetch_html_plain_insecure("https://www.moi.gov.tw/news")
+
+    assert context.insecure_ssl_hosts == {"www.moi.gov.tw"}
 
 
 def test_fetch_paginated_soups_threaded_honors_max_workers(monkeypatch):

@@ -7,12 +7,11 @@ from ..http.client import (
     fetch_html_by_curl_with_headers,
     fetch_html_plain_insecure,
     fetch_response,
-    should_fallback_ssl,
+    is_insecure_ssl_allowed,
 )
 from ..models import make_news_item
 from ..utils.dates import get_cached_week_range, parse_rss_pubdate
 from ..utils.text import (
-    build_department_label,
     clean_text,
     get_xml_local_name,
     normalize_department_metadata_text,
@@ -21,6 +20,7 @@ from ..utils.text import (
 
 logger = logging.getLogger(__name__)
 
+FEEDPARSER_IMPORT_ERROR: ImportError | None
 try:
     import feedparser
 except ImportError as exc:
@@ -140,7 +140,7 @@ def fetch_rss_items(url, timeout=RSS_FEED_TIMEOUT):
     except Exception as exc:
         errors.append(exc)
 
-    if should_fallback_ssl(url):
+    if is_insecure_ssl_allowed(url):
         try:
             logger.warning("RSS 抓取失敗，改用 verify=False：%s；原因：%s", url, errors[-1])
             xml_text = fetch_html_plain_insecure(url, timeout=timeout, extra_headers=rss_headers)
@@ -148,7 +148,8 @@ def fetch_rss_items(url, timeout=RSS_FEED_TIMEOUT):
         except Exception as exc:
             errors.append(exc)
 
-    for insecure in (False, True):
+    insecure_options = (False, True) if is_insecure_ssl_allowed(url) else (False,)
+    for insecure in insecure_options:
         try:
             xml_text = fetch_html_by_curl_with_headers(
                 url,
@@ -187,7 +188,7 @@ def fetch_feedparser_entries(url, timeout=RSS_FEED_TIMEOUT, force_requests=False
             "feedparser 解析失敗：{} ({})；content-type={}；前200位元組={!r}".format(
                 bozo_exception,
                 url,
-                response.headers.get("Content-Type", "") if force_requests else "",
+                response.headers.get("Content-Type", "") if response is not None else "",
                 content[:200] if force_requests else b"",
             )
         )

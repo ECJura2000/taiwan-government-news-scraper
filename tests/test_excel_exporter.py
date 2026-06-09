@@ -185,7 +185,7 @@ def test_export_dedupes_affiliated_cross_posts(tmp_path, monkeypatch):
     assert len(rows) == 1
     assert rows[0][0] == "內政部"
     assert str(rows[0][2]) == "消防署 / 整備應變組"
-    assert rows[0][4].startswith("消防署官網：https://www.nfa.gov.tw/")
+    assert str(rows[0][4]).startswith("消防署官網：https://www.nfa.gov.tw/")
 
 
 def test_export_keeps_affiliated_cross_posts_by_default(tmp_path, monkeypatch):
@@ -244,7 +244,7 @@ def test_export_adds_date_dropdowns_and_labeled_hyperlinks(tmp_path, monkeypatch
     worksheet = workbook["全部新聞"]
 
     assert worksheet["B2"].value == "2026-06-04"
-    assert worksheet["E2"].value == "國科會官網：https://www.nstc.gov.tw/news"
+    assert str(worksheet["E2"].value) == "國科會官網：https://www.nstc.gov.tw/news"
     assert worksheet["E2"].hyperlink.target == "https://www.nstc.gov.tw/news"
 
     validations = list(worksheet.data_validations.dataValidation)
@@ -253,3 +253,30 @@ def test_export_adds_date_dropdowns_and_labeled_hyperlinks(tmp_path, monkeypatch
         and validation.formula1 == '"2026-06-04,民國115/6/4"'
         for validation in validations
     )
+
+
+def test_export_styles_only_url_portion_of_labeled_hyperlinks(tmp_path, monkeypatch):
+    monkeypatch.setattr(
+        "news_scraper.excel_exporter.get_cached_week_range",
+        lambda: (date(2026, 6, 1), date(2026, 6, 7)),
+    )
+
+    output_path = export_to_excel(
+        [
+            {
+                "source": "國科會",
+                "date": "2026-06-04",
+                "department": "國科會",
+                "title": "國科會新聞",
+                "link": "https://www.nstc.gov.tw/news",
+            },
+        ],
+        output_dir=tmp_path,
+    )
+
+    workbook = load_workbook(output_path, rich_text=True)
+    cell = workbook["全部新聞"]["E2"]
+
+    assert str(cell.value) == "國科會官網：https://www.nstc.gov.tw/news"
+    assert cell.value.as_list() == ["國科會官網：", "https://www.nstc.gov.tw/news"]
+    assert cell.hyperlink.target == "https://www.nstc.gov.tw/news"

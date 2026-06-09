@@ -1,4 +1,5 @@
 import importlib
+import requests
 
 main = importlib.import_module("news_scraper.main")
 
@@ -116,3 +117,20 @@ def test_collect_all_this_week_news_scrape_order_does_not_change_output_order(mo
 
     assert captured_source_names == ["財政部", "國土管理署"]
     assert [item["source"] for item in result] == ["國土管理署", "財政部"]
+
+
+def test_run_scraper_records_classified_failure():
+    from news_scraper.monitoring import RunContext
+
+    def fail():
+        raise requests.Timeout("slow")
+
+    context = RunContext()
+    source_name, items, error = main.run_scraper("工程會", fail, log_exception=False, attempt=2, context=context)
+    attempts = context.snapshot_attempts()
+
+    assert source_name == "工程會"
+    assert items == []
+    assert isinstance(error, requests.Timeout)
+    assert attempts[0]["attempt"] == 2
+    assert attempts[0]["error_category"] == "timeout"

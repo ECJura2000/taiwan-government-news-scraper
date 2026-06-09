@@ -6,7 +6,7 @@ from datetime import datetime
 from bs4 import BeautifulSoup
 
 from ..config import PARSER, REQUEST_TIMEOUT, RSS_FEED_TIMEOUT
-from ..http.client import fetch_html, fetch_html_plain_insecure
+from ..http.client import fetch_html
 from ..models import make_news_item
 from ..rss.parser import (
     extract_rss_item_date_fields,

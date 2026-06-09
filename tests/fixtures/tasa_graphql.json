@@ -1,0 +1,18 @@
+{
+  "data": {
+    "findAnnouncements": {
+      "total": 1,
+      "items": [
+        {
+          "id": "6de39df9-01aa-4655-b4c7-275e0787337e",
+          "title": {
+            "ZH_TW": "率隊參與Space Symposium 盛會",
+            "EN_US": "Space Symposium"
+          },
+          "announcementType": "NEWS",
+          "publishAt": "2026-04-27T16:30:00.000Z"
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,29 @@
+[zero_items]
+default_runs = 4
+
+[zero_items.sources]
+"行政院" = 2
+"司法院" = 2
+"外交部" = 2
+"財政部" = 2
+"教育部" = 2
+"經濟部" = 2
+"交通部" = 2
+"公路局" = 2
+"衛生福利部" = 2
+"疾管署" = 2
+"文化部" = 2
+"監察院" = 8
+"國防院" = 8
+"公平會" = 8
+"運動部" = 8
+"國家實驗研究院" = 8
+"通傳會" = 8
+"農科園區" = 0
+
+[quality]
+invalid_count = 1
+duplicate_count = 5
+duplicate_ratio = 0.20
+excluded_non_news_count = 3
+excluded_non_news_ratio = 0.25

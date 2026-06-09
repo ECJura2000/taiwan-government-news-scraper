@@ -21,6 +21,7 @@ BODY_FONT = Font(name="Times New Roman", sz=11)
 LINK_FONT = Font(name="Times New Roman", sz=11, color="0563C1", underline="single")
 EAST_ASIAN_INLINE_FONT = InlineFont(rFont="標楷體", sz=11)
 LATIN_INLINE_FONT = InlineFont(rFont="Times New Roman", sz=11)
+LINK_INLINE_FONT = InlineFont(rFont="Times New Roman", sz=11, color="0563C1", u="single")
 COLUMN_WIDTHS = {
     "A": 23.2,
     "B": 28,
@@ -98,6 +99,20 @@ def extract_news_link_url(link_text):
     if url_match:
         return url_match.group(0)
     return text
+
+
+def split_news_link_display_text(link_text):
+    text = clean_text(link_text)
+    if not text:
+        return "", ""
+
+    url_match = re.search(r"https?://\S+", text)
+    if not url_match:
+        return text, ""
+
+    prefix = text[:url_match.start()]
+    url = url_match.group(0)
+    return prefix, url
 
 
 def prepare_export_dataframe(df):
@@ -344,6 +359,15 @@ def apply_cell_font(cell, is_header=False):
         return
 
     if cell.hyperlink:
+        prefix, url = split_news_link_display_text(value)
+        if prefix and url:
+            cell.value = CellRichText(
+                [
+                    TextBlock(EAST_ASIAN_INLINE_FONT, prefix),
+                    TextBlock(LINK_INLINE_FONT, url),
+                ]
+            )
+            return
         cell.font = LINK_FONT
         return
 

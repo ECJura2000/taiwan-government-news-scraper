@@ -1,0 +1,7 @@
+librt==0.11.0
+mypy==1.20.2
+mypy_extensions==1.1.0
+pathspec==1.1.1
+pytest==9.0.3
+ruff==0.15.16
+types-requests==2.33.0.20260518

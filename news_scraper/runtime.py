@@ -96,7 +96,7 @@ def collect_required_dependencies(selected_sources=None, needs_excel_export=True
                 or selected_source_names & dependency_info["sources"]
             )
             if source_requires_dependency:
-                required[module_name] = dependency_info["package"]
+                required[module_name] = str(dependency_info["package"])
 
     return required
 

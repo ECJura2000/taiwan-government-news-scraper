@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>測試新聞</title>
+    <item>
+      <title>測試機關發布新聞</title>
+      <link>https://example.gov.tw/news/1</link>
+      <pubDate>Mon, 08 Jun 2026 08:00:00 +0800</pubDate>
+      <author>測試機關</author>
+    </item>
+  </channel>
+</rss>
