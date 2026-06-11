@@ -27,6 +27,7 @@ class RunContext:
     anomalies: list[dict] = field(default_factory=list)
     alerts: list[dict] = field(default_factory=list)
     parser_warnings: list[dict] = field(default_factory=list)
+    scheduling_plan: list[dict] = field(default_factory=list)
     retry_timeout_extra_seconds: int = 0
     lock: threading.RLock = field(default_factory=threading.RLock, repr=False)
 
@@ -139,6 +140,7 @@ def build_run_report(*, context, started_at, finished_at, selected_sources, news
         "quality": context.quality_summary,
         "anomalies": list(context.anomalies),
         "parser_warnings": list(context.parser_warnings),
+        "scheduling_plan": list(context.scheduling_plan),
         "alerts": list(context.alerts),
         "output_file": str(output_path),
         "source_attempts": attempts,

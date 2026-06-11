@@ -58,16 +58,16 @@ def normalize_selected_sources(selected_sources):
     return normalized
 
 
-def order_sources_for_scraping(source_names):
-    from .config import SCRAPE_DIFFICULTY_ORDER, SOURCE_ORDER
+def order_sources_for_scraping(source_names, recent_reports=None, context=None):
+    from .scheduler import prioritize_sources
 
-    return sorted(
-        source_names,
-        key=lambda source_name: (
-            SCRAPE_DIFFICULTY_ORDER.get(source_name, 50),
-            SOURCE_ORDER.get(source_name, 999),
-        ),
-    )
+    jobs = prioritize_sources(source_names, recent_reports=recent_reports)
+    if context is not None:
+        context.scheduling_plan = [
+            {"position": position, "source": job.source, **job.reason}
+            for position, job in enumerate(jobs, 1)
+        ]
+    return [job.source for job in jobs]
 
 
 def run_scraper(source_name, scraper_func, log_exception=True, attempt=1, context=None):
@@ -125,13 +125,19 @@ def collect_news_for_sources_once(source_names, worker_count, print_failures=Tru
     return all_results, list(dict.fromkeys(failed_sources))
 
 
-def collect_all_this_week_news_concurrent(selected_sources=None, max_workers=None, dedupe_affiliated=False, context=None):
+def collect_all_this_week_news_concurrent(
+    selected_sources=None,
+    max_workers=None,
+    dedupe_affiliated=False,
+    context=None,
+    recent_reports=None,
+):
     from .config import FAILED_SOURCE_RETRY_TIMEOUT_EXTRA_SECONDS, MAX_WORKERS, SOURCE_ORDER
     from .monitoring import RunContext
 
     context = context or RunContext()
     source_names = normalize_selected_sources(selected_sources)
-    scrape_source_names = order_sources_for_scraping(source_names)
+    scrape_source_names = order_sources_for_scraping(source_names, recent_reports=recent_reports, context=context)
     worker_count = max_workers if max_workers is not None else MAX_WORKERS
     worker_count = max(1, min(worker_count, len(scrape_source_names)))
 
@@ -189,12 +195,19 @@ def collect_all_this_week_news_concurrent(selected_sources=None, max_workers=Non
     return all_results
 
 
-def collect_all_this_week_news(selected_sources=None, max_workers=None, dedupe_affiliated=False, context=None):
+def collect_all_this_week_news(
+    selected_sources=None,
+    max_workers=None,
+    dedupe_affiliated=False,
+    context=None,
+    recent_reports=None,
+):
     return collect_all_this_week_news_concurrent(
         selected_sources=selected_sources,
         max_workers=max_workers,
         dedupe_affiliated=dedupe_affiliated,
         context=context,
+        recent_reports=recent_reports,
     )
 
 
@@ -300,20 +313,21 @@ def main():
         "、".join(selected_sources),
     )
 
+    report_dir = Path(args.report_dir) if args.report_dir else Path(args.output_dir) / "執行紀錄"
+    recent_reports = load_recent_reports(report_dir)
     context = RunContext()
     news = collect_all_this_week_news(
         selected_sources=selected_sources,
         max_workers=args.max_workers,
         dedupe_affiliated=args.dedupe_affiliated,
         context=context,
+        recent_reports=recent_reports,
     )
     news, context.quality_summary = process_news_quality(news, selected_sources)
     print_table(news, failed_sources=context.failed_sources)
     output_path = export_to_excel(news, output_dir=args.output_dir, dedupe_affiliated=args.dedupe_affiliated)
 
     run_finished_at = datetime.now().astimezone()
-    report_dir = Path(args.report_dir) if args.report_dir else Path(args.output_dir) / "執行紀錄"
-    recent_reports = load_recent_reports(report_dir)
     detect_run_anomalies(context, selected_sources, recent_reports)
     report = build_run_report(
         context=context,

@@ -177,6 +177,7 @@ python -m news_scraper --sources 國土管理署 --max-workers 1
 - `error_counts`：`timeout`、`ssl`、`http`、`connection`、`browser`、`parse`、`unexpected` 分類統計
 - `insecure_ssl_hosts`：本次實際停用 SSL 驗證的白名單主機
 - `source_attempts`：各來源每次嘗試的耗時、結果與錯誤摘要
+- `scheduling_plan`：priority queue 的來源啟動順序、歷史失敗率、平均耗時與靜態難度
 - `quality`：無效資料、重複新聞、排除的非新聞內容及各來源最終筆數
 - `anomalies`：連續零筆與耗時異常
 - `parser_warnings`：日期或欄位格式已命中但解析失敗的紀錄，用來區分正常零筆與網站格式異常
@@ -189,6 +190,8 @@ python -m news_scraper --sources 國土管理署 --max-workers 1
 累積至少 8 次報告後，`trend_summary.json` 的 `ssl_allowlist_audit.removal_candidates` 才會列出近期未曾使用 SSL 降級的白名單主機。移除前仍應以實際來源 smoke test 驗證，避免因低頻來源尚未執行而誤刪。
 
 零筆告警依來源頻率分級：高頻來源通常連續 2 次、一般來源 4 次、低頻來源 8 次；農科園區因目前只出現徵才內容，暫時停用零筆告警。規則位於 `news_scraper/policy.toml`。
+
+來源抓取使用 heap priority queue 排程。近期失敗率較高、歷史耗時較長或靜態難度較高的來源會優先啟動，讓慢速工作與其他來源併發執行；Excel 最終排序仍依固定機關順序，不受排程影響。
 
 可用環境變數載入另一份政策檔，不必修改程式碼：
 

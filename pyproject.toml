@@ -64,6 +64,7 @@ files = [
     "news_scraper/http",
     "news_scraper/rss",
     "news_scraper/runtime.py",
+    "news_scraper/scheduler.py",
     "news_scraper/scrapers/registry.py",
 ]
 ignore_missing_imports = true
