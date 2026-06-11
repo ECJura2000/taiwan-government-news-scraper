@@ -1,6 +1,8 @@
 import re
 from datetime import datetime, timedelta
 
+from ..monitoring import record_parser_warning
+
 CURRENT_WEEK_RANGE = None
 
 
@@ -84,19 +86,19 @@ def parse_rss_pubdate(pub_date_text):
         except ValueError:
             continue
 
-    roc_match = re.search(r"(\d{2,3}[./-]\d{1,2}[./-]\d{1,2})", text)
+    roc_match = re.search(r"(?<!\d)(\d{2,3}[./-]\d{1,2}[./-]\d{1,2})(?!\d)", text)
     if roc_match:
         try:
             return roc_to_ad_date(roc_match.group(1).replace("/", "-").replace(".", "-"))
-        except Exception:
-            pass
+        except (TypeError, ValueError) as exc:
+            record_parser_warning("parse_rss_pubdate.roc", roc_match.group(1), error=exc)
 
-    ad_match = re.search(r"(\d{4}[./-]\d{1,2}[./-]\d{1,2})", text)
+    ad_match = re.search(r"(?<!\d)(\d{4}[./-]\d{1,2}[./-]\d{1,2})(?!\d)", text)
     if ad_match:
         raw = ad_match.group(1).replace("/", "-").replace(".", "-")
         try:
             return datetime.strptime(raw, "%Y-%m-%d").date()
-        except ValueError:
-            pass
+        except ValueError as exc:
+            record_parser_warning("parse_rss_pubdate.ad", raw, error=exc)
 
     return None

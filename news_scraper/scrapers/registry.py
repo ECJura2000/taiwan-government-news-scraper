@@ -1,7 +1,13 @@
-from collections.abc import Iterator, Mapping
+from collections.abc import Callable, Iterator, Mapping
 from importlib import import_module
+from typing import TypeAlias, cast
 
-SCRAPER_SPECS = {
+from ..models import NewsItemData
+
+Scraper: TypeAlias = Callable[[], list[NewsItemData]]
+ScraperSpec: TypeAlias = tuple[str, str]
+
+SCRAPER_SPECS: dict[str, ScraperSpec] = {
     "行政院": ("news_scraper.scrapers.ministry.executive.ey", "scrape_ey_this_week"),
     "監察院": ("news_scraper.scrapers.ministry.oversight.cy", "scrape_cy_this_week"),
     "司法院": ("news_scraper.scrapers.ministry.judicial.judicial_yuan", "scrape_judicial_yuan_this_week"),
@@ -76,21 +82,21 @@ SCRAPER_SPECS = {
 }
 
 
-class LazyScraperRegistry(Mapping):
-    def __init__(self, scraper_specs):
+class LazyScraperRegistry(Mapping[str, Scraper]):
+    def __init__(self, scraper_specs: Mapping[str, ScraperSpec]) -> None:
         self._scraper_specs = dict(scraper_specs)
-        self._cache = {}
+        self._cache: dict[str, Scraper] = {}
 
-    def __getitem__(self, source_name):
+    def __getitem__(self, source_name: str) -> Scraper:
         if source_name not in self._scraper_specs:
             raise KeyError(source_name)
-        scraper_func = self._cache.get(source_name)
-        if scraper_func is not None:
-            return scraper_func
+        cached_scraper = self._cache.get(source_name)
+        if cached_scraper is not None:
+            return cached_scraper
 
         module_name, function_name = self._scraper_specs[source_name]
         module = import_module(module_name)
-        scraper_func = getattr(module, function_name)
+        scraper_func = cast(Scraper, getattr(module, function_name))
         self._cache[source_name] = scraper_func
         return scraper_func
 

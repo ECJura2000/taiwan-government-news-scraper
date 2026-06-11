@@ -48,6 +48,25 @@ def test_build_and_write_run_report(tmp_path):
     assert [attempt["attempt"] for attempt in saved_report["source_attempts"]] == [1, 1, 2]
 
 
+def test_parser_warning_marks_report_for_attention(tmp_path):
+    context = RunContext()
+    context.record_parser_warning("rss.date", "not-a-date", ValueError("invalid"), source="測試來源")
+    started_at = datetime(2026, 6, 9, 7, 0, tzinfo=timezone.utc)
+
+    report = build_run_report(
+        context=context,
+        started_at=started_at,
+        finished_at=started_at + timedelta(seconds=1),
+        selected_sources=["測試來源"],
+        news_count=0,
+        output_path=tmp_path / "weekly.xlsx",
+    )
+
+    assert report["status"] == "attention"
+    assert report["parser_warnings"][0]["source"] == "測試來源"
+    assert report["parser_warnings"][0]["error_type"] == "ValueError"
+
+
 def test_detect_run_anomalies_marks_consecutive_zero_items():
     context = RunContext(quality_summary={"source_counts": {"行政院": 0}})
     previous_reports = [

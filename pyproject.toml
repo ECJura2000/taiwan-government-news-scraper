@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "news-scraper"
-version = "0.2.0"
+version = "0.3.0"
 description = "Taiwan government news weekly scraper"
 requires-python = ">=3.10"
 dependencies = [
@@ -16,6 +16,7 @@ dependencies = [
     "pandas",
     "requests",
     "selenium",
+    "tomli>=2; python_version < '3.11'",
     "urllib3",
 ]
 
@@ -55,6 +56,7 @@ select = ["E4", "E7", "E9", "F"]
 [tool.mypy]
 python_version = "3.10"
 files = [
+    "news_scraper/models.py",
     "news_scraper/main.py",
     "news_scraper/monitoring.py",
     "news_scraper/policy.py",
@@ -62,6 +64,7 @@ files = [
     "news_scraper/http",
     "news_scraper/rss",
     "news_scraper/runtime.py",
+    "news_scraper/scrapers/registry.py",
 ]
 ignore_missing_imports = true
 follow_imports = "skip"
