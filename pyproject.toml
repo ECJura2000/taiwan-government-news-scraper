@@ -16,6 +16,7 @@ dependencies = [
     "pandas",
     "requests",
     "selenium",
+    "tomli>=2; python_version < '3.11'",
     "urllib3",
 ]
 

@@ -1,7 +1,11 @@
 import os
-import tomllib
 from functools import lru_cache
 from pathlib import Path
+
+try:
+    import tomllib
+except ModuleNotFoundError:  # Python 3.10
+    import tomli as tomllib
 
 DEFAULT_POLICY_PATH = Path(__file__).with_name("policy.toml")
 
