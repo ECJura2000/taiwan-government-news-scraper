@@ -78,12 +78,12 @@ def test_build_table_data_formats_news_date_with_ad_and_roc():
     assert rows[0]["新聞日期"] == "2026-05-22（民國115/5/22）"
 
 
-def test_order_sources_for_scraping_puts_harder_sites_later():
+def test_order_sources_for_scraping_starts_harder_sites_first():
     assert main.order_sources_for_scraping(["國土管理署", "財政部", "公路局", "行政院"]) == [
-        "財政部",
-        "行政院",
-        "公路局",
         "國土管理署",
+        "公路局",
+        "行政院",
+        "財政部",
     ]
 
 
@@ -115,7 +115,7 @@ def test_collect_all_this_week_news_scrape_order_does_not_change_output_order(mo
 
     result = main.collect_all_this_week_news_concurrent(max_workers=2)
 
-    assert captured_source_names == ["財政部", "國土管理署"]
+    assert captured_source_names == ["國土管理署", "財政部"]
     assert [item["source"] for item in result] == ["國土管理署", "財政部"]
 
 
