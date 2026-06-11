@@ -8,6 +8,7 @@ from bs4 import BeautifulSoup
 from ..config import PARSER, REQUEST_TIMEOUT, RSS_FEED_TIMEOUT
 from ..http.client import fetch_html
 from ..models import make_news_item
+from ..monitoring import record_parser_warning
 from ..rss.parser import (
     extract_rss_item_date_fields,
     extract_rss_item_metadata_fields,
@@ -106,16 +107,16 @@ def extract_moj_list_date(li):
         raw = ad_match.group(1).replace("/", "-")
         try:
             return datetime.strptime(raw, "%Y-%m-%d").date()
-        except ValueError:
-            pass
+        except ValueError as exc:
+            record_parser_warning("extract_moj_list_date.ad", raw, error=exc, source="法務部")
 
     roc_match = re.search(r"\b(\d{2,3}[/-]\d{1,2}[/-]\d{1,2})\b", text)
     if roc_match:
         raw = roc_match.group(1).replace("/", "-")
         try:
             return roc_to_ad_date(raw)
-        except Exception:
-            pass
+        except (TypeError, ValueError) as exc:
+            record_parser_warning("extract_moj_list_date.roc", raw, error=exc, source="法務部")
     return None
 
 
@@ -139,8 +140,8 @@ def extract_moj_detail_meta(detail_soup):
             try:
                 news_date = datetime.strptime(raw, "%Y-%m-%d").date()
                 break
-            except ValueError:
-                pass
+            except ValueError as exc:
+                record_parser_warning("extract_moj_detail_meta.ad", raw, error=exc, source="法務部")
 
         roc_match = re.search(r"(\d{2,3}[/-]\d{1,2}[/-]\d{1,2})", text)
         if roc_match:
@@ -148,8 +149,8 @@ def extract_moj_detail_meta(detail_soup):
             try:
                 news_date = roc_to_ad_date(raw)
                 break
-            except Exception:
-                pass
+            except (TypeError, ValueError) as exc:
+                record_parser_warning("extract_moj_detail_meta.roc", raw, error=exc, source="法務部")
 
     return news_date, department_text
 

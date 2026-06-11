@@ -1,4 +1,5 @@
 import json
+import logging
 import os
 import threading
 from contextlib import contextmanager
@@ -14,6 +15,7 @@ from requests.exceptions import ConnectionError, HTTPError, SSLError, Timeout
 from .policy import get_zero_item_alert_runs
 
 CURRENT_RUN_CONTEXT = ContextVar("news_scraper_run_context", default=None)
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -24,6 +26,7 @@ class RunContext:
     quality_summary: dict = field(default_factory=dict)
     anomalies: list[dict] = field(default_factory=list)
     alerts: list[dict] = field(default_factory=list)
+    parser_warnings: list[dict] = field(default_factory=list)
     retry_timeout_extra_seconds: int = 0
     lock: threading.RLock = field(default_factory=threading.RLock, repr=False)
 
@@ -51,6 +54,19 @@ class RunContext:
         with self.lock:
             return [dict(result) for result in self.source_attempts]
 
+    def record_parser_warning(self, parser, value, error=None, source=""):
+        warning = {
+            "category": "parser_warning",
+            "parser": parser,
+            "source": source,
+            "value": str(value)[:500],
+            "error_type": type(error).__name__ if error else "",
+            "error_message": str(error) if error else "",
+        }
+        with self.lock:
+            self.parser_warnings.append(warning)
+        return warning
+
 
 @contextmanager
 def use_run_context(context):
@@ -63,6 +79,14 @@ def use_run_context(context):
 
 def get_current_run_context():
     return CURRENT_RUN_CONTEXT.get()
+
+
+def record_parser_warning(parser, value, error=None, source=""):
+    context = get_current_run_context()
+    if context is not None:
+        return context.record_parser_warning(parser, value, error=error, source=source)
+    logger.warning("%s 解析失敗：%r；原因：%s", parser, value, error or "unknown")
+    return None
 
 
 def classify_error(error):
@@ -97,7 +121,7 @@ def build_run_report(*, context, started_at, finished_at, selected_sources, news
     quality_requires_attention = bool(context.quality_summary.get("alert_reasons"))
     if context.failed_sources:
         status = "partial_failure"
-    elif context.anomalies or quality_requires_attention:
+    elif context.anomalies or context.parser_warnings or quality_requires_attention:
         status = "attention"
     else:
         status = "success"
@@ -114,6 +138,7 @@ def build_run_report(*, context, started_at, finished_at, selected_sources, news
         "insecure_ssl_hosts": sorted(context.insecure_ssl_hosts),
         "quality": context.quality_summary,
         "anomalies": list(context.anomalies),
+        "parser_warnings": list(context.parser_warnings),
         "alerts": list(context.alerts),
         "output_file": str(output_path),
         "source_attempts": attempts,
@@ -208,6 +233,7 @@ def build_alert_payload(report):
         "status": report["status"],
         "failed_sources": report["failed_sources"],
         "anomalies": report["anomalies"],
+        "parser_warnings": report.get("parser_warnings", []),
         "error_counts": report["error_counts"],
         "quality": report["quality"],
     }
@@ -233,6 +259,7 @@ def should_send_alert(report):
     return bool(
         report.get("failed_sources")
         or report.get("anomalies")
+        or report.get("parser_warnings")
         or quality.get("alert_reasons")
     )
 

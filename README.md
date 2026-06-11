@@ -2,6 +2,8 @@
 
 中華民國政府政府部會每週新聞整合爬蟲，已由原本單檔程式拆分為可維護的套件結構。
 
+目前支援 71 個政府機關與所屬單位，提供 Excel 匯出、資料品質檢查、來源健康監控、異常告警與可重現的 CI 測試。專案支援 Python 3.10、3.12 與 3.13。
+
 ## 目錄
 
 ```text
@@ -175,6 +177,7 @@ python -m news_scraper --sources 國土管理署 --max-workers 1
 - `source_attempts`：各來源每次嘗試的耗時、結果與錯誤摘要
 - `quality`：無效資料、重複新聞、排除的非新聞內容及各來源最終筆數
 - `anomalies`：連續零筆與耗時異常
+- `parser_warnings`：日期或欄位格式已命中但解析失敗的紀錄，用來區分正常零筆與網站格式異常
 - `quality.alert_reasons`：超過告警門檻的資料品質問題；少量正常清理不會觸發告警
 
 程式會先嘗試正常 SSL 驗證，只有驗證失敗且主機位於白名單時才降級。這讓已修復憑證的網站可以自動恢復安全連線，而不會永久停留在 `verify=False`。
@@ -220,3 +223,9 @@ python -m news_scraper --list-sources
 ```bash
 pytest -q
 ```
+
+GitHub Actions 會在 Python 3.10、3.12 與 3.13 執行測試，並另外執行 Ruff 與 Mypy 品質檢查。
+
+## 安全性與授權
+
+本專案使用 [MIT License](LICENSE)。安全性問題請依照 [Security Policy](SECURITY.md) 私下回報，不要在公開 Issue 中張貼憑證、私人 webhook URL 或個人資料。

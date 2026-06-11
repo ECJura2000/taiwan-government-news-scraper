@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.0 - 2026-06-11
+
+- Added Python 3.10, 3.12, and 3.13 CI compatibility testing.
+- Added typed scraper registry contracts and expanded static type checking.
+- Added observable parser warnings to run reports and alert decisions.
+- Added MIT License and security reporting policy.
+
 ## 0.2.0 - 2026-06-09
 
 - Added structured JSON run reports, trend summaries, anomaly detection, alert hooks, and report retention.
