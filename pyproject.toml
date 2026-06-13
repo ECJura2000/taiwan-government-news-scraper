@@ -26,7 +26,7 @@ dev = [
     "hypothesis>=6,<7",
     "pytest>=9,<10",
     "pytest-cov>=6,<8",
-    "ruff>=0.15,<1",
+    "ruff>=0.15.17,<1",
     "types-requests>=2.33,<3",
 ]
 
