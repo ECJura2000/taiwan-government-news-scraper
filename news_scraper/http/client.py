@@ -296,6 +296,6 @@ def fetch_html_resilient(
     for fetcher in fetchers:
         try:
             return fetcher()
-        except Exception as exc:
+        except (RequestException, OSError, subprocess.SubprocessError, ParseError) as exc:
             errors.append(exc)
     raise errors[-1]
