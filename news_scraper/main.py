@@ -1,5 +1,6 @@
 import argparse
 import logging
+import requests
 import sys
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -71,7 +72,9 @@ def order_sources_for_scraping(source_names, recent_reports=None, context=None):
 
 
 def run_scraper(source_name, scraper_func, log_exception=True, attempt=1, context=None):
+    from .errors import NewsScraperError
     from .monitoring import RunContext, use_run_context
+    from requests import RequestException
 
     context = context or RunContext()
     started_at = time.perf_counter()
@@ -82,7 +85,7 @@ def run_scraper(source_name, scraper_func, log_exception=True, attempt=1, contex
             context.record_source_attempt(source_name, attempt, len(items), elapsed)
             logger.info("%s 完成，抓到 %s 筆，用時 %.2f 秒", source_name, len(items), elapsed)
             return source_name, items, None
-        except Exception as exc:
+        except (NewsScraperError, RequestException, OSError, TimeoutError) as exc:
             elapsed = time.perf_counter() - started_at
             context.record_source_attempt(source_name, attempt, 0, elapsed, error=exc)
             if log_exception:
@@ -90,9 +93,15 @@ def run_scraper(source_name, scraper_func, log_exception=True, attempt=1, contex
             else:
                 logger.warning("%s 第一輪失敗，用時 %.2f 秒，將於本輪結束後重試：%s", source_name, elapsed, exc)
             return source_name, [], exc
+        except (ValueError, KeyError, TypeError) as exc:
+            # Parser/schema failures are recorded but intentionally not retried.
+            elapsed = time.perf_counter() - started_at
+            context.record_source_attempt(source_name, attempt, 0, elapsed, error=exc)
+            return source_name, [], exc
 
 
 def collect_news_for_sources_once(source_names, worker_count, print_failures=True, log_exceptions=True, attempt=1, context=None):
+    from .errors import NewsScraperError, is_retryable_error
     from .scrapers.registry import SCRAPER_REGISTRY
 
     if not source_names:
@@ -111,11 +120,17 @@ def collect_news_for_sources_once(source_names, worker_count, print_failures=Tru
                 _, items, error = future.result()
                 all_results.extend(items)
                 if error is not None:
-                    failed_sources.append(source_name)
+                    if is_retryable_error(error) or isinstance(error, (requests.RequestException, OSError, TimeoutError)):
+                        failed_sources.append(source_name)
+                    elif context is not None:
+                        context.failed_sources.append(source_name)
                     if print_failures:
                         print("{} 爬取失敗：{}".format(source_name, error))
-            except Exception as exc:
-                failed_sources.append(source_name)
+            except (NewsScraperError, requests.RequestException, OSError, TimeoutError, ValueError, KeyError, TypeError) as exc:
+                if is_retryable_error(exc) or isinstance(exc, (requests.RequestException, OSError, TimeoutError)):
+                    failed_sources.append(source_name)
+                elif context is not None:
+                    context.failed_sources.append(source_name)
                 if log_exceptions:
                     logger.exception("%s future 執行失敗", source_name)
                 else:
@@ -175,7 +190,10 @@ def collect_all_this_week_news_concurrent(
         final_failed_sources = list(retry_failed_sources)
         all_results.extend(retry_results)
 
-    context.failed_sources = sorted(set(final_failed_sources), key=lambda name: SOURCE_ORDER.get(name, 999))
+    context.failed_sources = sorted(
+        set(context.failed_sources) | set(final_failed_sources),
+        key=lambda name: SOURCE_ORDER.get(name, 999),
+    )
 
     if dedupe_affiliated:
         from .utils.dedupe import dedupe_affiliated_news

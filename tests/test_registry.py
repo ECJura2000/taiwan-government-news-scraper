@@ -5,7 +5,7 @@ from news_scraper.config import (
     SCRAPE_DIFFICULTY_ORDER,
     SOURCE_ORDER,
 )
-from news_scraper.scrapers.registry import SCRAPER_REGISTRY
+from news_scraper.scrapers.registry import SCRAPER_REGISTRY, SOURCE_SPECS
 from news_scraper.policy import load_policy
 
 
@@ -28,6 +28,12 @@ def test_scrape_difficulty_order_only_references_known_sources():
 
 def test_registry_iteration_follows_source_order():
     assert list(SCRAPER_REGISTRY) == ORDERED_SOURCE_NAMES
+
+
+def test_source_specs_are_the_validated_runtime_source_definition():
+    assert list(SOURCE_SPECS) == ORDERED_SOURCE_NAMES
+    assert SOURCE_SPECS["行政院"].url
+    assert SOURCE_SPECS["行政院"].difficulty == SCRAPE_DIFFICULTY_ORDER["行政院"]
 
 
 def test_affiliated_source_paths_reference_known_sources():

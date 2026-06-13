@@ -1,6 +1,8 @@
 import importlib
 import requests
 
+from news_scraper.models import NewsItem, make_news_item
+
 main = importlib.import_module("news_scraper.main")
 
 
@@ -134,3 +136,11 @@ def test_run_scraper_records_classified_failure():
     assert isinstance(error, requests.Timeout)
     assert attempts[0]["attempt"] == 2
     assert attempts[0]["error_category"] == "timeout"
+
+
+def test_make_news_item_preserves_category_in_named_model():
+    item = make_news_item("警政署", "警政署", "2026-06-12", "測試新聞", "https://example.com", category="新聞稿")
+
+    assert isinstance(item, NewsItem)
+    assert item.category == "新聞稿"
+    assert dict(item)["category"] == "新聞稿"

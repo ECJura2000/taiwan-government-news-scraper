@@ -2,6 +2,8 @@ import logging
 import xml.etree.ElementTree as ET
 
 from ..config import RSS_FEED_TIMEOUT
+from ..errors import ParseError
+from ..external_schemas import validate_rss_items
 from ..http.client import (
     fetch_html,
     fetch_html_by_curl_with_headers,
@@ -101,8 +103,8 @@ def parse_rss_items(xml_text, url):
     xml_text = xml_text.lstrip("\ufeff\n\r\t ")
     try:
         root = ET.fromstring(xml_text)
-    except Exception as exc:
-        raise ValueError("RSS XML 解析失敗：{} ({})".format(exc, url)) from exc
+    except ET.ParseError as exc:
+        raise ParseError("RSS XML 解析失敗：{} ({})".format(exc, url)) from exc
 
     channel = None
     if get_xml_local_name(root.tag) == "channel":
@@ -116,15 +118,15 @@ def parse_rss_items(xml_text, url):
     if channel is not None:
         items = [child for child in list(channel) if get_xml_local_name(child.tag) == "item"]
         if items:
-            return items
+            return validate_rss_items(items, url)
 
     items = [elem for elem in root.iter() if get_xml_local_name(elem.tag) == "item"]
     if items:
-        return items
+        return validate_rss_items(items, url)
 
     root_name = get_xml_local_name(root.tag)
     preview = clean_text(xml_text[:200])
-    raise ValueError("RSS 找不到 item 節點：{}；root={}；內容片段={}".format(url, root_name, preview))
+    raise ParseError("RSS 找不到 item 節點：{}；root={}；內容片段={}".format(url, root_name, preview))
 
 
 def fetch_rss_items(url, timeout=RSS_FEED_TIMEOUT):
