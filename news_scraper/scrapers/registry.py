@@ -2,9 +2,10 @@ from collections.abc import Callable, Iterator, Mapping
 from importlib import import_module
 from typing import TypeAlias, cast
 
-from ..models import NewsItemData
+from ..models import NewsItem
+from ..source_catalog import SourceSpec, build_source_catalog
 
-Scraper: TypeAlias = Callable[[], list[NewsItemData]]
+Scraper: TypeAlias = Callable[[], list[NewsItem]]
 ScraperSpec: TypeAlias = tuple[str, str]
 
 SCRAPER_SPECS: dict[str, ScraperSpec] = {
@@ -82,29 +83,32 @@ SCRAPER_SPECS: dict[str, ScraperSpec] = {
 }
 
 
+SOURCE_SPECS = build_source_catalog(SCRAPER_SPECS)
+
+
 class LazyScraperRegistry(Mapping[str, Scraper]):
-    def __init__(self, scraper_specs: Mapping[str, ScraperSpec]) -> None:
-        self._scraper_specs = dict(scraper_specs)
+    def __init__(self, source_specs: Mapping[str, SourceSpec]) -> None:
+        self._source_specs = dict(source_specs)
         self._cache: dict[str, Scraper] = {}
 
     def __getitem__(self, source_name: str) -> Scraper:
-        if source_name not in self._scraper_specs:
+        if source_name not in self._source_specs:
             raise KeyError(source_name)
         cached_scraper = self._cache.get(source_name)
         if cached_scraper is not None:
             return cached_scraper
 
-        module_name, function_name = self._scraper_specs[source_name]
-        module = import_module(module_name)
-        scraper_func = cast(Scraper, getattr(module, function_name))
+        spec = self._source_specs[source_name]
+        module = import_module(spec.module)
+        scraper_func = cast(Scraper, getattr(module, spec.function))
         self._cache[source_name] = scraper_func
         return scraper_func
 
     def __iter__(self) -> Iterator[str]:
-        return iter(self._scraper_specs)
+        return iter(self._source_specs)
 
     def __len__(self) -> int:
-        return len(self._scraper_specs)
+        return len(self._source_specs)
 
 
-SCRAPER_REGISTRY = LazyScraperRegistry(SCRAPER_SPECS)
+SCRAPER_REGISTRY = LazyScraperRegistry(SOURCE_SPECS)

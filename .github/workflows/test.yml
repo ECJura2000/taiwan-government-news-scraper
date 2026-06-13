@@ -22,7 +22,7 @@ jobs:
           cache: pip
       - run: python -m pip install -e ".[dev]"
       - run: python -m compileall -q news_scraper
-      - run: python -m pytest -q
+      - run: python -m pytest -q --cov=news_scraper.quality --cov=news_scraper.utils.text --cov-fail-under=80
 
   quality:
     runs-on: ubuntu-latest
@@ -35,3 +35,29 @@ jobs:
       - run: python -m pip install -e ".[dev]"
       - run: python -m ruff check .
       - run: python -m mypy
+
+  benchmark:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+      - run: python -m pip install -e .
+      - run: python scripts/benchmark_capacity.py --sizes 1000 10000 --workers 1 4 16 > benchmark-results.json
+      - run: python scripts/check_benchmark_budget.py benchmark-results.json benchmarks/baseline.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: taiwan-news-benchmark-results
+          path: benchmark-results.json
+
+  security:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - run: python -m pip install -e . pip-audit
+      - run: python -m pip_audit .

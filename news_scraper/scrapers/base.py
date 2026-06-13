@@ -24,12 +24,14 @@ try:
     from selenium.webdriver.common.by import By
     from selenium.webdriver.support import expected_conditions as EC
     from selenium.webdriver.support.ui import WebDriverWait
+    from selenium.common.exceptions import WebDriverException
 except ImportError as exc:
     webdriver = None
     Options = None
     By = None
     EC = None
     WebDriverWait = None
+    WebDriverException = RuntimeError
     SELENIUM_IMPORT_ERROR = exc
 else:
     SELENIUM_IMPORT_ERROR = None
@@ -192,7 +194,7 @@ def create_selenium_driver():
 
     try:
         driver = webdriver.Chrome(options=chrome_options)
-    except Exception:
+    except WebDriverException:
         chrome_options = Options()
         chrome_options.add_argument("--headless")
         chrome_options.add_argument("--window-size=1920,1080")

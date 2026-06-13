@@ -1,0 +1,17 @@
+name: Source smoke
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "23 20 * * *"
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - run: python scripts/smoke_sources.py

@@ -12,6 +12,7 @@ from requests.exceptions import RequestException, SSLError
 from urllib3.exceptions import InsecureRequestWarning
 from urllib3.util.retry import Retry
 
+from ..errors import ParseError
 from ..config import (
     HEADERS,
     REQUEST_TIMEOUT,
@@ -194,8 +195,8 @@ def fetch_json_data(
     text = fetch_html(url, timeout=timeout, extra_headers=extra_headers)
     try:
         return json.loads(text)
-    except Exception as exc:
-        raise ValueError("JSON 解析失敗：{} ({})".format(exc, url)) from exc
+    except json.JSONDecodeError as exc:
+        raise ParseError("JSON 解析失敗：{} ({})".format(exc, url)) from exc
 
 
 def fetch_html_by_curl(url: str, timeout: int | float | None = REQUEST_TIMEOUT) -> str:
@@ -295,6 +296,6 @@ def fetch_html_resilient(
     for fetcher in fetchers:
         try:
             return fetcher()
-        except Exception as exc:
+        except (RequestException, OSError, subprocess.SubprocessError, ParseError) as exc:
             errors.append(exc)
     raise errors[-1]

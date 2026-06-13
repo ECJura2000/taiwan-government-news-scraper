@@ -10,6 +10,7 @@ from news_scraper.monitoring import (
     build_run_report,
     classify_error,
     detect_run_anomalies,
+    load_recent_reports,
     prune_old_reports,
     send_webhook_alert,
     write_run_report,
@@ -170,3 +171,15 @@ def test_prune_old_reports_removes_only_expired_files(tmp_path):
 
     assert removed == [str(old_report)]
     assert recent_report.exists()
+
+
+def test_load_recent_reports_skips_invalid_json_schema(tmp_path):
+    invalid = tmp_path / "news_scraper_run_20260613_070000_000000.json"
+    valid = tmp_path / "news_scraper_run_20260613_080000_000000.json"
+    invalid.write_text(json.dumps({"status": "success"}), encoding="utf-8")
+    valid.write_text(
+        json.dumps({"status": "success", "source_attempts": [], "quality": {}}),
+        encoding="utf-8",
+    )
+
+    assert load_recent_reports(tmp_path) == [{"status": "success", "source_attempts": [], "quality": {}}]

@@ -4,10 +4,11 @@ import os
 import threading
 from contextlib import contextmanager
 from contextvars import ContextVar
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 from datetime import datetime, timedelta
+from enum import Enum
 from pathlib import Path
-from typing import Any
+from typing import Any, TypedDict, cast
 from urllib.request import Request, urlopen
 
 from requests.exceptions import ConnectionError, HTTPError, SSLError, Timeout
@@ -18,30 +19,100 @@ CURRENT_RUN_CONTEXT = ContextVar("news_scraper_run_context", default=None)
 logger = logging.getLogger(__name__)
 
 
+class QualitySummary(TypedDict, total=False):
+    input_count: int
+    output_count: int
+    duplicate_count: int
+    invalid_count: int
+    excluded_non_news_count: int
+    source_counts: dict[str, int]
+    issues: list[dict[str, Any]]
+    alert_reasons: list[str]
+
+
+class AttemptStatus(str, Enum):
+    SUCCESS = "success"
+    FAILED = "failed"
+
+
+class RunStatus(str, Enum):
+    SUCCESS = "success"
+    ATTENTION = "attention"
+    PARTIAL_FAILURE = "partial_failure"
+
+
+class ErrorCategory(str, Enum):
+    SSL = "ssl"
+    TIMEOUT = "timeout"
+    HTTP = "http"
+    CONNECTION = "connection"
+    BROWSER = "browser"
+    PARSE = "parse"
+    UNEXPECTED = "unexpected"
+
+
+def new_quality_summary() -> QualitySummary:
+    return cast(QualitySummary, {})
+
+
+@dataclass(frozen=True)
+class SourceAttempt:
+    source: str
+    attempt: int
+    status: str
+    item_count: int
+    elapsed_seconds: float
+    error_category: str = ""
+    error_type: str = ""
+    error_message: str = ""
+
+    def to_dict(self):
+        return asdict(self)
+
+
+@dataclass(frozen=True)
+class ParserWarning:
+    category: str
+    parser: str
+    source: str
+    value: str
+    error_type: str = ""
+    error_message: str = ""
+
+    def to_dict(self):
+        return asdict(self)
+
+    def __getitem__(self, key):
+        try:
+            return getattr(self, key)
+        except AttributeError as exc:
+            raise KeyError(key) from exc
+
+
 @dataclass
 class RunContext:
-    source_attempts: list[dict] = field(default_factory=list)
+    source_attempts: list[SourceAttempt] = field(default_factory=list)
     insecure_ssl_hosts: set[str] = field(default_factory=set)
     failed_sources: list[str] = field(default_factory=list)
-    quality_summary: dict = field(default_factory=dict)
+    quality_summary: QualitySummary = field(default_factory=new_quality_summary)
     anomalies: list[dict] = field(default_factory=list)
     alerts: list[dict] = field(default_factory=list)
-    parser_warnings: list[dict] = field(default_factory=list)
+    parser_warnings: list[ParserWarning] = field(default_factory=list)
     scheduling_plan: list[dict] = field(default_factory=list)
     retry_timeout_extra_seconds: int = 0
     lock: threading.RLock = field(default_factory=threading.RLock, repr=False)
 
     def record_source_attempt(self, source, attempt, item_count, elapsed_seconds, error=None):
-        result = {
-            "source": source,
-            "attempt": attempt,
-            "status": "failed" if error else "success",
-            "item_count": item_count,
-            "elapsed_seconds": round(elapsed_seconds, 3),
-            "error_category": classify_error(error),
-            "error_type": type(error).__name__ if error else "",
-            "error_message": str(error) if error else "",
-        }
+        result = SourceAttempt(
+            source=source,
+            attempt=attempt,
+            status=AttemptStatus.FAILED if error else AttemptStatus.SUCCESS,
+            item_count=item_count,
+            elapsed_seconds=round(elapsed_seconds, 3),
+            error_category=classify_error(error),
+            error_type=type(error).__name__ if error else "",
+            error_message=str(error) if error else "",
+        )
         with self.lock:
             self.source_attempts.append(result)
         return result
@@ -53,17 +124,17 @@ class RunContext:
 
     def snapshot_attempts(self):
         with self.lock:
-            return [dict(result) for result in self.source_attempts]
+            return [result.to_dict() for result in self.source_attempts]
 
     def record_parser_warning(self, parser, value, error=None, source=""):
-        warning = {
-            "category": "parser_warning",
-            "parser": parser,
-            "source": source,
-            "value": str(value)[:500],
-            "error_type": type(error).__name__ if error else "",
-            "error_message": str(error) if error else "",
-        }
+        warning = ParserWarning(
+            category="parser_warning",
+            parser=parser,
+            source=source,
+            value=str(value)[:500],
+            error_type=type(error).__name__ if error else "",
+            error_message=str(error) if error else "",
+        )
         with self.lock:
             self.parser_warnings.append(warning)
         return warning
@@ -94,21 +165,21 @@ def classify_error(error):
     if error is None:
         return ""
     if isinstance(error, SSLError):
-        return "ssl"
+        return ErrorCategory.SSL
     if isinstance(error, Timeout) or "timeout" in type(error).__name__.lower():
-        return "timeout"
+        return ErrorCategory.TIMEOUT
     if isinstance(error, HTTPError):
-        return "http"
+        return ErrorCategory.HTTP
     if isinstance(error, ConnectionError):
-        return "connection"
+        return ErrorCategory.CONNECTION
 
     error_name = type(error).__name__.lower()
     error_message = str(error).lower()
     if "webdriver" in error_name or "selenium" in error_name or "chromedriver" in error_message:
-        return "browser"
+        return ErrorCategory.BROWSER
     if isinstance(error, (ValueError, KeyError, TypeError)):
-        return "parse"
-    return "unexpected"
+        return ErrorCategory.PARSE
+    return ErrorCategory.UNEXPECTED
 
 
 def build_run_report(*, context, started_at, finished_at, selected_sources, news_count, output_path):
@@ -121,11 +192,11 @@ def build_run_report(*, context, started_at, finished_at, selected_sources, news
 
     quality_requires_attention = bool(context.quality_summary.get("alert_reasons"))
     if context.failed_sources:
-        status = "partial_failure"
+        status = RunStatus.PARTIAL_FAILURE
     elif context.anomalies or context.parser_warnings or quality_requires_attention:
-        status = "attention"
+        status = RunStatus.ATTENTION
     else:
-        status = "success"
+        status = RunStatus.SUCCESS
 
     return {
         "status": status,
@@ -139,7 +210,7 @@ def build_run_report(*, context, started_at, finished_at, selected_sources, news
         "insecure_ssl_hosts": sorted(context.insecure_ssl_hosts),
         "quality": context.quality_summary,
         "anomalies": list(context.anomalies),
-        "parser_warnings": list(context.parser_warnings),
+        "parser_warnings": [warning.to_dict() for warning in context.parser_warnings],
         "scheduling_plan": list(context.scheduling_plan),
         "alerts": list(context.alerts),
         "output_file": str(output_path),
@@ -152,12 +223,26 @@ def load_recent_reports(report_dir, limit=12):
     reports = []
     for report_path in sorted(report_dir.glob("news_scraper_run_*.json"), reverse=True):
         try:
-            reports.append(json.loads(report_path.read_text(encoding="utf-8")))
+            report = json.loads(report_path.read_text(encoding="utf-8"))
+            validate_run_report(report)
+            reports.append(report)
         except (OSError, ValueError):
             continue
         if len(reports) >= limit:
             break
     return reports
+
+
+def validate_run_report(report):
+    if not isinstance(report, dict):
+        raise ValueError("run report 必須是 JSON object")
+    required = {"status", "source_attempts", "quality"}
+    missing = required - set(report)
+    if missing:
+        raise ValueError(f"run report 缺少欄位：{sorted(missing)}")
+    RunStatus(report["status"])
+    if not isinstance(report["source_attempts"], list) or not isinstance(report["quality"], dict):
+        raise ValueError("run report 的 source_attempts/quality 型別錯誤")
 
 
 def detect_run_anomalies(context, selected_sources, recent_reports):
