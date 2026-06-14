@@ -14,6 +14,7 @@
 - 檢查 CI benchmark artifact 與 observability budget warning。
 - CI 會和 `benchmarks/baseline.json` 比較；只有確認效能變更合理後才更新基準。
 - 每日非阻擋 `Source smoke` workflow 會檢查代表性外部來源。
+- 至少連續兩週使用 `python3 scripts/record_long_term_run.py --input <result.json>` 累積真實執行證據後，再提出穩定性結論。
 
 ## 排程維護
 

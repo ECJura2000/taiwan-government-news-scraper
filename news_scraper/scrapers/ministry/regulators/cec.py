@@ -23,7 +23,7 @@ def scrape_cec_this_week():
             continue
         try:
             news_date = roc_to_ad_date(match.group(0).replace(".", "-"))
-        except Exception:
+        except ValueError:
             continue
         if start_of_week <= news_date <= end_of_week:
             results.append(make_news_item(source, source, news_date, text.replace(match.group(0), "").strip(), URLS[source]))
