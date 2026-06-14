@@ -6,6 +6,8 @@
 
 完整的政府資料入口、抓取方式與技術參考請見 [資料來源與參考資料](SOURCES.md)。本專案只整理各機關公開發布的新聞與公告；內容著作權、正確性與最終解釋均以原發布機關網站為準。
 
+專題成果請見 [正式報告](PROJECT_REPORT.md)、[操作示範](docs/DEMO.md)、[UAT](docs/UAT.md)、[災難復原](docs/DISASTER_RECOVERY.md) 與 [變更紀錄](CHANGELOG.md)。
+
 資料流、模組責任、資料結構選擇與複雜度分析請見 [架構說明](ARCHITECTURE.md)。
 1 千、1 萬與 10 萬筆容量及併發量測請見 [效能基準](PERFORMANCE.md)。
 新增來源、依賴更新與排程維護流程請見 [維護手冊](docs/MAINTENANCE.md)。

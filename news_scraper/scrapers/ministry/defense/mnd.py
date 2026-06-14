@@ -31,7 +31,7 @@ def scrape_mnd_this_week():
             continue
         try:
             news_date = roc_to_ad_date(date_text)
-        except Exception:
+        except ValueError:
             continue
         if news_date < start_of_week:
             break

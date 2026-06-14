@@ -24,7 +24,7 @@ def scrape_moenv_this_week():
             continue
         try:
             news_date = roc_to_ad_date(date_tag.get_text(strip=True))
-        except Exception:
+        except ValueError:
             continue
         if start_of_week <= news_date <= end_of_week:
             results.append(

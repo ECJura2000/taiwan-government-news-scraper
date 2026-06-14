@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.0 - 2026-06-14
+
+- Added typed models, source validation, observability budgets, schema validation, and selective retry.
+- Added integration, fault-injection, property, coverage, security, benchmark, and source smoke checks.
+- Added formal project delivery, UAT, long-term-run, and disaster-recovery procedures.
+
 ## 0.3.0 - 2026-06-11
 
 - Added Python 3.10, 3.12, and 3.13 CI compatibility testing.
