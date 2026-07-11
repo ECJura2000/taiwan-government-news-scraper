@@ -115,21 +115,48 @@ jobs:
         if: runner.os != 'Windows'
         shell: bash
         run: |
-          "dist/${{ matrix.asset }}" --list-sources > dist/smoke-test.txt
-          test -s dist/smoke-test.txt
+          "dist/${{ matrix.asset }}" --list-sources > dist/smoke-stdout.txt 2> dist/smoke-stderr.txt
+          test -s dist/smoke-stdout.txt
 
       - name: Smoke-test packaged executable on Windows
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          $outputPath = Join-Path "dist" "smoke-test.txt"
-          & ".\dist\${{ matrix.asset }}" --list-sources | Out-File -FilePath $outputPath -Encoding utf8
-          if ($LASTEXITCODE -ne 0) {
-            throw "Packaged executable exited with code $LASTEXITCODE"
+          $executable = (Resolve-Path ".\dist\${{ matrix.asset }}").Path
+          $stdoutPath = Join-Path $PWD "dist\smoke-stdout.txt"
+          $stderrPath = Join-Path $PWD "dist\smoke-stderr.txt"
+          $process = Start-Process `
+            -FilePath $executable `
+            -ArgumentList "--list-sources" `
+            -Wait `
+            -PassThru `
+            -RedirectStandardOutput $stdoutPath `
+            -RedirectStandardError $stderrPath
+          Write-Host "Packaged executable exit code: $($process.ExitCode)"
+          if (Test-Path $stdoutPath) {
+            Get-Content $stdoutPath
           }
-          if (-not (Test-Path $outputPath) -or (Get-Item $outputPath).Length -eq 0) {
+          if (Test-Path $stderrPath) {
+            Get-Content $stderrPath
+          }
+          if ($process.ExitCode -ne 0) {
+            throw "Packaged executable exited with code $($process.ExitCode)"
+          }
+          if (-not (Test-Path $stdoutPath) -or (Get-Item $stdoutPath).Length -eq 0) {
             throw "Packaged executable produced no output"
           }
+
+      - name: Upload smoke-test diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: smoke-diagnostics-${{ matrix.platform }}
+          path: |
+            dist/smoke-stdout.txt
+            dist/smoke-stderr.txt
+            build/news-scraper/warn-news-scraper.txt
+          if-no-files-found: warn
+          retention-days: 7
 
       - name: Generate SHA-256 checksum
         env:
