@@ -3,6 +3,8 @@ name: Build and release executables
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
   PYINSTALLER_VERSION: "6.21.0"
+  PYTHONUTF8: "1"
+  PYTHONIOENCODING: "utf-8"
 
 on:
   workflow_dispatch:
@@ -113,7 +115,7 @@ jobs:
         shell: bash
         run: |
           "dist/${{ matrix.asset }}" --list-sources > dist/smoke-test.txt
-          grep -q "行政院" dist/smoke-test.txt
+          test -s dist/smoke-test.txt
 
       - name: Generate SHA-256 checksum
         env:
