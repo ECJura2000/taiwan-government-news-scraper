@@ -1,6 +1,9 @@
 # News Scraper
 
-中華民國政府政府部會每週新聞整合爬蟲，已由原本單檔程式拆分為可維護的套件結構。
+[![Tests](https://github.com/ECJura2000/taiwan-government-news-scraper/actions/workflows/test.yml/badge.svg)](https://github.com/ECJura2000/taiwan-government-news-scraper/actions/workflows/test.yml)
+[![Build executables](https://github.com/ECJura2000/taiwan-government-news-scraper/actions/workflows/build-release.yml/badge.svg)](https://github.com/ECJura2000/taiwan-government-news-scraper/actions/workflows/build-release.yml)
+
+中華民國政府部會每週新聞整合爬蟲，已由原本單檔程式拆分為可維護的套件結構。
 
 目前支援 71 個政府機關與所屬單位，提供 Excel 匯出、資料品質檢查、來源健康監控、異常告警與可重現的 CI 測試。專案支援 Python 3.10、3.12 與 3.13。
 
@@ -10,7 +13,7 @@
 
 資料流、模組責任、資料結構選擇與複雜度分析請見 [架構說明](ARCHITECTURE.md)。
 1 千、1 萬與 10 萬筆容量及併發量測請見 [效能基準](PERFORMANCE.md)。
-新增來源、依賴更新與排程維護流程請見 [維護手冊](docs/MAINTENANCE.md)。
+新增來源、依賴更新與排程維護流程請見 [維護手冊](docs/MAINTENANCE.md)；版本規則與自動發布方式請見 [發行流程](docs/RELEASING.md)。
 
 ## 目錄
 
@@ -51,6 +54,43 @@ news_scraper/
       veterans/           退輔會及相關機關
 ```
 
+## 下載執行檔
+
+建立 `vMAJOR.MINOR.PATCH` 版本標籤後，GitHub Actions 會在 [Releases](https://github.com/ECJura2000/taiwan-government-news-scraper/releases) 發布 Linux、Windows 與 macOS 單檔執行檔，以及各檔案的 SHA-256。每個執行檔在發布前都必須通過 `--list-sources` smoke test。
+
+Windows：
+
+```powershell
+.\news-scraper-windows.exe --list-sources
+.\news-scraper-windows.exe
+```
+
+Linux：
+
+```bash
+chmod +x news-scraper-linux
+./news-scraper-linux --list-sources
+./news-scraper-linux
+```
+
+macOS：
+
+```bash
+chmod +x news-scraper-macos
+./news-scraper-macos --list-sources
+./news-scraper-macos
+```
+
+執行檔目前未進行 Windows Authenticode 或 Apple Developer ID 簽章，作業系統可能顯示未知發行者警告。國土管理署來源使用 Selenium，因此即使使用單檔執行檔，環境仍須安裝 Chrome 或 Chromium。
+
+Linux 與 macOS 可用下列方式核對雜湊：
+
+```bash
+sha256sum -c news-scraper-linux.sha256
+```
+
+Windows 可用 `Get-FileHash` 計算後，與相對應 `.sha256` 檔案比對。
+
 ## 安裝
 
 ```bash
@@ -86,7 +126,7 @@ python3 -m pip install -r requirements.lock.txt -r requirements-dev.lock.txt
 ```bash
 python3 -m ruff check .
 python3 -m mypy
-python3 -m compileall -q news_scraper
+python3 -m compileall -q news_scraper build_entry.py
 python3 -m pytest -q
 ```
 
@@ -225,7 +265,7 @@ python -m news_scraper
 目前可用的基本檢查：
 
 ```bash
-python3 -m compileall news_scraper
+python3 -m compileall news_scraper build_entry.py
 python -m news_scraper --list-sources
 ```
 
@@ -235,7 +275,7 @@ python -m news_scraper --list-sources
 pytest -q
 ```
 
-GitHub Actions 會在 Python 3.10、3.12 與 3.13 執行測試，並另外執行 Ruff 與 Mypy 品質檢查。
+GitHub Actions 會在 Python 3.10、3.12 與 3.13 執行測試，並另外執行 Ruff、Mypy、pip-audit、跨平台 PyInstaller 建置與封裝後 smoke test。
 
 ## 安全性與授權
 
