@@ -111,11 +111,25 @@ jobs:
             chmod +x "dist/${{ matrix.asset }}"
           fi
 
-      - name: Smoke-test packaged executable
+      - name: Smoke-test packaged executable on Linux or macOS
+        if: runner.os != 'Windows'
         shell: bash
         run: |
           "dist/${{ matrix.asset }}" --list-sources > dist/smoke-test.txt
           test -s dist/smoke-test.txt
+
+      - name: Smoke-test packaged executable on Windows
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $outputPath = Join-Path "dist" "smoke-test.txt"
+          & ".\dist\${{ matrix.asset }}" --list-sources | Out-File -FilePath $outputPath -Encoding utf8
+          if ($LASTEXITCODE -ne 0) {
+            throw "Packaged executable exited with code $LASTEXITCODE"
+          }
+          if (-not (Test-Path $outputPath) -or (Get-Item $outputPath).Length -eq 0) {
+            throw "Packaged executable produced no output"
+          }
 
       - name: Generate SHA-256 checksum
         env:
