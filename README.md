@@ -56,7 +56,7 @@ news_scraper/
 
 ## 下載執行檔
 
-建立 `vMAJOR.MINOR.PATCH` 版本標籤後，GitHub Actions 會在 [Releases](https://github.com/ECJura2000/taiwan-government-news-scraper/releases) 發布 Linux、Windows 與 macOS 單檔執行檔，以及各檔案的 SHA-256。每個執行檔在發布前都必須通過 `--list-sources` smoke test。
+當含有新版本號的變更合併到 `main` 後，GitHub Actions 會在 [Releases](https://github.com/ECJura2000/taiwan-government-news-scraper/releases) 自動發布 Linux、Windows 與 macOS 單檔執行檔，以及各檔案的 SHA-256。每個執行檔在發布前都必須通過 `--list-sources` smoke test。
 
 Windows：
 
