@@ -28,7 +28,7 @@ def check_bundled_runtime() -> int:
     validate_runtime_environment()
     for source_name in SCRAPER_REGISTRY:
         SCRAPER_REGISTRY[source_name]
-    print("封裝執行環境與全部爬蟲模組檢查通過。")
+    print("封裝執行環境檢查通過；全部爬蟲模組檢查通過。")
     return 0
 
 
