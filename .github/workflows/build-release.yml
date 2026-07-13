@@ -148,7 +148,7 @@ jobs:
 
       - name: Upload smoke-test diagnostics
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: smoke-diagnostics-${{ matrix.platform }}
           path: |
@@ -166,7 +166,7 @@ jobs:
           Path(str(p)+'.sha256').write_text(f'{hashlib.sha256(p.read_bytes()).hexdigest()}  {p.name}\n', encoding='utf-8')"
 
       - name: Upload executable artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ${{ matrix.asset }}
           path: |
