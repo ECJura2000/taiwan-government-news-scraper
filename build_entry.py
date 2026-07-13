@@ -19,6 +19,18 @@ def configure_utf8_stdio() -> None:
             continue
 
 
+def check_bundled_runtime() -> int:
+    """Verify all modules needed by the default packaged run are importable."""
+
+    from news_scraper.runtime import validate_runtime_environment
+
+    validate_runtime_environment()
+    print("封裝執行環境檢查通過。")
+    return 0
+
+
 if __name__ == "__main__":
     configure_utf8_stdio()
+    if "--check-runtime" in sys.argv[1:]:
+        raise SystemExit(check_bundled_runtime())
     raise SystemExit(main())
