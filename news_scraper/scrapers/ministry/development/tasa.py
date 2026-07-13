@@ -3,7 +3,9 @@ from datetime import datetime, timedelta, timezone
 from urllib.parse import urljoin
 
 from ....config import TASA_GRAPHQL_TIMEOUT, URLS
-from ....http.client import fetch_response
+from requests import RequestException
+
+from ....http.client import fetch_html_by_curl_with_headers, fetch_response
 from ....models import make_news_item
 from ....utils.dates import get_cached_week_range
 from ....utils.text import clean_text
@@ -64,20 +66,32 @@ def fetch_tasa_announcements(offset=0, limit=50):
             "isIncludeEmptyEn": True,
         },
     }
-    response = fetch_response(
-        TASA_GRAPHQL_URL,
-        method="POST",
-        data=json.dumps(payload),
-        timeout=TASA_GRAPHQL_TIMEOUT,
-        extra_headers={
-            "Content-Type": "application/json",
-            "Origin": "https://www.tasa.org.tw",
-            "Referer": URLS["國家太空中心"],
-        },
-    )
+    payload_text = json.dumps(payload)
+    headers = {
+        "Content-Type": "application/json",
+        "Origin": "https://www.tasa.org.tw",
+        "Referer": URLS["國家太空中心"],
+    }
     try:
-        data = response.json()
-    except Exception as exc:
+        try:
+            response = fetch_response(
+                TASA_GRAPHQL_URL,
+                method="POST",
+                data=payload_text,
+                timeout=TASA_GRAPHQL_TIMEOUT,
+                extra_headers=headers,
+            )
+            response_text = response.text
+        except RequestException:
+            response_text = fetch_html_by_curl_with_headers(
+                TASA_GRAPHQL_URL,
+                timeout=TASA_GRAPHQL_TIMEOUT,
+                extra_headers=headers,
+                method="POST",
+                data=payload_text,
+            )
+        data = json.loads(response_text)
+    except (TypeError, json.JSONDecodeError) as exc:
         raise ValueError("國家太空中心 GraphQL 回應不是 JSON。") from exc
     if data.get("errors"):
         raise ValueError("國家太空中心 GraphQL 查詢失敗：{}".format(data["errors"]))

@@ -7,6 +7,11 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 from pathlib import Path
 
+if __package__ in (None, ""):
+    # Allow `python news_scraper/main.py` and frozen entrypoints to resolve package imports.
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+    __package__ = "news_scraper"
+
 from .runtime import validate_runtime_environment
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
@@ -77,6 +82,7 @@ def run_scraper(source_name, scraper_func, log_exception=True, attempt=1, contex
     from .errors import NewsScraperError
     from .monitoring import RunContext, use_run_context
     from requests import RequestException
+    from selenium.common.exceptions import TimeoutException as SeleniumTimeoutException, WebDriverException
 
     context = context or RunContext()
     started_at = time.perf_counter()
@@ -87,7 +93,7 @@ def run_scraper(source_name, scraper_func, log_exception=True, attempt=1, contex
             context.record_source_attempt(source_name, attempt, len(items), elapsed)
             logger.info("%s 完成，抓到 %s 筆，用時 %.2f 秒", source_name, len(items), elapsed)
             return source_name, items, None
-        except (NewsScraperError, RequestException, OSError, TimeoutError) as exc:
+        except (NewsScraperError, RequestException, OSError, TimeoutError, SeleniumTimeoutException, WebDriverException) as exc:
             elapsed = time.perf_counter() - started_at
             context.record_source_attempt(source_name, attempt, 0, elapsed, error=exc)
             if log_exception:
@@ -100,11 +106,21 @@ def run_scraper(source_name, scraper_func, log_exception=True, attempt=1, contex
             elapsed = time.perf_counter() - started_at
             context.record_source_attempt(source_name, attempt, 0, elapsed, error=exc)
             return source_name, [], exc
+        except Exception as exc:
+            # A third-party scraper failure must never abort unrelated sources.
+            elapsed = time.perf_counter() - started_at
+            context.record_source_attempt(source_name, attempt, 0, elapsed, error=exc)
+            if log_exception:
+                logger.exception("%s 未預期失敗，用時 %.2f 秒", source_name, elapsed)
+            else:
+                logger.warning("%s 第一輪未預期失敗，用時 %.2f 秒，將於本輪結束後重試：%s", source_name, elapsed, exc)
+            return source_name, [], exc
 
 
 def collect_news_for_sources_once(source_names, worker_count, print_failures=True, log_exceptions=True, attempt=1, context=None):
     from .errors import NewsScraperError, is_retryable_error
     from .scrapers.registry import SCRAPER_REGISTRY
+    from selenium.common.exceptions import TimeoutException as SeleniumTimeoutException, WebDriverException
 
     if not source_names:
         return [], []
@@ -122,14 +138,34 @@ def collect_news_for_sources_once(source_names, worker_count, print_failures=Tru
                 _, items, error = future.result()
                 all_results.extend(items)
                 if error is not None:
-                    if is_retryable_error(error) or isinstance(error, (requests.RequestException, OSError, TimeoutError)):
+                    if (
+                        is_retryable_error(error)
+                        or isinstance(
+                            error,
+                            (requests.RequestException, OSError, TimeoutError, SeleniumTimeoutException, WebDriverException),
+                        )
+                        or not isinstance(error, (NewsScraperError, ValueError, KeyError, TypeError))
+                    ):
                         failed_sources.append(source_name)
                     elif context is not None:
                         context.failed_sources.append(source_name)
                     if print_failures:
                         print("{} 爬取失敗：{}".format(source_name, error))
-            except (NewsScraperError, requests.RequestException, OSError, TimeoutError, ValueError, KeyError, TypeError) as exc:
-                if is_retryable_error(exc) or isinstance(exc, (requests.RequestException, OSError, TimeoutError)):
+            except (
+                NewsScraperError,
+                requests.RequestException,
+                OSError,
+                TimeoutError,
+                SeleniumTimeoutException,
+                WebDriverException,
+                ValueError,
+                KeyError,
+                TypeError,
+            ) as exc:
+                if is_retryable_error(exc) or isinstance(
+                    exc,
+                    (requests.RequestException, OSError, TimeoutError, SeleniumTimeoutException, WebDriverException),
+                ):
                     failed_sources.append(source_name)
                 elif context is not None:
                     context.failed_sources.append(source_name)
@@ -137,6 +173,12 @@ def collect_news_for_sources_once(source_names, worker_count, print_failures=Tru
                     logger.exception("%s future 執行失敗", source_name)
                 else:
                     logger.warning("%s future 第一輪執行失敗，將於本輪結束後重試：%s", source_name, exc)
+                if print_failures:
+                    print("{} 爬取失敗：{}".format(source_name, exc))
+            except Exception as exc:
+                failed_sources.append(source_name)
+                if log_exceptions:
+                    logger.exception("%s future 未預期失敗", source_name)
                 if print_failures:
                     print("{} 爬取失敗：{}".format(source_name, exc))
     return all_results, list(dict.fromkeys(failed_sources))
