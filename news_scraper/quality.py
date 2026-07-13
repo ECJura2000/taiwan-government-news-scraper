@@ -69,6 +69,8 @@ def process_news_quality(news_items, selected_sources):
     duplicate_count = 0
     invalid_count = 0
     excluded_non_news_count = 0
+    summary_count = 0
+    date_source_counts: Counter[str] = Counter()
 
     for item in news_items:
         error = validate_news_item(item)
@@ -101,6 +103,9 @@ def process_news_quality(news_items, selected_sources):
         cleaned_item["link"] = normalized_url
         kept_items.append(cleaned_item)
         source_counts[cleaned_item["source"]] += 1
+        if clean_text(cleaned_item.get("summary", "")):
+            summary_count += 1
+        date_source_counts[clean_text(cleaned_item.get("date_source", "")) or "unknown"] += 1
 
     for source in selected_sources:
         source_counts.setdefault(source, 0)
@@ -112,6 +117,10 @@ def process_news_quality(news_items, selected_sources):
         "invalid_count": invalid_count,
         "excluded_non_news_count": excluded_non_news_count,
         "source_counts": dict(source_counts),
+        "summary_count": summary_count,
+        "summary_coverage_rate": round(summary_count / len(kept_items), 4) if kept_items else 0.0,
+        "date_source_counts": dict(date_source_counts),
+        "description_fallback_count": date_source_counts["description_fallback"],
         "issues": issues,
     }
     summary["alert_reasons"] = build_quality_alert_reasons(summary)

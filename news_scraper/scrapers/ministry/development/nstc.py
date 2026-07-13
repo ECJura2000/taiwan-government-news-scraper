@@ -5,7 +5,7 @@ from ....config import URLS
 from ....http.client import fetch_html
 from ....models import make_news_item
 from ....utils.dates import get_cached_week_range
-from ...base import make_soup
+from ...base import fetch_page_summary, make_soup
 
 
 def scrape_nstc_this_week():
@@ -30,13 +30,15 @@ def scrape_nstc_this_week():
         except ValueError:
             continue
         if start_of_week <= news_date <= end_of_week:
+            link = urljoin(URLS[source], a_tag.get("href", "").strip())
             results.append(
                 make_news_item(
                     source,
                     source,
                     news_date,
                     title_tag.get_text(" ", strip=True),
-                    urljoin(URLS[source], a_tag.get("href", "").strip()),
+                    link,
+                    summary=fetch_page_summary(link, (".articleContent", ".article-content", "article")),
                 )
             )
     return results

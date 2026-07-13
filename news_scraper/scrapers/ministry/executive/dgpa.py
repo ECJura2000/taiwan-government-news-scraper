@@ -8,14 +8,28 @@ from ....rss.parser import (
 )
 from ....utils.dates import get_cached_week_range
 
+def resolve_dgpa_news_date(item):
+    date_fields = extract_rss_item_date_fields(item)
+    news_date, _ = resolve_rss_news_date_with_source(
+        date_fields,
+        allow_description_fallback=True,
+        source="人事總處",
+    )
+    return news_date
 
-def scrape_moj_this_week():
-    source = "法務部"
+
+def scrape_dgpa_this_week():
+    source = "人事總處"
     start_of_week, end_of_week = get_cached_week_range()
     results = []
+
     for item in fetch_rss_items(URLS[source], timeout=RSS_FEED_TIMEOUT):
         date_fields = extract_rss_item_date_fields(item)
-        news_date, date_source = resolve_rss_news_date_with_source(date_fields, source=source)
+        news_date, date_source = resolve_rss_news_date_with_source(
+            date_fields,
+            allow_description_fallback=True,
+            source=source,
+        )
         if news_date is None:
             continue
         if news_date < start_of_week:
@@ -26,13 +40,10 @@ def scrape_moj_this_week():
         fields = extract_rss_item_metadata_fields(item)
         if not fields["title"] or not fields["link"]:
             continue
-        department_label = source
-        if fields["deptname"] and fields["deptname"] != source:
-            department_label = "{}／{}".format(source, fields["deptname"])
         results.append(
             make_news_item(
                 source,
-                department_label,
+                source,
                 news_date,
                 fields["title"],
                 fields["link"],
@@ -40,4 +51,5 @@ def scrape_moj_this_week():
                 date_source=date_source,
             )
         )
+
     return results

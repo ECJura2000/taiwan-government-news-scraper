@@ -7,6 +7,15 @@
 3. 加入 fixture、schema 與故障注入測試。
 4. 執行 pytest、mypy、ruff 與小型 benchmark。
 
+## AI 新十大建設規則
+
+1. 修改 `config.py` 的 dataclass 規則後，確認主政來源存在、名稱唯一且關鍵字不重複。
+2. 將新發現的真實正例、模糊例或誤判例加入 `tests/fixtures/ai_policy_labeled_titles.tsv`，保留官方來源網址。
+3. 不得用時間留存集調整規則；新資料先加入回歸語料，定期另建新的時間留存集。
+4. 執行 `python3 scripts/evaluate_ai_policy.py` 與時間留存集評估，確認整體 precision/recall 不低於 90%，各建設有樣本時不低於 85%。
+5. 需要驗證來源內容時加上 `--verify-sources`，人工檢查 `title_not_found` 與 `fetch_failed`，不要讓網路結果阻擋一般 CI。
+6. 規則行為變更時調升 `AI_POLICY_RULESET_VERSION`；執行報告會自動記錄版本與規則雜湊。
+
 ## 依賴與效能
 
 - 更新 `requirements.lock.txt` 與 `requirements-dev.lock.txt`。

@@ -34,6 +34,7 @@
 | 公平會 | [www.ftc.gov.tw](https://www.ftc.gov.tw/internet/main/rss/rss_1.xml) |
 | 中央銀行 | [www.cbc.gov.tw](https://www.cbc.gov.tw/tw/lp-302-1.html) |
 | 主計總處 | [www.dgbas.gov.tw](https://www.dgbas.gov.tw/OpenData.aspx?SN=0DA0FD2F5416554E) |
+| 人事總處 | [www.dgpa.gov.tw](https://www.dgpa.gov.tw/rsscon?uid=82) |
 | 教育部 | [www.edu.tw](https://www.edu.tw/News.aspx?n=9E7AC85F1954DDA8&sms=169B8E91BB75571F) |
 | 國教院 | [www.naer.edu.tw](https://www.naer.edu.tw/PageDoc?fid=15) |
 | 運動部 | [www.sports.gov.tw](https://www.sports.gov.tw/News/309) |

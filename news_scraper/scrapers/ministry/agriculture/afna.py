@@ -1,7 +1,7 @@
 from urllib.parse import urljoin
 
 from ....config import AFNA_LIST_TIMEOUT, URLS
-from ....http.client import fetch_html, fetch_html_plain_insecure
+from ....http.client import fetch_html_resilient
 from ....models import make_news_item
 from ....utils.dates import get_cached_week_range, roc_to_ad_date
 from ....utils.text import clean_text
@@ -10,19 +10,11 @@ from ...base import make_soup
 
 def scrape_afna_this_week():
     source = "農業金融署"
-    html = None
-    last_error = None
-    try:
-        html = fetch_html(URLS[source], timeout=AFNA_LIST_TIMEOUT, extra_headers={"Connection": "close"})
-    except Exception as exc:
-        last_error = exc
-    if html is None:
-        try:
-            html = fetch_html_plain_insecure(URLS[source], timeout=AFNA_LIST_TIMEOUT, extra_headers={"Connection": "close"})
-        except Exception as exc:
-            last_error = exc
-    if html is None:
-        raise last_error
+    html = fetch_html_resilient(
+        URLS[source],
+        timeout=AFNA_LIST_TIMEOUT,
+        extra_headers={"Connection": "close"},
+    )
 
     soup = make_soup(html)
     rows = soup.select("tbody tr")

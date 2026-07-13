@@ -13,6 +13,7 @@ from urllib.request import Request, urlopen
 
 from requests.exceptions import ConnectionError, HTTPError, SSLError, Timeout
 
+from .config import AI_POLICY_RULESET_VERSION, get_ai_policy_ruleset_hash
 from .policy import get_zero_item_alert_runs
 
 CURRENT_RUN_CONTEXT = ContextVar("news_scraper_run_context", default=None)
@@ -26,6 +27,10 @@ class QualitySummary(TypedDict, total=False):
     invalid_count: int
     excluded_non_news_count: int
     source_counts: dict[str, int]
+    summary_count: int
+    summary_coverage_rate: float
+    date_source_counts: dict[str, int]
+    description_fallback_count: int
     issues: list[dict[str, Any]]
     alert_reasons: list[str]
 
@@ -209,6 +214,10 @@ def build_run_report(*, context, started_at, finished_at, selected_sources, news
         "error_counts": error_counts,
         "insecure_ssl_hosts": sorted(context.insecure_ssl_hosts),
         "quality": context.quality_summary,
+        "ai_policy": {
+            "version": AI_POLICY_RULESET_VERSION,
+            "ruleset_hash": get_ai_policy_ruleset_hash(),
+        },
         "anomalies": list(context.anomalies),
         "parser_warnings": [warning.to_dict() for warning in context.parser_warnings],
         "scheduling_plan": list(context.scheduling_plan),

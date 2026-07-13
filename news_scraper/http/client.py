@@ -2,13 +2,13 @@ import json
 import logging
 import subprocess
 import threading
+import warnings
 from typing import Any, Mapping
-from urllib.parse import urlparse
+from urllib.parse import urljoin, urlparse
 
 import requests
-import urllib3
 from requests.adapters import HTTPAdapter
-from requests.exceptions import RequestException, SSLError
+from requests.exceptions import RequestException, SSLError, TooManyRedirects
 from urllib3.exceptions import InsecureRequestWarning
 from urllib3.util.retry import Retry
 
@@ -22,7 +22,6 @@ from ..config import (
 )
 
 logger = logging.getLogger(__name__)
-urllib3.disable_warnings(InsecureRequestWarning)
 
 THREAD_LOCAL = threading.local()
 
@@ -123,6 +122,7 @@ def send_request(
     timeout: int | float | None,
     data: Any = None,
     extra_headers: Mapping[str, str] | None = None,
+    allow_redirects: bool = True,
 ) -> requests.Response:
     return session.request(
         method.upper(),
@@ -130,6 +130,7 @@ def send_request(
         data=data,
         timeout=timeout,
         headers=merge_headers(session, extra_headers),
+        allow_redirects=allow_redirects,
     )
 
 
@@ -146,17 +147,7 @@ def fetch_response(
     if not verify_ssl:
         record_insecure_ssl_use(url)
 
-    try:
-        response = send_request(session, method, url, timeout, data=data, extra_headers=extra_headers)
-    except SSLError:
-        if (not verify_ssl) or (not is_insecure_ssl_allowed(url)):
-            raise
-
-        remember_ssl_verify_failure(url)
-        record_insecure_ssl_use(url)
-        logger.warning("SSL 驗證失敗，改用 verify=False：%s", url)
-        insecure_session = create_session(verify=False)
-        response = send_request(insecure_session, method, url, timeout, data=data, extra_headers=extra_headers)
+    response = send_request(session, method, url, timeout, data=data, extra_headers=extra_headers)
 
     response.raise_for_status()
     apply_response_encoding(response)
@@ -168,7 +159,23 @@ def fetch_html(
     timeout: int | float | None = REQUEST_TIMEOUT,
     extra_headers: Mapping[str, str] | None = None,
 ) -> str:
-    return fetch_response(url, method="GET", timeout=timeout, extra_headers=extra_headers).text
+    try:
+        return fetch_response(url, method="GET", timeout=timeout, extra_headers=extra_headers).text
+    except SSLError as ssl_error:
+        try:
+            logger.warning("Requests SSL 驗證失敗，先改用安全 curl：https://%s", urlparse(url).netloc)
+            return fetch_html_by_curl_with_headers(
+                url,
+                timeout=timeout,
+                extra_headers=extra_headers,
+                insecure=False,
+            )
+        except (OSError, RequestException, subprocess.SubprocessError) as curl_error:
+            if not is_insecure_ssl_allowed(url):
+                raise ssl_error from curl_error
+            remember_ssl_verify_failure(url)
+            logger.warning("安全 curl 亦失敗，白名單來源最後改用 verify=False：%s", url)
+            return fetch_html_plain_insecure(url, timeout=timeout, extra_headers=extra_headers)
 
 
 def fetch_html_plain_insecure(
@@ -176,15 +183,38 @@ def fetch_html_plain_insecure(
     timeout: int | float | None = REQUEST_TIMEOUT,
     extra_headers: Mapping[str, str] | None = None,
 ) -> str:
-    if not is_insecure_ssl_allowed(url):
-        raise SSLError("不允許對非白名單主機停用 SSL 驗證：{}".format(url))
     timeout = get_effective_timeout(timeout)
-    record_insecure_ssl_use(url)
     session = create_session(verify=False)
-    response = send_request(session, "GET", url, timeout, extra_headers=extra_headers)
-    response.raise_for_status()
-    apply_response_encoding(response)
-    return response.text
+    current_url = url
+    max_redirects = 10
+
+    for _ in range(max_redirects + 1):
+        if not is_insecure_ssl_allowed(current_url):
+            raise SSLError("不允許對非白名單主機停用 SSL 驗證：{}".format(current_url))
+        record_insecure_ssl_use(current_url)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", InsecureRequestWarning)
+            response = send_request(
+                session,
+                "GET",
+                current_url,
+                timeout,
+                extra_headers=extra_headers,
+                allow_redirects=False,
+            )
+
+        if response.status_code not in {301, 302, 303, 307, 308}:
+            response.raise_for_status()
+            apply_response_encoding(response)
+            return response.text
+
+        location = response.headers.get("Location", "").strip()
+        if not location:
+            response.raise_for_status()
+            raise RequestException("重新導向回應缺少 Location：{}".format(current_url))
+        current_url = urljoin(current_url, location)
+
+    raise TooManyRedirects("不安全 SSL 抓取超過 {} 次重新導向：{}".format(max_redirects, url))
 
 
 def fetch_json_data(
@@ -205,7 +235,6 @@ def fetch_html_by_curl(url: str, timeout: int | float | None = REQUEST_TIMEOUT) 
         timeout = REQUEST_TIMEOUT
     command = [
         "curl",
-        "-L",
         "--http1.1",
         "--connect-timeout",
         str(timeout),
@@ -257,7 +286,10 @@ def fetch_html_by_curl_with_headers(
         HEADERS["User-Agent"],
     ]
     if insecure:
+        command.extend(["-L", "--max-redirs", "0"])
         command.append("-k")
+    else:
+        command.append("-L")
 
     headers = dict(HEADERS)
     if extra_headers:
@@ -284,14 +316,12 @@ def fetch_html_resilient(
     extra_headers: Mapping[str, str] | None = None,
 ) -> str:
     errors = []
-    fetchers = [lambda: fetch_html(url, timeout=timeout, extra_headers=extra_headers)]
-    if is_insecure_ssl_allowed(url) and not should_skip_ssl_verify(url):
-        fetchers.append(lambda: fetch_html_plain_insecure(url, timeout=timeout, extra_headers=extra_headers))
-    fetchers.append(lambda: fetch_html_by_curl_with_headers(url, timeout=timeout, extra_headers=extra_headers))
+    fetchers = [
+        lambda: fetch_html(url, timeout=timeout, extra_headers=extra_headers),
+        lambda: fetch_html_by_curl_with_headers(url, timeout=timeout, extra_headers=extra_headers),
+    ]
     if is_insecure_ssl_allowed(url):
-        fetchers.append(
-            lambda: fetch_html_by_curl_with_headers(url, timeout=timeout, extra_headers=extra_headers, insecure=True)
-        )
+        fetchers.append(lambda: fetch_html_plain_insecure(url, timeout=timeout, extra_headers=extra_headers))
 
     for fetcher in fetchers:
         try:
