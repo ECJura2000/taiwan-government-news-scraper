@@ -67,7 +67,7 @@ git push origin v1.1.0
 - `news-scraper-v<版本>-SHA256SUMS.txt`
 - `news-scraper-v<版本>-SIZE-MANIFEST.txt`
 
-所有執行檔都必須先通過 `--list-sources` smoke test，Release job 才會發布。失敗時，workflow 另行保存 stdout、stderr 與 PyInstaller warning，供問題定位。
+所有執行檔都必須先通過完整 runtime registry smoke test，Release job 才會發布。PyInstaller 會從 `news_scraper.scrapers.ministry` 遞迴收集機關爬蟲，新增來源不需維護靜態 import 清單。失敗時，workflow 另行保存 stdout、stderr 與 PyInstaller warning，供問題定位。
 
 ## 已知限制
 

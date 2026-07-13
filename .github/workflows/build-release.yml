@@ -101,7 +101,7 @@ jobs:
             --add-data "news_scraper/policy.toml:news_scraper" \
             --collect-all feedparser \
             --collect-all selenium \
-            --collect-submodules news_scraper.scrapers \
+            --collect-submodules news_scraper.scrapers.ministry \
             build_entry.py
 
       - name: Normalize asset name
