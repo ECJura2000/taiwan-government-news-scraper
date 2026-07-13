@@ -10,7 +10,7 @@ from ....rss.parser import (
     extract_rss_item_metadata_fields,
     fetch_rss_items,
     parse_rss_items,
-    resolve_rss_news_date,
+    resolve_rss_news_date_with_source,
 )
 from ....utils.dates import date_str_to_ordinal, get_cached_week_range
 
@@ -43,11 +43,11 @@ def scrape_mof_this_week():
             items = fetch_mof_rss_items(rss_url)
             for item in items:
                 date_fields = extract_rss_item_date_fields(item)
-                news_date = resolve_rss_news_date(date_fields)
+                news_date, date_source = resolve_rss_news_date_with_source(date_fields, source=source)
                 if news_date is None:
                     continue
                 if news_date < start_of_week:
-                    break
+                    continue
                 if news_date > end_of_week:
                     continue
 
@@ -74,7 +74,15 @@ def scrape_mof_this_week():
                         final_title = "{}｜{}".format(title_text, short_desc)
 
                 local_results.append(
-                    make_news_item(source, department_label, news_date, final_title, fields["link"])
+                    make_news_item(
+                        source,
+                        department_label,
+                        news_date,
+                        final_title,
+                        fields["link"],
+                        summary=fields["description"],
+                        date_source=date_source,
+                    )
                 )
         except Exception as exc:
             logger.warning("財政部 RSS 抓取失敗：%s，錯誤：%s", rss_url, exc)

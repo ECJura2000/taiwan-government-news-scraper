@@ -30,6 +30,7 @@ def parse_args():
 
 
 def normalize_selected_sources(selected_sources):
+    from .config import SOURCE_ALIASES
     from .scrapers.registry import SCRAPER_REGISTRY
     from .utils.text import clean_text
 
@@ -41,6 +42,7 @@ def normalize_selected_sources(selected_sources):
     unsupported = []
     for source in selected_sources:
         source = clean_text(source)
+        source = SOURCE_ALIASES.get(source, source)
         if source in SCRAPER_REGISTRY:
             if source in seen:
                 continue

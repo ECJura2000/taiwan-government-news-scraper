@@ -64,6 +64,24 @@ def test_normalize_selected_sources_removes_duplicates():
     assert main.normalize_selected_sources(["財政部", " 財政部 ", "法務部"]) == ["財政部", "法務部"]
 
 
+def test_normalize_selected_sources_accepts_requested_official_agency_names():
+    official_names = [
+        "經濟部", "環境部", "原住民族委員會", "數位發展部", "文化部", "客家委員會",
+        "國家發展委員會", "外交部", "行政院公共工程委員會", "國家科學及技術委員會",
+        "運動部", "行政院主計總處", "教育部", "國防部", "行政院人事行政總處",
+        "法務部", "財政部", "中央銀行", "內政部", "大陸委員會", "國立故宮博物院",
+        "交通部", "金融監督管理委員會", "中央選舉委員會", "勞動部", "海洋委員會",
+        "公平交易委員會", "農業部", "僑務委員會", "國家通訊傳播委員會",
+        "衛生福利部", "國軍退除役官兵輔導委員會",
+    ]
+
+    normalized = main.normalize_selected_sources(official_names)
+
+    assert len(normalized) == len(official_names)
+    assert "人事總處" in normalized
+    assert "國科會" in normalized
+    assert "退輔會" in normalized
+
 def test_build_table_data_formats_news_date_with_ad_and_roc():
     rows = main.build_table_data(
         [
@@ -144,3 +162,35 @@ def test_make_news_item_preserves_category_in_named_model():
     assert isinstance(item, NewsItem)
     assert item.category == "新聞稿"
     assert dict(item)["category"] == "新聞稿"
+
+
+def test_make_news_item_preserves_optional_summary():
+    item = make_news_item(
+        "國發會",
+        "國發會",
+        "2026-06-12",
+        "測試新聞",
+        "https://example.com",
+        summary="摘要提到主權AI及算力建設。",
+    )
+
+    assert item.summary == "摘要提到主權AI及算力建設。"
+    assert dict(item)["summary"] == "摘要提到主權AI及算力建設。"
+
+
+def test_make_news_item_normalizes_html_summary_and_keeps_date_source():
+    item = make_news_item(
+        "主計總處",
+        "主計總處",
+        "2026-06-12",
+        "測試新聞",
+        "https://example.com",
+        summary="<p>第一段&nbsp;摘要</p>\n<p>第二段</p>",
+        date_source="description_fallback",
+    )
+
+    assert item.summary == "第一段 摘要 第二段"
+    assert item.date_source == "description_fallback"
+    assert set(dict(item)) == {
+        "source", "date", "department", "title", "link", "category", "summary", "date_source",
+    }

@@ -12,6 +12,7 @@ from ..http.client import (
     is_insecure_ssl_allowed,
 )
 from ..models import make_news_item
+from ..monitoring import record_parser_warning
 from ..utils.dates import get_cached_week_range, parse_rss_pubdate
 from ..utils.text import (
     clean_text,
@@ -33,8 +34,21 @@ else:
 
 
 def extract_rss_item_date_fields(item):
+    pub_date_text = ""
+    date_source = ""
+    for local_name, candidate_source in (
+        ("pubDate", "published"),
+        ("date", "published"),
+        ("DateTime", "published"),
+        ("updated", "updated"),
+    ):
+        pub_date_text = xml_child_text_by_localnames(item, [local_name])
+        if pub_date_text:
+            date_source = candidate_source
+            break
     return {
-        "pub_date_text": xml_child_text_by_localnames(item, ["pubDate", "date", "DateTime", "updated"]),
+        "pub_date_text": pub_date_text,
+        "date_source": date_source,
         "description": xml_child_text_by_localnames(item, ["description"]),
     }
 
@@ -142,23 +156,21 @@ def fetch_rss_items(url, timeout=RSS_FEED_TIMEOUT):
     except Exception as exc:
         errors.append(exc)
 
+    try:
+        xml_text = fetch_html_by_curl_with_headers(
+            url,
+            timeout=timeout,
+            extra_headers=rss_headers,
+            insecure=False,
+        )
+        return parse_rss_items(xml_text, url)
+    except Exception as exc:
+        errors.append(exc)
+
     if is_insecure_ssl_allowed(url):
         try:
-            logger.warning("RSS 抓取失敗，改用 verify=False：%s；原因：%s", url, errors[-1])
+            logger.warning("安全抓取皆失敗，RSS 白名單來源最後改用 verify=False：%s", url)
             xml_text = fetch_html_plain_insecure(url, timeout=timeout, extra_headers=rss_headers)
-            return parse_rss_items(xml_text, url)
-        except Exception as exc:
-            errors.append(exc)
-
-    insecure_options = (False, True) if is_insecure_ssl_allowed(url) else (False,)
-    for insecure in insecure_options:
-        try:
-            xml_text = fetch_html_by_curl_with_headers(
-                url,
-                timeout=timeout,
-                extra_headers=rss_headers,
-                insecure=insecure,
-            )
             return parse_rss_items(xml_text, url)
         except Exception as exc:
             errors.append(exc)
@@ -199,13 +211,21 @@ def fetch_feedparser_entries(url, timeout=RSS_FEED_TIMEOUT, force_requests=False
 
 
 def extract_feedparser_entry_date_fields(entry):
+    pub_date_text = ""
+    date_source = ""
+    for field_name, candidate_source in (
+        ("published", "published"),
+        ("pubDate", "published"),
+        ("updated", "updated"),
+        ("date", "published"),
+    ):
+        pub_date_text = clean_text(entry.get(field_name, ""))
+        if pub_date_text:
+            date_source = candidate_source
+            break
     return {
-        "pub_date_text": (
-            clean_text(entry.get("published", ""))
-            or clean_text(entry.get("pubDate", ""))
-            or clean_text(entry.get("updated", ""))
-            or clean_text(entry.get("date", ""))
-        ),
+        "pub_date_text": pub_date_text,
+        "date_source": date_source,
         "description": clean_text(entry.get("summary", "") or entry.get("description", "")),
     }
 
@@ -290,10 +310,27 @@ def feedparser_entry_to_fields(entry):
     return fields
 
 
-def resolve_rss_news_date(date_fields, allow_description_fallback=False):
+def resolve_rss_news_date_with_source(date_fields, allow_description_fallback=False, source=""):
     news_date = parse_rss_pubdate(date_fields.get("pub_date_text", ""))
+    date_source = date_fields.get("date_source", "") or "published"
     if news_date is None and allow_description_fallback:
         news_date = parse_rss_pubdate(date_fields.get("description", ""))
+        if news_date is not None:
+            date_source = "description_fallback"
+            record_parser_warning(
+                "rss.date.description_fallback",
+                date_fields.get("description", ""),
+                source=source,
+            )
+    return news_date, date_source if news_date is not None else ""
+
+
+def resolve_rss_news_date(date_fields, allow_description_fallback=False, source=""):
+    news_date, _ = resolve_rss_news_date_with_source(
+        date_fields,
+        allow_description_fallback=allow_description_fallback,
+        source=source,
+    )
     return news_date
 
 
@@ -303,11 +340,15 @@ def collect_weekly_rss_results_from_feed_entries(entries, source, department_res
 
     for entry in entries:
         date_fields = extract_feedparser_entry_date_fields(entry)
-        news_date = resolve_rss_news_date(date_fields, allow_description_fallback=True)
+        news_date, date_source = resolve_rss_news_date_with_source(
+            date_fields,
+            allow_description_fallback=True,
+            source=source,
+        )
         if news_date is None:
             continue
         if news_date < start_of_week:
-            break
+            continue
         if news_date > end_of_week:
             continue
 
@@ -319,6 +360,16 @@ def collect_weekly_rss_results_from_feed_entries(entries, source, department_res
         if department_resolver is not None:
             department_label = department_resolver(fields)
 
-        results.append(make_news_item(source, department_label, news_date, fields["title"], fields["link"]))
+        results.append(
+            make_news_item(
+                source,
+                department_label,
+                news_date,
+                fields["title"],
+                fields["link"],
+                summary=fields["description"],
+                date_source=date_source,
+            )
+        )
 
     return results

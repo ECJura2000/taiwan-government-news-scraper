@@ -280,3 +280,114 @@ def test_export_styles_only_url_portion_of_labeled_hyperlinks(tmp_path, monkeypa
     assert str(cell.value) == "國科會官網：https://www.nstc.gov.tw/news"
     assert cell.value.as_list() == ["國科會官網：", "https://www.nstc.gov.tw/news"]
     assert cell.hyperlink.target == "https://www.nstc.gov.tw/news"
+
+
+def test_export_adds_ai_policy_metadata_and_two_relevance_colors(tmp_path, monkeypatch):
+    monkeypatch.setattr(
+        "news_scraper.excel_exporter.get_cached_week_range",
+        lambda: (date(2026, 6, 1), date(2026, 6, 7)),
+    )
+
+    output_path = export_to_excel(
+        [
+            {
+                "source": "國科會",
+                "date": "2026-06-01",
+                "department": "國科會",
+                "title": "主權AI及算力建設正式啟動",
+                "link": "https://example.com/high",
+            },
+            {
+                "source": "國科會",
+                "date": "2026-06-02",
+                "department": "國科會",
+                "title": "AI應用成果交流會",
+                "link": "https://example.com/possible",
+            },
+            {
+                "source": "國科會",
+                "date": "2026-06-03",
+                "department": "國科會",
+                "title": "一般行政公告",
+                "link": "https://example.com/unrelated",
+            },
+        ],
+        output_dir=tmp_path,
+    )
+
+    workbook = load_workbook(output_path, rich_text=True)
+    worksheet = workbook["全部新聞"]
+    headers = [cell.value for cell in worksheet[1]]
+
+    assert headers == [
+        "部會", "新聞日期", "單位分類", "新聞標題", "新聞連結",
+        "新聞摘要", "日期來源", "AI新十大建設", "主政部會", "關聯性", "關聯分數",
+        "判定理由", "命中關鍵字", "排除關鍵字", "各建設評分",
+    ]
+    assert worksheet["G2"].value is None
+    assert str(worksheet["H2"].value) == "主權AI及算力建設"
+    assert worksheet["I2"].value == "國科會"
+    assert worksheet["J2"].value == "高度相關"
+    assert worksheet["K2"].value == 100
+    assert "標題命中完整建設名稱" in str(worksheet["L2"].value)
+    assert worksheet["J3"].value == "可能相關"
+    assert worksheet["K3"].value == 40
+    assert worksheet["J4"].value is None
+    assert str(worksheet["O2"].value) == "主權AI及算力建設（100分，高度相關）"
+    assert all(cell.fill.fgColor.rgb.endswith("FFFF00") for cell in worksheet[2])
+    assert all(cell.fill.fgColor.rgb.endswith("FFF2CC") for cell in worksheet[3])
+    assert all(cell.fill.fill_type is None for cell in worksheet[4])
+
+    filtered_rows = list(workbook["已初步篩選工作表"].iter_rows(min_row=2, values_only=True))
+    assert [row[9] for row in filtered_rows] == ["高度相關", "可能相關"]
+
+
+def test_export_includes_ai_ten_initiatives_reference_sheet(tmp_path, monkeypatch):
+    monkeypatch.setattr(
+        "news_scraper.excel_exporter.get_cached_week_range",
+        lambda: (date(2026, 6, 1), date(2026, 6, 7)),
+    )
+
+    output_path = export_to_excel([], output_dir=tmp_path)
+
+    workbook = load_workbook(output_path, rich_text=True)
+    rows = list(workbook["AI新十大建設對照"].iter_rows(min_row=2, values_only=True))
+    names = [str(row[0]) for row in rows]
+    lead_agencies = {str(row[0]): str(row[1]) for row in rows}
+
+    assert len(names) == 10
+    assert names[0] == "全民智慧生活圈"
+    assert names[-1] == "千億資金驅動創新"
+    assert lead_agencies["AI數位產業登峰"] == "數發部"
+    assert lead_agencies["矽光子技術全球領先"] == "經濟部"
+
+
+def test_export_uses_summary_for_possible_relevance(tmp_path, monkeypatch):
+    monkeypatch.setattr(
+        "news_scraper.excel_exporter.get_cached_week_range",
+        lambda: (date(2026, 6, 1), date(2026, 6, 7)),
+    )
+
+    output_path = export_to_excel(
+        [
+            {
+                "source": "經濟部",
+                "date": "2026-06-04",
+                "department": "經濟部",
+                "title": "前瞻技術計畫正式啟動",
+                "link": "https://example.com/summary-match",
+                "summary": "本計畫將推動矽光子技術全球領先並建置驗證場域。",
+            },
+        ],
+        output_dir=tmp_path,
+    )
+
+    workbook = load_workbook(output_path, rich_text=True)
+    row = workbook["全部新聞"][2]
+
+    assert str(row[5].value) == "本計畫將推動矽光子技術全球領先並建置驗證場域。"
+    assert str(row[7].value) == "矽光子技術全球領先"
+    assert row[9].value == "可能相關"
+    assert row[10].value == 70
+    assert "摘要命中完整建設名稱" in str(row[11].value)
+    assert str(row[14].value) == "矽光子技術全球領先（70分，可能相關）"

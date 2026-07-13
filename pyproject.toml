@@ -58,6 +58,9 @@ select = ["E4", "E7", "E9", "F"]
 [tool.mypy]
 python_version = "3.10"
 files = [
+    "news_scraper/config.py",
+    "news_scraper/ai_policy_evaluation.py",
+    "news_scraper/excel_exporter.py",
     "news_scraper/models.py",
     "news_scraper/errors.py",
     "news_scraper/main.py",
@@ -70,6 +73,9 @@ files = [
     "news_scraper/scheduler.py",
     "news_scraper/source_catalog.py",
     "news_scraper/scrapers/registry.py",
+    "news_scraper/scrapers/ministry/executive/dgpa.py",
+    "news_scraper/utils/dates.py",
+    "news_scraper/utils/text.py",
 ]
 ignore_missing_imports = true
 follow_imports = "skip"

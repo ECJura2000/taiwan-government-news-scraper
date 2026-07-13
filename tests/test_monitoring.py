@@ -46,6 +46,8 @@ def test_build_and_write_run_report(tmp_path):
     assert saved_report["status"] == "success"
     assert saved_report["error_counts"] == {"timeout": 1}
     assert saved_report["insecure_ssl_hosts"] == ["www.pcc.gov.tw"]
+    assert saved_report["ai_policy"]["version"] == "2.1.0"
+    assert len(saved_report["ai_policy"]["ruleset_hash"]) == 16
     assert [attempt["attempt"] for attempt in saved_report["source_attempts"]] == [1, 1, 2]
 
 

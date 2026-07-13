@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased
+
+- Added the missing DGPA news source and full-name source aliases.
+- Added versioned, validated AI Ten Major Initiatives rules with summary-aware scoring, negative terms, reasons, and Excel metadata.
+- Added a 205-row labeled historical-title corpus with precision/recall budgets and a repeatable evaluation command.
+- Fixed timezone-aware RSS dates to use Asia/Taipei and changed SSL fallback to prefer verified curl before allowlisted insecure requests.
+- Prevented out-of-order RSS entries from hiding later current-week news and added publication-date provenance.
+- Restricted insecure SSL redirects to allowlisted hosts on every hop and removed global TLS-warning suppression.
+- Added primary-agency detail summaries, summary coverage metrics, and normalized HTML summary text.
+- Added per-initiative scores, a frozen temporal holdout corpus, stricter corpus validation, and optional live source-title verification.
+
 ## 1.0.0 - 2026-06-14
 
 - Added typed models, source validation, observability budgets, schema validation, and selective retry.

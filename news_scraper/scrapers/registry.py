@@ -29,6 +29,7 @@ SCRAPER_SPECS: dict[str, ScraperSpec] = {
     "公平會": ("news_scraper.scrapers.ministry.finance.ftc", "scrape_ftc_this_week"),
     "中央銀行": ("news_scraper.scrapers.ministry.finance.cbc", "scrape_cbc_this_week"),
     "主計總處": ("news_scraper.scrapers.ministry.finance.dgbas", "scrape_dgbas_this_week"),
+    "人事總處": ("news_scraper.scrapers.ministry.executive.dgpa", "scrape_dgpa_this_week"),
     "教育部": ("news_scraper.scrapers.ministry.education.moe", "scrape_moe_this_week"),
     "國教院": ("news_scraper.scrapers.ministry.education.naer", "scrape_naer_this_week"),
     "運動部": ("news_scraper.scrapers.ministry.sports.sports", "scrape_sports_this_week"),

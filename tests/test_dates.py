@@ -14,6 +14,15 @@ def test_format_ad_and_roc_date_keeps_both_calendars():
     assert format_ad_and_roc_date("2026-04-22") == "2026-04-22（民國115/4/22）"
 
 
+def test_parse_rss_pubdate_converts_utc_to_taipei_before_taking_date():
+    assert str(parse_rss_pubdate("Wed, 24 Jun 2026 16:00:00 GMT")) == "2026-06-25"
+    assert str(parse_rss_pubdate("2026-06-24T16:30:00Z")) == "2026-06-25"
+
+
+def test_parse_rss_pubdate_keeps_naive_calendar_dates_unchanged():
+    assert str(parse_rss_pubdate("2026-06-24")) == "2026-06-24"
+
+
 def test_matched_but_invalid_rss_date_is_observable():
     context = RunContext()
 

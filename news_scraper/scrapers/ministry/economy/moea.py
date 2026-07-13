@@ -6,7 +6,16 @@ from urllib.parse import urljoin
 from ....config import MOEA_RSS_TIMEOUT
 from ....models import make_news_item
 from ....utils.text import clean_text
-from ...base import By, EC, WebDriverWait, collect_weekly_results_from_ordered_rows, create_selenium_driver, make_soup
+from ...base import (
+    By,
+    EC,
+    WebDriverWait,
+    collect_weekly_results_from_ordered_rows,
+    create_selenium_driver,
+    fetch_page_summary,
+    load_selenium_page,
+    make_soup,
+)
 
 
 def scrape_moea_this_week():
@@ -60,13 +69,26 @@ def scrape_moea_this_week():
             return None
         department_text = clean_text(row.select_one(".org-name").get_text(" ", strip=True)) if row.select_one(".org-name") else ""
         department_label = normalize_moea_department(department_text) or source
-        return make_news_item(source, department_label, news_date, title_text, link)
+        return make_news_item(
+            source,
+            department_label,
+            news_date,
+            title_text,
+            link,
+            summary=fetch_page_summary(
+                link,
+                ("#ctl00_ContentPlaceHolder1_divContent", ".article-content", ".cpArticle", "article"),
+            ),
+        )
 
     driver = create_selenium_driver()
     try:
-        driver.get(list_url)
-        WebDriverWait(driver, MOEA_RSS_TIMEOUT + 10).until(
-            EC.presence_of_element_located((By.ID, "holderContent_grdNews"))
+        load_selenium_page(
+            driver,
+            list_url,
+            wait_condition=lambda d: WebDriverWait(d, MOEA_RSS_TIMEOUT + 10).until(
+                EC.presence_of_element_located((By.ID, "holderContent_grdNews"))
+            ),
         )
 
         results = []
