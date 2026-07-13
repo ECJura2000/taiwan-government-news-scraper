@@ -2,6 +2,7 @@
 
 import sys
 
+from news_scraper import bundled_scrapers  # noqa: F401
 from news_scraper.main import main
 
 
@@ -15,17 +16,19 @@ def configure_utf8_stdio() -> None:
         try:
             reconfigure(encoding="utf-8", errors="backslashreplace")
         except (OSError, ValueError):
-            # Some embedded or replaced streams do not permit reconfiguration.
             continue
 
 
 def check_bundled_runtime() -> int:
-    """Verify all modules needed by the default packaged run are importable."""
+    """Verify third-party and dynamically loaded scraper modules are importable."""
 
     from news_scraper.runtime import validate_runtime_environment
+    from news_scraper.scrapers.registry import SCRAPER_REGISTRY
 
     validate_runtime_environment()
-    print("封裝執行環境檢查通過。")
+    for source_name in SCRAPER_REGISTRY:
+        SCRAPER_REGISTRY[source_name]
+    print("封裝執行環境與全部爬蟲模組檢查通過。")
     return 0
 
 
