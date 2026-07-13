@@ -2,7 +2,6 @@
 
 import sys
 
-from news_scraper import bundled_scrapers  # noqa: F401
 from news_scraper.main import main
 
 

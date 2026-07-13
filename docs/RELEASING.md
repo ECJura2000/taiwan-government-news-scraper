@@ -2,7 +2,7 @@
 
 本專案使用語意化版本（Semantic Versioning）。`pyproject.toml` 的 `[project].version` 是正式版本來源，例如 `1.1.0`；GitHub Release 與 Git tag 則使用 `vMAJOR.MINOR.PATCH` 格式，例如 `v1.1.0`。
 
-合併版本變更到 `main` 後，GitHub Actions 會先在 Linux、Windows 與 macOS 建置單檔執行檔，執行封裝後 smoke test，產生 SHA-256。三平台全部成功後，workflow 會依 `pyproject.toml` 自動建立對應 tag 與 GitHub Release。若該版本已存在，發布步驟會安全跳過，不會覆寫既有 Release。
+合併版本變更到 `main` 後，GitHub Actions 會先在 Linux、Windows 與 macOS 建置單檔執行檔，執行全部 scraper registry 的封裝後 smoke test，並產生一份 SHA-256 清單與容量 manifest。三平台全部成功後，workflow 會依 `pyproject.toml` 自動建立對應 tag 與 GitHub Release。若該版本已存在，發布步驟會安全跳過，不會覆寫既有 Release。
 
 仍可手動推送既有 `vMAJOR.MINOR.PATCH` tag；tag workflow 會驗證 tag 已存在後再發布。
 
@@ -62,11 +62,10 @@ git push origin v1.1.0
 成功後 Release 應包含六個檔案：
 
 - `news-scraper-linux`
-- `news-scraper-linux.sha256`
 - `news-scraper-windows.exe`
-- `news-scraper-windows.exe.sha256`
 - `news-scraper-macos`
-- `news-scraper-macos.sha256`
+- `news-scraper-v<版本>-SHA256SUMS.txt`
+- `news-scraper-v<版本>-SIZE-MANIFEST.txt`
 
 所有執行檔都必須先通過 `--list-sources` smoke test，Release job 才會發布。失敗時，workflow 另行保存 stdout、stderr 與 PyInstaller warning，供問題定位。
 

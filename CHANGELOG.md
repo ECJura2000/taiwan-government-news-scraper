@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.1.3 - 2026-07-13
 
 - Added the missing DGPA news source and full-name source aliases.
 - Added versioned, validated AI Ten Major Initiatives rules with summary-aware scoring, negative terms, reasons, and Excel metadata.
@@ -10,6 +10,8 @@
 - Restricted insecure SSL redirects to allowlisted hosts on every hop and removed global TLS-warning suppression.
 - Added primary-agency detail summaries, summary coverage metrics, and normalized HTML summary text.
 - Added per-initiative scores, a frozen temporal holdout corpus, stricter corpus validation, and optional live source-title verification.
+- Fixed direct terminal execution and isolated Selenium or unexpected source failures.
+- Added automatic scraper submodule collection, packaged-runtime checks, and release size budgets.
 
 ## 1.0.0 - 2026-06-14
 

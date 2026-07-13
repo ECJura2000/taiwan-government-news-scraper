@@ -56,7 +56,7 @@ news_scraper/
 
 ## 下載執行檔
 
-當含有新版本號的變更合併到 `main` 後，GitHub Actions 會在 [Releases](https://github.com/ECJura2000/taiwan-government-news-scraper/releases) 自動發布 Linux、Windows 與 macOS 單檔執行檔，以及各檔案的 SHA-256。每個執行檔在發布前都必須通過 `--list-sources` smoke test。
+當含有新版本號的變更合併到 `main` 後，GitHub Actions 會在 [Releases](https://github.com/ECJura2000/taiwan-government-news-scraper/releases) 自動發布 Linux、Windows 與 macOS 單檔執行檔、一份 SHA-256 清單及容量 manifest。每個執行檔在發布前都必須通過全部 scraper registry 的 `--check-runtime` smoke test。
 
 Windows：
 
@@ -86,10 +86,10 @@ chmod +x news-scraper-macos
 Linux 與 macOS 可用下列方式核對雜湊：
 
 ```bash
-sha256sum -c news-scraper-linux.sha256
+sha256sum -c news-scraper-v1.1.3-SHA256SUMS.txt
 ```
 
-Windows 可用 `Get-FileHash` 計算後，與相對應 `.sha256` 檔案比對。
+Windows 可用 `Get-FileHash` 計算後，與 `SHA256SUMS.txt` 的對應紀錄比對。正式 Release 單檔不得超過 90 MiB，全部資產不得超過 220 MiB；Actions 中間 artifacts 只保留 1 天。
 
 ## 安裝
 

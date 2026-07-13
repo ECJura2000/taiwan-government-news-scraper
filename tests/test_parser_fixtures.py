@@ -66,24 +66,11 @@ def test_nlma_fixture_preserves_department_date_and_link(monkeypatch):
     html = (FIXTURES / "nlma_list.html").read_text(encoding="utf-8")
 
     class FakeDriver:
-        page_source = html
-
-        def get(self, url):
-            return None
-
         def quit(self):
             return None
 
-    class FakeWait:
-        def __init__(self, *args, **kwargs):
-            pass
-
-        def until(self, condition):
-            return True
-
     monkeypatch.setattr(nlma, "create_selenium_driver", FakeDriver)
-    monkeypatch.setattr(nlma, "WebDriverWait", FakeWait)
-    monkeypatch.setattr(nlma.time, "sleep", lambda seconds: None)
+    monkeypatch.setattr(nlma, "load_selenium_page", lambda *args, **kwargs: html)
     monkeypatch.setattr(nlma, "get_cached_week_range", lambda: (date(2026, 6, 8), date(2026, 6, 14)))
 
     items = nlma.scrape_nlma_this_week()

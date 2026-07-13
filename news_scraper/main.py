@@ -1,6 +1,5 @@
 import argparse
 import logging
-import requests
 import sys
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -9,8 +8,12 @@ from pathlib import Path
 
 if __package__ in (None, ""):
     # Allow `python news_scraper/main.py` and frozen entrypoints to resolve package imports.
-    sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+    package_dir = str(Path(__file__).resolve().parent)
+    sys.path[:] = [entry for entry in sys.path if str(Path(entry or ".").resolve()) != package_dir]
+    sys.path.insert(0, str(Path(package_dir).parent))
     __package__ = "news_scraper"
+
+import requests
 
 from .runtime import validate_runtime_environment
 

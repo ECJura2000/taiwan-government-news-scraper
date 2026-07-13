@@ -1,9 +1,27 @@
 import importlib
+from pathlib import Path
+import subprocess
+import sys
+
 import requests
 
 from news_scraper.models import NewsItem, make_news_item
 
 main = importlib.import_module("news_scraper.main")
+
+
+def test_main_file_can_run_directly_without_shadowing_stdlib_http():
+    project_root = Path(__file__).resolve().parents[1]
+    completed = subprocess.run(
+        [sys.executable, str(project_root / "news_scraper" / "main.py"), "--list-sources"],
+        cwd=project_root,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert completed.returncode == 0, completed.stderr
+    assert "行政院" in completed.stdout
 
 
 def test_collect_all_this_week_news_keeps_affiliated_items_by_default(monkeypatch):

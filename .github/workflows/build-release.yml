@@ -48,7 +48,7 @@ jobs:
         run: |
           python -m ruff check .
           python -m mypy
-          python -m compileall -q news_scraper build_entry.py
+          python -m compileall -q news_scraper build_entry.py scripts/check_release_size.py
           python -m pytest -q --cov=news_scraper.quality --cov=news_scraper.utils.text --cov-fail-under=80
 
   build:
@@ -101,6 +101,7 @@ jobs:
             --add-data "news_scraper/policy.toml:news_scraper" \
             --collect-all feedparser \
             --collect-all selenium \
+            --collect-submodules news_scraper.scrapers \
             build_entry.py
 
       - name: Normalize asset name
@@ -163,12 +164,13 @@ jobs:
           if-no-files-found: warn
           retention-days: 1
 
-      - name: Generate SHA-256 checksum
-        env:
-          ASSET_PATH: dist/${{ matrix.asset }}
+      - name: Enforce platform asset size budget
         run: >-
-          python -c "import hashlib, os; from pathlib import Path; p=Path(os.environ['ASSET_PATH']);
-          Path(str(p)+'.sha256').write_text(f'{hashlib.sha256(p.read_bytes()).hexdigest()}  {p.name}\n', encoding='utf-8')"
+          python scripts/check_release_size.py dist
+          --max-file-mib 90
+          --max-total-mib 90
+          --manifest "dist/${{ matrix.asset }}-SIZE-MANIFEST.txt"
+          --pattern "${{ matrix.asset }}"
 
       - name: Upload executable artifact
         uses: actions/upload-artifact@v4
@@ -176,7 +178,7 @@ jobs:
           name: ${{ matrix.asset }}
           path: |
             dist/${{ matrix.asset }}
-            dist/${{ matrix.asset }}.sha256
+            dist/${{ matrix.asset }}-SIZE-MANIFEST.txt
           if-no-files-found: error
           compression-level: 0
           retention-days: 1
@@ -225,7 +227,22 @@ jobs:
       - name: Verify release assets
         run: |
           find release-assets -maxdepth 1 -type f -print
-          test "$(find release-assets -maxdepth 1 -type f | wc -l)" -eq 6
+          test -f release-assets/news-scraper-linux
+          test -f release-assets/news-scraper-macos
+          test -f release-assets/news-scraper-windows.exe
+      - name: Create consolidated checksum and enforce release size budget
+        shell: bash
+        run: |
+          cd release-assets
+          sha256sum news-scraper-linux news-scraper-macos news-scraper-windows.exe \
+            > news-scraper-${{ steps.release.outputs.tag }}-SHA256SUMS.txt
+          rm -f *-SIZE-MANIFEST.txt
+          cd ..
+          python scripts/check_release_size.py release-assets \
+            --max-file-mib 90 \
+            --max-total-mib 220 \
+            --manifest release-assets/news-scraper-${{ steps.release.outputs.tag }}-SIZE-MANIFEST.txt \
+            --pattern 'news-scraper-*'
 
       - name: Check whether release already exists
         id: existing
@@ -256,7 +273,8 @@ jobs:
             --repo "$GITHUB_REPOSITORY" \
             "${tag_args[@]}" \
             --generate-notes \
-            --title "News Scraper $RELEASE_TAG"
+            --title "News Scraper $RELEASE_TAG" \
+            --notes "三平台單檔均不需要安裝 Python，已驗證全部 scraper registry 模組，並通過單檔 90 MiB、總量 220 MiB 容量閘門。國土管理署來源仍需系統 Chrome 或 Chromium。"
 
       - name: Confirm existing release
         if: steps.existing.outputs.exists == 'true'
