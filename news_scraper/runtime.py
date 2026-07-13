@@ -67,12 +67,20 @@ def build_missing_dependency_message(missing_dependencies):
 
     unique_packages = list(dict.fromkeys(packages))
     exact_packages = list(dict.fromkeys(package_name for _, package_name in missing_dependencies))
+
+    if getattr(sys, "frozen", False):
+        return (
+            "封裝執行檔缺少必要模組：{}\n"
+            "這是封裝問題，無法透過對 .exe 執行 pip 修正。\n"
+            "請改用最新版本的正式 Release。"
+        ).format("、".join(unique_packages))
+
     pip_command = "{} -m pip install {}".format(sys.executable, " ".join(exact_packages))
     return (
         "缺少執行所需模組：{}\n"
         "請先安裝後再執行。\n"
         "建議指令：{}\n"
-        "或使用：{} -m pip install -r requirements.txt"
+        "或在專案目錄使用：{} -m pip install -r requirements.txt"
     ).format(
         "、".join(unique_packages),
         pip_command,
