@@ -53,6 +53,7 @@ select = ["E4", "E7", "E9", "F"]
 
 [tool.ruff.lint.per-file-ignores]
 "news_scraper/**/__init__.py" = ["F401", "F403"]
+"news_scraper/bundled_scrapers.py" = ["F401"]
 "news_scraper/scrapers/ministry/education/sports.py" = ["F401"]
 
 [tool.mypy]
