@@ -99,6 +99,8 @@ jobs:
             --onefile \
             --name news-scraper \
             --add-data "news_scraper/policy.toml:news_scraper" \
+            --collect-all feedparser \
+            --collect-all selenium \
             build_entry.py
 
       - name: Normalize asset name
@@ -115,8 +117,8 @@ jobs:
         if: runner.os != 'Windows'
         shell: bash
         run: |
-          "dist/${{ matrix.asset }}" --list-sources > dist/smoke-stdout.txt 2> dist/smoke-stderr.txt
-          test -s dist/smoke-stdout.txt
+          "dist/${{ matrix.asset }}" --check-runtime > dist/smoke-stdout.txt 2> dist/smoke-stderr.txt
+          grep -q "封裝執行環境檢查通過" dist/smoke-stdout.txt
 
       - name: Smoke-test packaged executable on Windows
         if: runner.os == 'Windows'
@@ -127,7 +129,7 @@ jobs:
           $stderrPath = Join-Path $PWD "dist\smoke-stderr.txt"
           $process = Start-Process `
             -FilePath $executable `
-            -ArgumentList "--list-sources" `
+            -ArgumentList "--check-runtime" `
             -Wait `
             -PassThru `
             -RedirectStandardOutput $stdoutPath `
@@ -144,6 +146,9 @@ jobs:
           }
           if (-not (Test-Path $stdoutPath) -or (Get-Item $stdoutPath).Length -eq 0) {
             throw "Packaged executable produced no output"
+          }
+          if (-not (Select-String -Path $stdoutPath -Pattern "封裝執行環境檢查通過" -Quiet)) {
+            throw "Packaged executable did not confirm bundled runtime dependencies"
           }
 
       - name: Upload smoke-test diagnostics
