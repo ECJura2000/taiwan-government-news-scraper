@@ -138,6 +138,37 @@ def test_run_scraper_records_classified_failure():
     assert attempts[0]["error_category"] == "timeout"
 
 
+def test_run_scraper_isolates_selenium_timeout():
+    from news_scraper.monitoring import RunContext
+    from selenium.common.exceptions import TimeoutException
+
+    context = RunContext()
+
+    def fail():
+        raise TimeoutException("page did not load")
+
+    source_name, items, error = main.run_scraper("國土管理署", fail, log_exception=False, context=context)
+
+    assert source_name == "國土管理署"
+    assert items == []
+    assert isinstance(error, TimeoutException)
+
+
+def test_run_scraper_isolates_unexpected_dependency_error():
+    from news_scraper.monitoring import RunContext
+
+    context = RunContext()
+
+    def fail():
+        raise RuntimeError("driver transport failed")
+
+    source_name, items, error = main.run_scraper("公路局", fail, log_exception=False, context=context)
+
+    assert source_name == "公路局"
+    assert items == []
+    assert isinstance(error, RuntimeError)
+
+
 def test_make_news_item_preserves_category_in_named_model():
     item = make_news_item("警政署", "警政署", "2026-06-12", "測試新聞", "https://example.com", category="新聞稿")
 

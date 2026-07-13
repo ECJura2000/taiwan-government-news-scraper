@@ -236,6 +236,8 @@ def fetch_html_by_curl_with_headers(
     timeout: int | float | None = REQUEST_TIMEOUT,
     extra_headers: Mapping[str, str] | None = None,
     insecure: bool = False,
+    method: str = "GET",
+    data: Any = None,
 ) -> str:
     timeout = get_effective_timeout(timeout)
     if timeout is None:
@@ -253,6 +255,7 @@ def fetch_html_by_curl_with_headers(
         "--max-time",
         str(timeout),
         "-sS",
+        "--fail-with-body",
         "-A",
         HEADERS["User-Agent"],
     ]
@@ -264,6 +267,10 @@ def fetch_html_by_curl_with_headers(
         headers.update(extra_headers)
     for key, value in headers.items():
         command.extend(["-H", "{}: {}".format(key, value)])
+    if method.upper() != "GET":
+        command.extend(["-X", method.upper()])
+    if data is not None:
+        command.extend(["--data-binary", str(data)])
     command.append(url)
 
     completed = subprocess.run(

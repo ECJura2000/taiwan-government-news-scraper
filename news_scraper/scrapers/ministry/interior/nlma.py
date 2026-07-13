@@ -13,8 +13,6 @@ def scrape_nlma_this_week():
     source = "國土管理署"
     driver = create_selenium_driver()
     try:
-        driver.get("https://www.nlma.gov.tw/")
-        time.sleep(6)
         driver.get(URLS[source])
         WebDriverWait(driver, NLMA_LIST_TIMEOUT).until(
             EC.presence_of_element_located((By.CSS_SELECTOR, 'a[role="row"][href*="/ch/titlelist/news/"]'))
