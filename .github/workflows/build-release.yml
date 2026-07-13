@@ -28,7 +28,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -72,7 +72,7 @@ jobs:
 
     steps:
       - name: Checkout source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -156,7 +156,7 @@ jobs:
             dist/smoke-stderr.txt
             build/news-scraper/warn-news-scraper.txt
           if-no-files-found: warn
-          retention-days: 7
+          retention-days: 1
 
       - name: Generate SHA-256 checksum
         env:
@@ -174,7 +174,7 @@ jobs:
             dist/${{ matrix.asset }}.sha256
           if-no-files-found: error
           compression-level: 0
-          retention-days: 14
+          retention-days: 1
 
   release:
     name: Publish GitHub release
@@ -186,7 +186,7 @@ jobs:
 
     steps:
       - name: Checkout source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Resolve release metadata
         id: release
