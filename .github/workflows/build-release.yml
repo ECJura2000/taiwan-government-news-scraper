@@ -102,6 +102,7 @@ jobs:
             requirements-build.lock.txt
 
       - name: Install locked runtime and build dependencies
+        shell: bash
         run: |
           python -m pip install --require-hashes -r requirements.lock.txt
           python -m pip install --require-hashes -r requirements-build.lock.txt
@@ -128,7 +129,7 @@ jobs:
 
       - name: Build portable ZIP
         run: >-
-          python scripts/package_release.py
+          python -m scripts.package_release
           --platform "${{ matrix.platform }}"
           --dist-dir dist
           --output-dir release-assets
