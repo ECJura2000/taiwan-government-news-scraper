@@ -1,0 +1,106 @@
+name: Release live smoke
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+  PYTHONUTF8: "1"
+  PYTHONIOENCODING: "utf-8"
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing release tag to verify
+        required: true
+        default: v1.2.0
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  live-smoke:
+    name: Live smoke ${{ matrix.label }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            label: Linux
+            platform: linux
+            executable: 各機關新聞整理
+          - os: windows-latest
+            label: Windows
+            platform: windows
+            executable: 各機關新聞整理.exe
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    steps:
+      - name: Download and verify published archive
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: |
+          set -euo pipefail
+          rm -rf release-download extracted live-output
+          mkdir release-download
+          archive="taiwan-government-news-${RELEASE_TAG}-${{ matrix.platform }}.zip"
+          checksums="taiwan-government-news-${RELEASE_TAG}-SHA256SUMS.txt"
+          gh release download "$RELEASE_TAG" \
+            --repo "$GITHUB_REPOSITORY" \
+            --dir release-download \
+            --pattern "$archive" \
+            --pattern "$checksums"
+          cd release-download
+          grep "  ${archive}$" "$checksums" | sha256sum -c -
+          cd ..
+          unzip -q "release-download/$archive" -d extracted
+
+      - name: Run the published executable against all live sources
+        shell: bash
+        run: |
+          set -euo pipefail
+          executable="extracted/各機關新聞/${{ matrix.executable }}"
+          "$executable" --check-runtime
+          "$executable" --headless \
+            --output-dir "$PWD/live-output" \
+            --max-workers 8 \
+            --json-summary > live-output.log 2>&1
+          tail -n 1 live-output.log > live-summary.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          summary = json.loads(Path("live-summary.json").read_text(encoding="utf-8"))
+          failures = {
+              "status": summary.get("status"),
+              "failed_sources": summary.get("failed_sources"),
+              "anomalies": summary.get("anomalies"),
+              "alert_reasons": summary.get("quality", {}).get("alert_reasons"),
+          }
+          if failures != {
+              "status": "success",
+              "failed_sources": [],
+              "anomalies": [],
+              "alert_reasons": [],
+          }:
+              raise SystemExit("live smoke quality gate failed: {}".format(failures))
+
+          output_file = Path(summary["output_file"])
+          report_file = Path(summary["report_file"])
+          if not output_file.is_file() or not report_file.is_file():
+              raise SystemExit("live smoke did not produce both Excel and JSON artifacts")
+          print(json.dumps(summary, ensure_ascii=False, separators=(",", ":")))
+          PY
+
+      - name: Upload live smoke evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: release-live-smoke-${{ inputs.tag }}-${{ matrix.platform }}
+          path: |
+            live-output.log
+            live-summary.json
+            live-output/
+          if-no-files-found: warn
+          retention-days: 1
