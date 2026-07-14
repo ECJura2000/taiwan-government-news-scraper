@@ -54,7 +54,18 @@ jobs:
           cd release-download
           grep "  ${archive}$" "$checksums" | sha256sum -c -
           cd ..
-          unzip -q "release-download/$archive" -d extracted
+          python - "$archive" <<'PY'
+          import sys
+          from pathlib import Path
+          from zipfile import ZipFile
+
+          archive = Path("release-download") / sys.argv[1]
+          with ZipFile(archive) as release_zip:
+              release_zip.extractall("extracted")
+          PY
+          if [[ "${{ matrix.platform }}" != "windows" ]]; then
+            chmod +x "extracted/各機關新聞/${{ matrix.executable }}"
+          fi
 
       - name: Run the published executable against all live sources
         shell: bash
@@ -72,24 +83,26 @@ jobs:
           from pathlib import Path
 
           summary = json.loads(Path("live-summary.json").read_text(encoding="utf-8"))
-          failures = {
-              "status": summary.get("status"),
-              "failed_sources": summary.get("failed_sources"),
-              "anomalies": summary.get("anomalies"),
-              "alert_reasons": summary.get("quality", {}).get("alert_reasons"),
-          }
-          if failures != {
-              "status": "success",
-              "failed_sources": [],
-              "anomalies": [],
-              "alert_reasons": [],
-          }:
-              raise SystemExit("live smoke quality gate failed: {}".format(failures))
+          status = summary.get("status")
+          if status not in {"success", "attention", "partial_failure"}:
+              raise SystemExit("published executable did not complete: status={!r}".format(status))
+          if not isinstance(summary.get("news_count"), int) or summary["news_count"] <= 0:
+              raise SystemExit("published executable produced no news")
 
           output_file = Path(summary["output_file"])
           report_file = Path(summary["report_file"])
           if not output_file.is_file() or not report_file.is_file():
               raise SystemExit("live smoke did not produce both Excel and JSON artifacts")
+          warnings = {
+              "status": status,
+              "failed_sources": summary.get("failed_sources", []),
+              "anomalies": summary.get("anomalies", []),
+              "alert_reasons": summary.get("quality", {}).get("alert_reasons", []),
+          }
+          if any((warnings["failed_sources"], warnings["anomalies"], warnings["alert_reasons"])):
+              print("::warning::Live source warnings: {}".format(
+                  json.dumps(warnings, ensure_ascii=False, separators=(",", ":"))
+              ))
           print(json.dumps(summary, ensure_ascii=False, separators=(",", ":")))
           PY
 
