@@ -1,4 +1,3 @@
-import time
 from datetime import datetime
 from urllib.parse import urljoin
 
@@ -6,21 +5,21 @@ from ....config import NLMA_LIST_TIMEOUT, URLS
 from ....models import make_news_item
 from ....utils.dates import get_cached_week_range
 from ....utils.text import clean_text
-from ...base import By, EC, WebDriverWait, create_selenium_driver, make_soup
+from ...base import By, EC, WebDriverWait, create_selenium_driver, load_selenium_page, make_soup
 
 
 def scrape_nlma_this_week():
     source = "國土管理署"
     driver = create_selenium_driver()
     try:
-        driver.get("https://www.nlma.gov.tw/")
-        time.sleep(6)
-        driver.get(URLS[source])
-        WebDriverWait(driver, NLMA_LIST_TIMEOUT).until(
-            EC.presence_of_element_located((By.CSS_SELECTOR, 'a[role="row"][href*="/ch/titlelist/news/"]'))
+        html = load_selenium_page(
+            driver,
+            URLS[source],
+            wait_condition=lambda d: WebDriverWait(d, NLMA_LIST_TIMEOUT).until(
+                EC.presence_of_element_located((By.CSS_SELECTOR, 'a[role="row"][href*="/ch/titlelist/news/"]'))
+            ),
+            sleep_seconds=2,
         )
-        time.sleep(2)
-        html = driver.page_source
     finally:
         driver.quit()
 

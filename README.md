@@ -5,7 +5,7 @@
 
 中華民國政府部會每週新聞整合爬蟲，已由原本單檔程式拆分為可維護的套件結構。
 
-目前支援 71 個政府機關與所屬單位，提供 Excel 匯出、資料品質檢查、來源健康監控、異常告警與可重現的 CI 測試。專案支援 Python 3.10、3.12 與 3.13。
+目前支援 72 個政府機關與所屬單位，提供 Excel 匯出、資料品質檢查、來源健康監控、異常告警與可重現的 CI 測試。專案支援 Python 3.10、3.12 與 3.13。
 
 完整的政府資料入口、抓取方式與技術參考請見 [資料來源與參考資料](SOURCES.md)。本專案只整理各機關公開發布的新聞與公告；內容著作權、正確性與最終解釋均以原發布機關網站為準。
 
@@ -56,40 +56,49 @@ news_scraper/
 
 ## 下載執行檔
 
-當含有新版本號的變更合併到 `main` 後，GitHub Actions 會在 [Releases](https://github.com/ECJura2000/taiwan-government-news-scraper/releases) 自動發布 Linux、Windows 與 macOS 單檔執行檔，以及各檔案的 SHA-256。每個執行檔在發布前都必須通過 `--list-sources` smoke test。
+維護者可在 GitHub Actions 的 `Build and release portable apps` 按 `Run workflow`，一次建置 Linux、Windows 與 macOS 三個可攜 ZIP。每個 ZIP 解壓後都會建立 `各機關新聞/`，內含同時支援 GUI 與 headless 的單檔執行檔、程式資料及新聞搜集區。正式發布前必須通過 registry、GUI 與 headless smoke test。
 
 Windows：
 
+解壓 ZIP 後，直接開啟 `各機關新聞整理.exe` 使用 GUI；Codex 或排程可執行：
+
 ```powershell
-.\news-scraper-windows.exe --list-sources
-.\news-scraper-windows.exe
+.\各機關新聞整理.exe --headless --json-summary
 ```
 
 Linux：
 
 ```bash
-chmod +x news-scraper-linux
-./news-scraper-linux --list-sources
-./news-scraper-linux
+chmod +x 各機關新聞整理
+./各機關新聞整理                 # GUI
+./各機關新聞整理 --headless --json-summary
 ```
 
 macOS：
 
 ```bash
-chmod +x news-scraper-macos
-./news-scraper-macos --list-sources
-./news-scraper-macos
+chmod +x 各機關新聞整理
+./各機關新聞整理                 # GUI
+./各機關新聞整理 --headless --json-summary
 ```
+
+原始碼環境與既有 Codex automation 維持無介面執行，不需要 IDE：
+
+```bash
+.venv/bin/python -m news_scraper
+```
+
+`python -m news_scraper` 無參數時永遠執行 CLI；只有封裝檔無參數時才開啟 GUI。
 
 執行檔目前未進行 Windows Authenticode 或 Apple Developer ID 簽章，作業系統可能顯示未知發行者警告。國土管理署來源使用 Selenium，因此即使使用單檔執行檔，環境仍須安裝 Chrome 或 Chromium。
 
 Linux 與 macOS 可用下列方式核對雜湊：
 
 ```bash
-sha256sum -c news-scraper-linux.sha256
+sha256sum -c taiwan-government-news-v1.2.0-SHA256SUMS.txt
 ```
 
-Windows 可用 `Get-FileHash` 計算後，與相對應 `.sha256` 檔案比對。
+Windows 可用 `Get-FileHash` 計算後，與 `SHA256SUMS.txt` 的對應紀錄比對。正式 Release 單檔不得超過 90 MiB，全部資產不得超過 220 MiB；Actions 中間 artifacts 只保留 1 天。
 
 ## 安裝
 
@@ -106,7 +115,7 @@ python3 -m pip install -e .
 若要建立與目前驗證環境相同的可重現環境：
 
 ```bash
-python3 -m pip install -r requirements.lock.txt
+python3 -m pip install --require-hashes -r requirements.lock.txt
 ```
 
 開發與測試環境：
@@ -118,7 +127,8 @@ python3 -m pip install -e ".[dev]"
 若需要固定開發工具版本：
 
 ```bash
-python3 -m pip install -r requirements.lock.txt -r requirements-dev.lock.txt
+python3 -m pip install --require-hashes -r requirements.lock.txt
+python3 -m pip install --require-hashes -r requirements-dev.lock.txt
 ```
 
 完整本機品質檢查：
@@ -202,8 +212,23 @@ python -m news_scraper --sources 國土管理署 --max-workers 1
 - 終端機表格摘要
 - `本週新聞整理（民國起迄日期）.xlsx`
 - 全部新聞工作表
-- AI 關鍵字初步篩選工作表
+- AI 新十大建設初步篩選工作表，高度相關整列標示黃色、可能相關整列標示淺黃色
+- `新聞摘要`、`日期來源`、`AI新十大建設`、`主政部會`、`關聯性`、`關聯分數`、`判定理由`、`命中關鍵字`、`排除關鍵字`、`各建設評分` 判讀欄位
+- AI 新十大建設、主政部會與關鍵字對照工作表
 - 指定重點部會分頁
+
+AI 分級規則以完整建設名稱與精準詞優先；較廣的輔助詞必須搭配 AI 語境或由該建設主政部會發布才會納入。標題權重高於摘要，只有摘要命中時最高列為「可能相關」。`徵才`、`招募`、`職缺`、`採購`、`招標`、`決標`、`轉知` 會降低分數。只有一般 AI 字樣而無法判定建設項目時，會標示為「可能相關／待人工判讀」。
+
+關聯分數為 0 至 100 分：80 分以上為高度相關、40 至 79 分為可能相關、低於 40 分不納入初步篩選。多項建設同時命中時，`各建設評分` 會保留每項自己的分數與相關性，不會以單一最高分代替全部結果。規則由 dataclass 定義並在啟動時驗證建設名稱、主政來源與重複關鍵字。
+
+可用 205 筆回歸語料與獨立的 2026-06-22 至 06-28 時間留存集重跑評估：
+
+```bash
+python3 scripts/evaluate_ai_policy.py
+python3 scripts/evaluate_ai_policy.py tests/fixtures/ai_policy_holdout_20260622.tsv --require-published-date
+```
+
+需要稽核官方頁面是否仍包含標題時，可額外加上 `--verify-sources`。此模式需要網路，故不放入一般 CI。
 
 ## 開發說明
 
@@ -213,23 +238,26 @@ python -m news_scraper --sources 國土管理署 --max-workers 1
 - 可重用工具函式優先放在 `utils/`
 - 下級機關 scraper 盡量放在對應部會子資料夾
 - `monitoring.py` 負責錯誤分類與 JSON 執行報告
-- `verify=False` 僅允許用於 `config.py` 的 SSL 白名單主機，所有實際降級主機都會記錄在執行報告
+- `verify=False` 僅允許用於 `config.py` 的 SSL 白名單主機，每次重新導向都會重新驗證 host，所有實際降級主機都會記錄在執行報告
+- 帶時區的 RSS 日期會先轉為 `Asia/Taipei` 再取新聞日期
+- RSS 不假設項目永遠按日期倒序，舊項目後方的本週新聞仍會被掃描
 
 ## 監控與告警
 
-執行報告的 `status` 為 `success` 或 `partial_failure`。排程系統可監控最新報告中的下列欄位：
+執行報告的 `status` 為 `success`、`attention` 或 `partial_failure`。排程系統可監控最新報告中的下列欄位：
 
 - `failed_sources`：重試後仍失敗的來源
 - `error_counts`：`timeout`、`ssl`、`http`、`connection`、`browser`、`parse`、`unexpected` 分類統計
 - `insecure_ssl_hosts`：本次實際停用 SSL 驗證的白名單主機
 - `source_attempts`：各來源每次嘗試的耗時、結果與錯誤摘要
 - `scheduling_plan`：priority queue 的來源啟動順序、歷史失敗率、平均耗時與靜態難度
-- `quality`：無效資料、重複新聞、排除的非新聞內容及各來源最終筆數
+- `quality`：無效資料、重複新聞、排除的非新聞內容、摘要覆蓋率、日期來源統計及各來源最終筆數
 - `anomalies`：連續零筆與耗時異常
 - `parser_warnings`：日期或欄位格式已命中但解析失敗的紀錄，用來區分正常零筆與網站格式異常
 - `quality.alert_reasons`：超過告警門檻的資料品質問題；少量正常清理不會觸發告警
+- `ai_policy.version`、`ai_policy.ruleset_hash`：本次 Excel 使用的 AI 規則版本與內容雜湊
 
-程式會先嘗試正常 SSL 驗證，只有驗證失敗且主機位於白名單時才降級。這讓已修復憑證的網站可以自動恢復安全連線，而不會永久停留在 `verify=False`。
+程式依序嘗試 Requests 正常 SSL 驗證、安全 curl；兩者都失敗且主機位於白名單時，才會最後降級為 `verify=False`。不安全模式手動處理 redirect，目的 host 不在白名單時立即拒絕。這讓已修復憑證的網站可以自動恢復安全連線，並避免在安全 curl 可用時停用驗證。
 
 執行報告預設保留 180 天，可用 `--report-retention-days` 調整。`執行紀錄/trend_summary.json` 會彙整最近 52 次報告的來源成功率、平均耗時與零筆次數。
 
@@ -275,7 +303,7 @@ python -m news_scraper --list-sources
 pytest -q
 ```
 
-GitHub Actions 會在 Python 3.10、3.12 與 3.13 執行測試，並另外執行 Ruff、Mypy、pip-audit、跨平台 PyInstaller 建置與封裝後 smoke test。
+GitHub Actions 會在 Python 3.10、3.12 與 3.13 執行測試，並另外執行 Ruff、Mypy、Bandit、pip-audit、workflow SHA 檢查、跨平台 PyInstaller 建置與封裝後 smoke test。runtime、dev、build 與 security 鎖檔均含套件雜湊。
 
 ## 安全性與授權
 

@@ -2,6 +2,8 @@ import json
 from datetime import date
 from pathlib import Path
 
+import requests
+
 from news_scraper.scrapers.ministry.development import tasa
 
 FIXTURES = Path(__file__).parent / "fixtures"
@@ -36,3 +38,22 @@ def test_tasa_graphql_fixture_preserves_api_contract():
 
     assert news_date == date(2026, 4, 28)
     assert tasa.build_tasa_item(row, news_date)["title"] == "率隊參與Space Symposium 盛會"
+
+
+def test_fetch_tasa_announcements_falls_back_to_curl(monkeypatch):
+    monkeypatch.setattr(
+        tasa,
+        "fetch_response",
+        lambda *args, **kwargs: (_ for _ in ()).throw(requests.ConnectionError("TLS reset")),
+    )
+    calls = []
+
+    def fake_curl(url, **kwargs):
+        calls.append((url, kwargs))
+        return json.dumps({"data": {"findAnnouncements": {"total": 0, "items": []}}})
+
+    monkeypatch.setattr(tasa, "fetch_html_by_curl_with_headers", fake_curl)
+
+    assert tasa.fetch_tasa_announcements() == {"total": 0, "items": []}
+    assert calls[0][1]["method"] == "POST"
+    assert calls[0][1]["data"]

@@ -13,7 +13,15 @@ news_scraper/venv/
 
 build/
 dist/
+release-assets/
+*.spec
+!news-scraper.spec
+*.zip
+*.tar.gz
+*.dmg
+*.exe
 *.egg-info/
 
 新聞搜集區/*.xlsx
 新聞搜集區/執行紀錄/
+程式資料/

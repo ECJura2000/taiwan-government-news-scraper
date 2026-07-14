@@ -1,5 +1,8 @@
 import logging
+import os
 import re
+import tempfile
+from contextlib import contextmanager
 from pathlib import Path
 
 import pandas as pd
@@ -9,13 +12,14 @@ from openpyxl.worksheet.datavalidation import DataValidation
 from openpyxl.styles import Alignment, Font, PatternFill
 from openpyxl.utils import get_column_letter
 
-from .config import AFFILIATED_SOURCE_PATHS, SOURCE_ORDER
+from .config import AFFILIATED_SOURCE_PATHS, AI_POLICY_INITIATIVES, SOURCE_ORDER
 from .utils.dates import ad_date_to_roc_compact_str, ad_to_roc_str, get_cached_week_range
 from .utils.dedupe import dedupe_affiliated_news
-from .utils.text import clean_text, normalize_department_metadata_text, title_matches_ai_policy_keywords
+from .utils.text import classify_ai_policy_relevance, clean_text, normalize_department_metadata_text
 
 logger = logging.getLogger(__name__)
 AI_POLICY_HIGHLIGHT_FILL = PatternFill(fill_type="solid", fgColor="FFFF00")
+AI_POLICY_POSSIBLE_FILL = PatternFill(fill_type="solid", fgColor="FFF2CC")
 HEADER_FONT = Font(name="標楷體", sz=11)
 BODY_FONT = Font(name="Times New Roman", sz=11)
 LINK_FONT = Font(name="Times New Roman", sz=11, color="0563C1", underline="single")
@@ -28,8 +32,37 @@ COLUMN_WIDTHS = {
     "C": 45,
     "D": 120,
     "E": 130,
+    "F": 90,
+    "G": 22,
+    "H": 36,
+    "I": 16,
+    "J": 14,
+    "K": 12,
+    "L": 65,
+    "M": 55,
+    "N": 32,
+    "O": 65,
 }
 ROW_HEIGHT = 22
+
+
+@contextmanager
+def atomic_excel_writer(output_path):
+    destination = Path(output_path)
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    descriptor, temporary_name = tempfile.mkstemp(
+        dir=destination.parent,
+        prefix=".{}-".format(destination.stem),
+        suffix=".xlsx",
+    )
+    os.close(descriptor)
+    temporary_path = Path(temporary_name)
+    try:
+        with pd.ExcelWriter(temporary_path, engine="openpyxl") as writer:
+            yield writer
+        os.replace(temporary_path, destination)
+    finally:
+        temporary_path.unlink(missing_ok=True)
 
 
 def split_department_path(department):
@@ -134,19 +167,72 @@ def prepare_export_dataframe(df):
     return df.drop(columns=["原始來源"], errors="ignore")
 
 
+def add_ai_policy_metadata(df):
+    df = df.copy()
+    classifications = [
+        classify_ai_policy_relevance(
+            row.get("新聞標題", ""),
+            source=row.get("部會", ""),
+            summary=row.get("新聞摘要", ""),
+        )
+        for _, row in df.iterrows()
+    ]
+    df["AI新十大建設"] = ["、".join(result["initiatives"]) for result in classifications]
+    df["主政部會"] = ["、".join(result["lead_agencies"]) for result in classifications]
+    df["關聯性"] = [result["relevance"] for result in classifications]
+    df["關聯分數"] = [result["score"] for result in classifications]
+    df["判定理由"] = ["；".join(result["reasons"]) for result in classifications]
+    df["命中關鍵字"] = ["、".join(result["matched_keywords"]) for result in classifications]
+    df["排除關鍵字"] = ["、".join(result["negative_keywords"]) for result in classifications]
+    df["各建設評分"] = [
+        "；".join(
+            "{}（{}分，{}）".format(match["name"], match["score"], match["relevance"])
+            for match in result["initiative_matches"]
+        )
+        for result in classifications
+    ]
+    return df
+
+
+def build_ai_policy_reference_dataframe():
+    return pd.DataFrame(
+        [
+            {
+                "AI新十大建設": initiative.name,
+                "主政部會": initiative.lead_agency,
+                "高度相關關鍵字": "、".join(
+                    initiative.exact_phrases + initiative.strong_keywords
+                ),
+                "輔助關鍵字": "、".join(initiative.context_keywords),
+            }
+            for initiative in AI_POLICY_INITIATIVES
+        ]
+    )
+
+
+def get_ai_policy_row_fill(relevance):
+    if clean_text(relevance) == "高度相關":
+        return AI_POLICY_HIGHLIGHT_FILL
+    if clean_text(relevance) == "可能相關":
+        return AI_POLICY_POSSIBLE_FILL
+    return None
+
+
 def export_to_excel(news_items, output_dir, dedupe_affiliated=False):
     if news_items is None:
         news_items = []
     elif dedupe_affiliated:
         news_items = dedupe_affiliated_news(news_items)
 
-    base_columns = ["source", "date", "department", "title", "link"]
+    base_columns = ["source", "date", "department", "title", "link", "summary", "date_source"]
     rename_map = {
         "source": "部會",
         "date": "新聞日期",
         "department": "單位分類",
         "title": "新聞標題",
         "link": "新聞連結",
+        "summary": "新聞摘要",
+        "date_source": "日期來源",
     }
     df = pd.DataFrame(news_items)
     if df.empty:
@@ -166,6 +252,7 @@ def export_to_excel(news_items, output_dir, dedupe_affiliated=False):
     df = prepare_export_dataframe(df)
     if "新聞日期" in df.columns:
         df["新聞日期"] = df["新聞日期"].apply(lambda value: clean_text(value))
+    df = add_ai_policy_metadata(df)
 
     start_of_week, end_of_week = get_cached_week_range()
     file_name = "本週新聞整理（{}至{}）.xlsx".format(
@@ -175,9 +262,19 @@ def export_to_excel(news_items, output_dir, dedupe_affiliated=False):
     output_path = Path(output_dir) / file_name
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
-    highlighted_df = df[df["新聞標題"].apply(title_matches_ai_policy_keywords)].copy()
+    highlighted_df = df[df["關聯性"].isin(("高度相關", "可能相關"))].copy()
     if highlighted_df.empty:
         highlighted_df = pd.DataFrame(columns=df.columns)
+    else:
+        highlighted_df["_關聯排序"] = highlighted_df["關聯性"].map({"高度相關": 0, "可能相關": 1})
+        highlighted_df["_分數排序"] = highlighted_df["關聯分數"]
+        highlighted_df = highlighted_df.sort_values(
+            by=["_關聯排序", "_分數排序"],
+            ascending=[True, False],
+            kind="stable",
+        ).drop(columns=["_關聯排序", "_分數排序"])
+
+    ai_policy_reference_df = build_ai_policy_reference_dataframe()
 
     source_sheet_map = {
         "財政部": "財政部",
@@ -187,9 +284,10 @@ def export_to_excel(news_items, output_dir, dedupe_affiliated=False):
         "經濟部": "經濟部",
     }
 
-    with pd.ExcelWriter(output_path, engine="openpyxl") as writer:
+    with atomic_excel_writer(output_path) as writer:
         df.to_excel(writer, sheet_name="全部新聞", index=False)
         highlighted_df.to_excel(writer, sheet_name="已初步篩選工作表", index=False)
+        ai_policy_reference_df.to_excel(writer, sheet_name="AI新十大建設對照", index=False)
 
         for source_name, sheet_name in source_sheet_map.items():
             source_df = df[df["部會"] == source_name].copy()
@@ -210,15 +308,19 @@ def export_to_excel(news_items, output_dir, dedupe_affiliated=False):
             apply_date_dropdowns_to_sheet(worksheet)
             apply_hyperlinks_to_sheet(worksheet)
 
-            title_col_idx = header_map.get("新聞標題")
-            if title_col_idx:
+            relevance_col_idx = header_map.get("關聯性")
+            if relevance_col_idx:
                 for row_idx in range(2, worksheet.max_row + 1):
-                    title_value = worksheet.cell(row=row_idx, column=title_col_idx).value
-                    if title_matches_ai_policy_keywords(title_value):
+                    relevance = worksheet.cell(row=row_idx, column=relevance_col_idx).value
+                    row_fill = get_ai_policy_row_fill(relevance)
+                    if row_fill is not None:
                         for col_idx in range(1, worksheet.max_column + 1):
-                            worksheet.cell(row=row_idx, column=col_idx).fill = AI_POLICY_HIGHLIGHT_FILL
+                            worksheet.cell(row=row_idx, column=col_idx).fill = row_fill
 
             format_excel_worksheet(worksheet, header_map)
+            if worksheet.title == "AI新十大建設對照":
+                for column_letter, width in {"A": 34, "B": 16, "C": 72, "D": 72}.items():
+                    worksheet.column_dimensions[column_letter].width = width
 
     logger.info("Excel 已輸出：%s", output_path)
     return output_path
@@ -316,7 +418,7 @@ def build_mixed_font_rich_text(text):
 
     runs = []
     current_kind = None
-    current_chars = []
+    current_chars: list[str] = []
 
     def flush_run():
         if not current_chars:

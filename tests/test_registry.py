@@ -15,7 +15,7 @@ def test_registry_contains_core_sources():
 
 
 def test_registry_has_full_source_count():
-    assert len(SCRAPER_REGISTRY) == len(SOURCE_ORDER) == 71
+    assert len(SCRAPER_REGISTRY) == len(SOURCE_ORDER) == 72
 
 
 def test_registry_matches_source_order_keys():

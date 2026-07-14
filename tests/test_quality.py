@@ -4,13 +4,15 @@ from news_scraper.monitoring import RunContext, build_run_report, should_send_al
 from news_scraper.quality import normalize_url, process_news_quality
 
 
-def make_item(title, link, source="疾管署", news_date="2026-06-09"):
+def make_item(title, link, source="疾管署", news_date="2026-06-09", summary="", date_source="published"):
     return {
         "source": source,
         "date": news_date,
         "department": source,
         "title": title,
         "link": link,
+        "summary": summary,
+        "date_source": date_source,
     }
 
 
@@ -33,6 +35,8 @@ def test_process_news_quality_dedupes_and_excludes_non_news():
     assert summary["excluded_non_news_count"] == 1
     assert summary["invalid_count"] == 1
     assert summary["source_counts"] == {"疾管署": 1, "農科園區": 0}
+    assert summary["summary_coverage_rate"] == 0.0
+    assert summary["date_source_counts"] == {"published": 1}
     assert summary["alert_reasons"] == ["invalid_items"]
 
 
@@ -68,3 +72,21 @@ def test_quality_alert_marks_duplicate_spike():
 
     assert summary["duplicate_count"] == 5
     assert summary["alert_reasons"] == ["duplicate_spike"]
+
+
+def test_quality_reports_summary_coverage_and_description_date_fallbacks():
+    items = [
+        make_item("有摘要", "https://example.com/a", summary="摘要內容"),
+        make_item(
+            "摘要日期",
+            "https://example.com/b",
+            date_source="description_fallback",
+        ),
+    ]
+
+    _, summary = process_news_quality(items, ["疾管署"])
+
+    assert summary["summary_count"] == 1
+    assert summary["summary_coverage_rate"] == 0.5
+    assert summary["date_source_counts"] == {"published": 1, "description_fallback": 1}
+    assert summary["description_fallback_count"] == 1

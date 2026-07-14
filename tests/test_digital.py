@@ -24,6 +24,7 @@ def test_scrape_adi_this_week_parses_moda_list(monkeypatch):
     """
     monkeypatch.setattr(dates, "CURRENT_WEEK_RANGE", (date(2026, 5, 18), date(2026, 5, 24)))
     monkeypatch.setattr(moda, "fetch_html", lambda url: html)
+    monkeypatch.setattr(moda, "fetch_page_summary", lambda *args, **kwargs: "AI 人才政策摘要")
 
     assert moda.scrape_adi_this_week() == [
         {
@@ -32,6 +33,7 @@ def test_scrape_adi_this_week_parses_moda_list(monkeypatch):
             "department": "數位產業署／推動AI產業發展",
             "title": "數發部AI 產業人才認定指引升級3.0",
             "link": "https://moda.gov.tw/ADI/news/latest-news/19724.html",
+            "summary": "AI 人才政策摘要",
         }
     ]
 
@@ -49,6 +51,7 @@ def test_scrape_acs_this_week_uses_source_when_unit_missing(monkeypatch):
     """
     monkeypatch.setattr(dates, "CURRENT_WEEK_RANGE", (date(2026, 5, 18), date(2026, 5, 24)))
     monkeypatch.setattr(moda, "fetch_html", lambda url: html)
+    monkeypatch.setattr(moda, "fetch_page_summary", lambda *args, **kwargs: "")
 
     assert moda.scrape_acs_this_week()[0]["department"] == "資通安全署"
 
@@ -85,7 +88,7 @@ def test_scrape_nics_this_week_parses_next_data(monkeypatch):
     </script>
     """
     monkeypatch.setattr(dates, "CURRENT_WEEK_RANGE", (date(2026, 5, 18), date(2026, 5, 24)))
-    monkeypatch.setattr(moda, "fetch_html_plain_insecure", lambda url: html)
+    monkeypatch.setattr(moda, "fetch_html_resilient", lambda url: html)
 
     assert moda.scrape_nics_this_week() == [
         {

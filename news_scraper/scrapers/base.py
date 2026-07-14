@@ -1,4 +1,5 @@
 import ast
+import logging
 import re
 import time
 from datetime import datetime
@@ -13,13 +14,16 @@ from ..rss.parser import (
     extract_rss_item_date_fields,
     extract_rss_item_metadata_fields,
     fetch_rss_items,
-    resolve_rss_news_date,
+    resolve_rss_news_date_with_source,
 )
 from ..utils.dates import get_cached_week_range, roc_to_ad_date
 from ..utils.text import build_department_label, clean_text
 
+logger = logging.getLogger(__name__)
+
 try:
     from selenium import webdriver
+    from selenium.common.exceptions import TimeoutException
     from selenium.webdriver.chrome.options import Options
     from selenium.webdriver.common.by import By
     from selenium.webdriver.support import expected_conditions as EC
@@ -31,6 +35,7 @@ except ImportError as exc:
     By = None
     EC = None
     WebDriverWait = None
+    TimeoutException = RuntimeError
     WebDriverException = RuntimeError
     SELENIUM_IMPORT_ERROR = exc
 else:
@@ -43,6 +48,28 @@ def make_soup(html):
 
 def make_xml_soup(xml_text):
     return BeautifulSoup(xml_text, "xml")
+
+
+def fetch_page_summary(url, selectors, max_length=1200):
+    try:
+        soup = make_soup(fetch_html(url))
+    except Exception as exc:
+        logger.warning("新聞內文摘要抓取失敗：%s；原因：%s", url, exc)
+        return ""
+
+    for selector in selectors:
+        container = soup.select_one(selector)
+        if container is None:
+            continue
+        for removable in container.select("script, style, nav, aside, .share, .articleOther"):
+            removable.decompose()
+        paragraphs = [clean_text(node.get_text(" ", strip=True)) for node in container.select("p")]
+        text = clean_text(" ".join(paragraph for paragraph in paragraphs if paragraph))
+        if not text:
+            text = clean_text(container.get_text(" ", strip=True))
+        if text:
+            return text[:max_length].rstrip()
+    return ""
 
 
 def collect_weekly_results_from_ordered_rows(rows, date_extractor, item_builder):
@@ -77,11 +104,11 @@ def scrape_standard_rss_this_week(
     items = fetch_rss_items(source_url, timeout=rss_timeout)
     for item in items:
         date_fields = extract_rss_item_date_fields(item)
-        news_date = resolve_rss_news_date(date_fields)
+        news_date, date_source = resolve_rss_news_date_with_source(date_fields, source=source)
         if news_date is None:
             continue
         if news_date < start_of_week:
-            break
+            continue
         if news_date > end_of_week:
             continue
 
@@ -97,7 +124,17 @@ def scrape_standard_rss_this_week(
                 fields.get("department_all_name", "") or fields["deptname"],
                 aliases=department_aliases,
             )
-        results.append(make_news_item(source, department_label, news_date, fields["title"], fields["link"]))
+        results.append(
+            make_news_item(
+                source,
+                department_label,
+                news_date,
+                fields["title"],
+                fields["link"],
+                summary=fields["description"],
+                date_source=date_source,
+            )
+        )
     return results
 
 
@@ -219,6 +256,25 @@ def create_selenium_driver():
         },
     )
     return driver
+
+
+def load_selenium_page(driver, url, wait_condition=None, sleep_seconds=0, attempts=2):
+    last_error = None
+    for attempt in range(attempts):
+        try:
+            driver.get(url)
+            if wait_condition is not None:
+                wait_condition(driver)
+            if sleep_seconds:
+                time.sleep(sleep_seconds)
+            return driver.page_source
+        except (WebDriverException, TimeoutException) as exc:
+            last_error = exc
+            if attempt + 1 < attempts:
+                time.sleep(2)
+                continue
+            raise
+    raise last_error  # pragma: no cover - defensive fallback
 
 
 def fetch_html_by_selenium(url, wait_id=None, timeout=REQUEST_TIMEOUT, sleep_seconds=2):

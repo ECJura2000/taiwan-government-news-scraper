@@ -4,16 +4,19 @@ from ....config import SPORTS_RSS_TIMEOUT, URLS
 from ....models import make_news_item
 from ....utils.dates import roc_to_ad_date
 from ....utils.text import clean_text
-from ...base import By, EC, WebDriverWait, collect_weekly_results_from_ordered_rows, create_selenium_driver, make_soup
+from ...base import By, EC, WebDriverWait, collect_weekly_results_from_ordered_rows, create_selenium_driver, load_selenium_page, make_soup
 
 
 def scrape_sports_this_week():
     source = "運動部"
     driver = create_selenium_driver()
     try:
-        driver.get(URLS[source])
-        WebDriverWait(driver, SPORTS_RSS_TIMEOUT + 10).until(
-            EC.presence_of_element_located((By.CSS_SELECTOR, "table tbody tr"))
+        load_selenium_page(
+            driver,
+            URLS[source],
+            wait_condition=lambda d: WebDriverWait(d, SPORTS_RSS_TIMEOUT + 10).until(
+                EC.presence_of_element_located((By.CSS_SELECTOR, "table tbody tr"))
+            ),
         )
         driver.execute_script(
             """

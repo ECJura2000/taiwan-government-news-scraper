@@ -1,0 +1,17 @@
+aiohttp>=3.14.1
+async-timeout==5.0.1; python_version < "3.11"
+beautifulsoup4
+cffi==2.1.0
+defusedxml>=0.7.1
+feedparser
+idna>=3.15
+lxml
+numpy==2.2.6
+openpyxl
+pandas>=2.2,<2.3.3
+requests
+selenium
+soupsieve>=2.8.4
+# Keep the reproducible lock installable on Python 3.10; newer Python ignores it at runtime.
+tomli>=2
+urllib3>=2.7.0

@@ -7,6 +7,7 @@ CORE_DEPENDENCIES = {
 }
 
 SCRAPE_DEPENDENCIES = {
+    "defusedxml": "defusedxml",
     "lxml": "lxml",
 }
 

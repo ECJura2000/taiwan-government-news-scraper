@@ -1,26 +1,25 @@
 import re
-import time
 from urllib.parse import urljoin
 
 from ....config import THB_LIST_TIMEOUT, URLS
 from ....models import make_news_item
 from ....utils.dates import get_cached_week_range, roc_to_ad_date
 from ....utils.text import clean_text
-from ...base import By, EC, WebDriverWait, create_selenium_driver, make_soup
+from ...base import By, EC, WebDriverWait, create_selenium_driver, load_selenium_page, make_soup
 
 
 def scrape_thb_this_week():
     source = "公路局"
     driver = create_selenium_driver()
     try:
-        driver.get("https://www.thb.gov.tw/")
-        time.sleep(6)
-        driver.get(URLS[source])
-        WebDriverWait(driver, THB_LIST_TIMEOUT).until(
-            EC.presence_of_element_located((By.CSS_SELECTOR, "#table_0 tbody tr"))
+        html = load_selenium_page(
+            driver,
+            URLS[source],
+            wait_condition=lambda d: WebDriverWait(d, THB_LIST_TIMEOUT).until(
+                EC.presence_of_element_located((By.CSS_SELECTOR, "#table_0 tbody tr"))
+            ),
+            sleep_seconds=2,
         )
-        time.sleep(2)
-        html = driver.page_source
     finally:
         driver.quit()
 

@@ -3,10 +3,10 @@ from datetime import datetime
 from urllib.parse import urljoin
 
 from ....config import URLS
-from ....http.client import fetch_html, fetch_html_plain_insecure
+from ....http.client import fetch_html, fetch_html_resilient
 from ....models import make_news_item
 from ....utils.dates import get_cached_week_range, parse_rss_pubdate
-from ...base import make_soup
+from ...base import fetch_page_summary, make_soup
 
 
 def scrape_moda_list_this_week(source):
@@ -36,13 +36,15 @@ def scrape_moda_list_this_week(source):
             dept_text = "{}／{}".format(source, dept_text)
         else:
             dept_text = source
+        link = urljoin(URLS[source], a_tag.get("href", "").strip())
         results.append(
             make_news_item(
                 source,
                 dept_text,
                 news_date,
                 title_tag.get_text(" ", strip=True),
-                urljoin(URLS[source], a_tag.get("href", "").strip()),
+                link,
+                summary=fetch_page_summary(link, (".article1.cpArticle", ".cpArticle", "article")),
             )
         )
     return results
@@ -62,7 +64,7 @@ def scrape_acs_this_week():
 
 def scrape_nics_this_week():
     source = "國家資通安全研究院"
-    soup = make_soup(fetch_html_plain_insecure(URLS[source]))
+    soup = make_soup(fetch_html_resilient(URLS[source]))
     data_tag = soup.select_one("script#__NEXT_DATA__")
     if data_tag is None or not data_tag.string:
         raise ValueError("國家資通安全研究院頁面找不到 __NEXT_DATA__。")

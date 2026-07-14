@@ -1,9 +1,11 @@
 import re
 from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
 
 from ..monitoring import record_parser_warning
 
 CURRENT_WEEK_RANGE = None
+TAIPEI_TIMEZONE = ZoneInfo("Asia/Taipei")
 
 
 def get_this_week_range(force_refresh=False):
@@ -70,7 +72,10 @@ def parse_rss_pubdate(pub_date_text):
     text = text.replace("GMT", "+0000").replace("UTC", "+0000")
 
     try:
-        return datetime.fromisoformat(text.replace("Z", "+00:00")).date()
+        parsed = datetime.fromisoformat(text.replace("Z", "+00:00"))
+        if parsed.tzinfo is not None:
+            parsed = parsed.astimezone(TAIPEI_TIMEZONE)
+        return parsed.date()
     except ValueError:
         pass
 
@@ -82,7 +87,10 @@ def parse_rss_pubdate(pub_date_text):
         "%Y/%m/%d",
     ):
         try:
-            return datetime.strptime(text, pattern).date()
+            parsed = datetime.strptime(text, pattern)
+            if parsed.tzinfo is not None:
+                parsed = parsed.astimezone(TAIPEI_TIMEZONE)
+            return parsed.date()
         except ValueError:
             continue
 
