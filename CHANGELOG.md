@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.2.0 - 2026-07-14
+
+- Added a cross-platform tkinter GUI while preserving the existing headless `python -m news_scraper` automation contract.
+- Added a shared application service, cooperative cancellation, stable JSON summaries, portable workspace paths, and cross-process run locking.
+- Made Excel, JSON, settings, and release manifests atomic to prevent partial or overlapping output.
+- Added one-file GUI/headless PyInstaller builds and portable ZIP layouts for Linux, Windows, and macOS.
+- Changed releases to an explicit one-click workflow with immutable tags, pinned Action SHAs, checksums, and size gates.
+- Added hash-locked runtime, development, build, and security environments.
+- Upgraded vulnerable HTTP dependencies and replaced external RSS XML parsing with `defusedxml`.
+- Added Bandit, pip-audit, workflow pinning, GUI routing, cancellation, locking, and portable archive tests.
+
 ## 1.1.3 - 2026-07-13
 
 - Added the missing DGPA news source and full-name source aliases.

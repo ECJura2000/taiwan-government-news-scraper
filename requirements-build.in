@@ -1,0 +1,4 @@
+macholib==1.16.4
+pefile==2024.8.26
+pyinstaller==6.21.0
+pywin32-ctypes==0.2.3

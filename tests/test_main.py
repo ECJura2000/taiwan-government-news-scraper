@@ -24,6 +24,35 @@ def test_main_file_can_run_directly_without_shadowing_stdlib_http():
     assert "行政院" in completed.stdout
 
 
+def test_main_reports_lock_contention_as_exit_4_and_json(monkeypatch, capsys, tmp_path):
+    import json
+
+    import news_scraper.application as application
+    from news_scraper.run_lock import RunAlreadyActiveError
+
+    monkeypatch.setattr(
+        application,
+        "run_news_scraper",
+        lambda options: (_ for _ in ()).throw(RunAlreadyActiveError({"pid": 123})),
+    )
+
+    exit_code = main.main(
+        [
+            "--sources",
+            "行政院",
+            "--output-dir",
+            str(tmp_path),
+            "--json-summary",
+        ]
+    )
+    captured = capsys.readouterr()
+    summary = json.loads(captured.out.splitlines()[-1])
+
+    assert exit_code == 4
+    assert summary["status"] == "locked"
+    assert summary["output_file"] == ""
+
+
 def test_collect_all_this_week_news_keeps_affiliated_items_by_default(monkeypatch):
     items = [
         {

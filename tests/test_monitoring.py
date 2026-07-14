@@ -158,6 +158,13 @@ def test_send_webhook_alert_posts_json(monkeypatch):
     assert seen["body"] == {"status": "attention"}
 
 
+def test_send_webhook_alert_rejects_non_https_url():
+    import pytest
+
+    with pytest.raises(ValueError, match="HTTPS"):
+        send_webhook_alert({"status": "attention"}, "http://alerts.example.test/hook")
+
+
 def test_prune_old_reports_removes_only_expired_files(tmp_path):
     old_report = tmp_path / "news_scraper_run_old.json"
     recent_report = tmp_path / "news_scraper_run_recent.json"

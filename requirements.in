@@ -10,4 +10,6 @@ pandas>=2.2,<2.3.3
 requests
 selenium
 soupsieve>=2.8.4
+# Keep the reproducible lock installable on Python 3.10; newer Python ignores it at runtime.
+tomli>=2
 urllib3>=2.7.0

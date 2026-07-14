@@ -9,11 +9,13 @@ from datetime import datetime, timedelta
 from enum import Enum
 from pathlib import Path
 from typing import Any, TypedDict, cast
+from urllib.parse import urlparse
 from urllib.request import Request, urlopen
 
 from requests.exceptions import ConnectionError, HTTPError, SSLError, Timeout
 
 from .config import AI_POLICY_RULESET_VERSION, get_ai_policy_ruleset_hash
+from .io_utils import atomic_write_text
 from .policy import get_zero_item_alert_runs
 
 CURRENT_RUN_CONTEXT = ContextVar("news_scraper_run_context", default=None)
@@ -44,6 +46,7 @@ class RunStatus(str, Enum):
     SUCCESS = "success"
     ATTENTION = "attention"
     PARTIAL_FAILURE = "partial_failure"
+    CANCELLED = "cancelled"
 
 
 class ErrorCategory(str, Enum):
@@ -105,6 +108,7 @@ class RunContext:
     parser_warnings: list[ParserWarning] = field(default_factory=list)
     scheduling_plan: list[dict] = field(default_factory=list)
     retry_timeout_extra_seconds: int = 0
+    cancelled: bool = False
     lock: threading.RLock = field(default_factory=threading.RLock, repr=False)
 
     def record_source_attempt(self, source, attempt, item_count, elapsed_seconds, error=None):
@@ -196,7 +200,9 @@ def build_run_report(*, context, started_at, finished_at, selected_sources, news
             error_counts[category] = error_counts.get(category, 0) + 1
 
     quality_requires_attention = bool(context.quality_summary.get("alert_reasons"))
-    if context.failed_sources:
+    if context.cancelled:
+        status = RunStatus.CANCELLED
+    elif context.failed_sources:
         status = RunStatus.PARTIAL_FAILURE
     elif context.anomalies or context.parser_warnings or quality_requires_attention:
         status = RunStatus.ATTENTION
@@ -222,7 +228,7 @@ def build_run_report(*, context, started_at, finished_at, selected_sources, news
         "parser_warnings": [warning.to_dict() for warning in context.parser_warnings],
         "scheduling_plan": list(context.scheduling_plan),
         "alerts": list(context.alerts),
-        "output_file": str(output_path),
+        "output_file": str(output_path) if output_path else "",
         "source_attempts": attempts,
     }
 
@@ -340,13 +346,18 @@ def send_webhook_alert(payload, webhook_url=None, timeout=10):
     if not webhook_url:
         return {"status": "not_configured"}
 
+    parsed_url = urlparse(webhook_url)
+    if parsed_url.scheme != "https" or not parsed_url.hostname:
+        raise ValueError("異常 webhook 必須使用有效的 HTTPS URL。")
+
     request = Request(
         webhook_url,
         data=json.dumps(payload, ensure_ascii=False).encode("utf-8"),
         headers={"Content-Type": "application/json"},
         method="POST",
     )
-    with urlopen(request, timeout=timeout) as response:
+    # The URL was restricted to HTTPS above; urllib is retained to avoid another runtime dependency.
+    with urlopen(request, timeout=timeout) as response:  # nosec B310
         return {"status": "sent", "http_status": response.status}
 
 
@@ -365,6 +376,8 @@ def prune_old_reports(report_dir, retention_days=180, now=None):
     cutoff = (now or datetime.now()) - timedelta(days=max(1, retention_days))
     removed = []
     for report_path in report_dir.glob("news_scraper_run_*.json"):
+        if report_path.is_symlink() or not report_path.is_file():
+            continue
         modified_at = datetime.fromtimestamp(report_path.stat().st_mtime)
         if modified_at < cutoff:
             report_path.unlink()
@@ -422,9 +435,7 @@ def build_trend_summary(reports, allowed_ssl_hosts=None):
 
 def write_json_file(data, path):
     path = Path(path)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
-    return path
+    return atomic_write_text(path, json.dumps(data, ensure_ascii=False, indent=2))
 
 
 def write_run_report(report, report_dir):

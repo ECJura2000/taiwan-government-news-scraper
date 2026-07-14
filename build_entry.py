@@ -35,4 +35,12 @@ if __name__ == "__main__":
     configure_utf8_stdio()
     if "--check-runtime" in sys.argv[1:]:
         raise SystemExit(check_bundled_runtime())
+    if "--gui-smoke-test" in sys.argv[1:]:
+        from news_scraper.gui import main as gui_main
+
+        raise SystemExit(gui_main(smoke_test=True))
+    if not sys.argv[1:] or "--gui" in sys.argv[1:]:
+        from news_scraper.gui import main as gui_main
+
+        raise SystemExit(gui_main())
     raise SystemExit(main())

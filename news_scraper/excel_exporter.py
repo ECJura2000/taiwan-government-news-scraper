@@ -1,5 +1,8 @@
 import logging
+import os
 import re
+import tempfile
+from contextlib import contextmanager
 from pathlib import Path
 
 import pandas as pd
@@ -41,6 +44,25 @@ COLUMN_WIDTHS = {
     "O": 65,
 }
 ROW_HEIGHT = 22
+
+
+@contextmanager
+def atomic_excel_writer(output_path):
+    destination = Path(output_path)
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    descriptor, temporary_name = tempfile.mkstemp(
+        dir=destination.parent,
+        prefix=".{}-".format(destination.stem),
+        suffix=".xlsx",
+    )
+    os.close(descriptor)
+    temporary_path = Path(temporary_name)
+    try:
+        with pd.ExcelWriter(temporary_path, engine="openpyxl") as writer:
+            yield writer
+        os.replace(temporary_path, destination)
+    finally:
+        temporary_path.unlink(missing_ok=True)
 
 
 def split_department_path(department):
@@ -262,7 +284,7 @@ def export_to_excel(news_items, output_dir, dedupe_affiliated=False):
         "經濟部": "經濟部",
     }
 
-    with pd.ExcelWriter(output_path, engine="openpyxl") as writer:
+    with atomic_excel_writer(output_path) as writer:
         df.to_excel(writer, sheet_name="全部新聞", index=False)
         highlighted_df.to_excel(writer, sheet_name="已初步篩選工作表", index=False)
         ai_policy_reference_df.to_excel(writer, sheet_name="AI新十大建設對照", index=False)

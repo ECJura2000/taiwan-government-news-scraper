@@ -56,37 +56,46 @@ news_scraper/
 
 ## 下載執行檔
 
-當含有新版本號的變更合併到 `main` 後，GitHub Actions 會在 [Releases](https://github.com/ECJura2000/taiwan-government-news-scraper/releases) 自動發布 Linux、Windows 與 macOS 單檔執行檔、一份 SHA-256 清單及容量 manifest。每個執行檔在發布前都必須通過全部 scraper registry 的 `--check-runtime` smoke test。
+維護者可在 GitHub Actions 的 `Build and release portable apps` 按 `Run workflow`，一次建置 Linux、Windows 與 macOS 三個可攜 ZIP。每個 ZIP 解壓後都會建立 `各機關新聞/`，內含同時支援 GUI 與 headless 的單檔執行檔、程式資料及新聞搜集區。正式發布前必須通過 registry、GUI 與 headless smoke test。
 
 Windows：
 
+解壓 ZIP 後，直接開啟 `各機關新聞整理.exe` 使用 GUI；Codex 或排程可執行：
+
 ```powershell
-.\news-scraper-windows.exe --list-sources
-.\news-scraper-windows.exe
+.\各機關新聞整理.exe --headless --json-summary
 ```
 
 Linux：
 
 ```bash
-chmod +x news-scraper-linux
-./news-scraper-linux --list-sources
-./news-scraper-linux
+chmod +x 各機關新聞整理
+./各機關新聞整理                 # GUI
+./各機關新聞整理 --headless --json-summary
 ```
 
 macOS：
 
 ```bash
-chmod +x news-scraper-macos
-./news-scraper-macos --list-sources
-./news-scraper-macos
+chmod +x 各機關新聞整理
+./各機關新聞整理                 # GUI
+./各機關新聞整理 --headless --json-summary
 ```
+
+原始碼環境與既有 Codex automation 維持無介面執行，不需要 IDE：
+
+```bash
+.venv/bin/python -m news_scraper
+```
+
+`python -m news_scraper` 無參數時永遠執行 CLI；只有封裝檔無參數時才開啟 GUI。
 
 執行檔目前未進行 Windows Authenticode 或 Apple Developer ID 簽章，作業系統可能顯示未知發行者警告。國土管理署來源使用 Selenium，因此即使使用單檔執行檔，環境仍須安裝 Chrome 或 Chromium。
 
 Linux 與 macOS 可用下列方式核對雜湊：
 
 ```bash
-sha256sum -c news-scraper-v1.1.3-SHA256SUMS.txt
+sha256sum -c taiwan-government-news-v1.2.0-SHA256SUMS.txt
 ```
 
 Windows 可用 `Get-FileHash` 計算後，與 `SHA256SUMS.txt` 的對應紀錄比對。正式 Release 單檔不得超過 90 MiB，全部資產不得超過 220 MiB；Actions 中間 artifacts 只保留 1 天。
@@ -106,7 +115,7 @@ python3 -m pip install -e .
 若要建立與目前驗證環境相同的可重現環境：
 
 ```bash
-python3 -m pip install -r requirements.lock.txt
+python3 -m pip install --require-hashes -r requirements.lock.txt
 ```
 
 開發與測試環境：
@@ -118,7 +127,8 @@ python3 -m pip install -e ".[dev]"
 若需要固定開發工具版本：
 
 ```bash
-python3 -m pip install -r requirements.lock.txt -r requirements-dev.lock.txt
+python3 -m pip install --require-hashes -r requirements.lock.txt
+python3 -m pip install --require-hashes -r requirements-dev.lock.txt
 ```
 
 完整本機品質檢查：
@@ -293,7 +303,7 @@ python -m news_scraper --list-sources
 pytest -q
 ```
 
-GitHub Actions 會在 Python 3.10、3.12 與 3.13 執行測試，並另外執行 Ruff、Mypy、pip-audit、跨平台 PyInstaller 建置與封裝後 smoke test。
+GitHub Actions 會在 Python 3.10、3.12 與 3.13 執行測試，並另外執行 Ruff、Mypy、Bandit、pip-audit、workflow SHA 檢查、跨平台 PyInstaller 建置與封裝後 smoke test。runtime、dev、build 與 security 鎖檔均含套件雜湊。
 
 ## 安全性與授權
 

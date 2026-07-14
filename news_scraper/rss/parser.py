@@ -1,5 +1,5 @@
 import logging
-import xml.etree.ElementTree as ET
+from defusedxml import ElementTree as ET
 
 from ..config import RSS_FEED_TIMEOUT
 from ..errors import ParseError

@@ -4,6 +4,7 @@ from news_scraper.runtime import collect_required_dependencies
 def test_collect_required_dependencies_includes_optional_dependencies_for_all_sources():
     dependencies = collect_required_dependencies()
 
+    assert dependencies["defusedxml"] == "defusedxml"
     assert dependencies["feedparser"] == "feedparser"
 
 
