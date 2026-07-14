@@ -1,11 +1,24 @@
 # -*- mode: python ; coding: utf-8 -*-
 
-from PyInstaller.utils.hooks import collect_all, collect_submodules
+from pathlib import Path
+
+from PyInstaller.utils.hooks import collect_all
+
+
+def source_module_name(source_path):
+    relative_path = source_path.relative_to(Path(SPECPATH)).with_suffix("")
+    parts = list(relative_path.parts)
+    if parts[-1] == "__init__":
+        parts.pop()
+    return ".".join(parts)
 
 
 datas = [("news_scraper/policy.toml", "news_scraper")]
 binaries = []
-hiddenimports = collect_submodules("news_scraper.scrapers.ministry")
+scraper_root = Path(SPECPATH) / "news_scraper" / "scrapers" / "ministry"
+hiddenimports = sorted(
+    {source_module_name(source_path) for source_path in scraper_root.rglob("*.py")}
+)
 for package_name in ("feedparser", "selenium"):
     package_datas, package_binaries, package_hiddenimports = collect_all(package_name)
     datas += package_datas
