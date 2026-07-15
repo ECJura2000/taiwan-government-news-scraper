@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Consolidated pending Dependabot updates for development dependencies and GitHub Actions.
+
 ## 1.2.1 - 2026-07-15
 
 - Added native Windows and Linux live smoke tests for published release executables.
