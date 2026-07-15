@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.2.1 - 2026-07-15
+
+- Added native Windows and Linux live smoke tests for published release executables.
+- Fixed UTF-8 portable archive extraction on Windows GitHub runners.
+- Preserved Linux executable permissions after portable archive extraction.
+- Separated package/runtime failures from external live-source connectivity warnings while retaining Excel, JSON, and log evidence.
+
 ## 1.2.0 - 2026-07-14
 
 - Added a cross-platform tkinter GUI while preserving the existing headless `python -m news_scraper` automation contract.
