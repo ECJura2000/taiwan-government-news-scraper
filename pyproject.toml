@@ -16,7 +16,7 @@ dependencies = [
     "lxml",
     "numpy==2.2.6",
     "openpyxl",
-    "pandas>=2.2,<2.3.3",
+    "pandas>=2.3.3,<2.3.4",
     "requests",
     "selenium",
     "soupsieve>=2.8.4",
