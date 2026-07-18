@@ -1,6 +1,6 @@
 hypothesis>=6.155.2,<7
 mypy>=1.19,<2
-pytest>=9,<10
+pytest>=9.1.1,<10
 pytest-cov>=6,<8
 ruff>=0.15.17,<1
 types-requests>=2.33,<3
