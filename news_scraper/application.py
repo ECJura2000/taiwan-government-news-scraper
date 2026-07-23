@@ -93,6 +93,7 @@ def run_news_scraper(
     from .quality import process_news_quality
     from .run_lock import RunLock
     from .runtime import validate_runtime_environment
+    from .utils.dates import get_cached_week_range
 
     cancel_event = cancel_event or threading.Event()
     selected_sources = normalize_selected_sources(options.sources)
@@ -144,6 +145,7 @@ def run_news_scraper(
             progress_callback=on_source_progress,
         )
         news, context.quality_summary = process_news_quality(news, selected_sources)
+        week_start, week_end = get_cached_week_range()
 
         if cancel_event.is_set():
             context.cancelled = True
@@ -155,7 +157,13 @@ def run_news_scraper(
                 output_dir=output_dir,
                 dedupe_affiliated=options.dedupe_affiliated,
             )
-            detect_run_anomalies(context, selected_sources, recent_reports)
+            detect_run_anomalies(
+                context,
+                selected_sources,
+                recent_reports,
+                week_start=week_start,
+                week_end=week_end,
+            )
 
         finished_at = datetime.now().astimezone()
         report = build_run_report(
@@ -165,6 +173,8 @@ def run_news_scraper(
             selected_sources=selected_sources,
             news_count=len(news),
             output_path=output_path,
+            week_start=week_start,
+            week_end=week_end,
         )
         if not context.cancelled and should_send_alert(report):
             try:

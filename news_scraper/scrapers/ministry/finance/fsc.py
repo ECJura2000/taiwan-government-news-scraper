@@ -1,21 +1,16 @@
 import re
 
+from bs4 import BeautifulSoup
+
 from ....config import URLS
 from ....utils.text import build_department_label, clean_text
 from ...base import scrape_standard_rss_this_week
-
-try:
-    from bs4 import BeautifulSoup
-except ImportError:
-    BeautifulSoup = None
 
 FSC_DEPARTMENT_ALIASES = {"金融監督管理委員會", "行政院金融監督管理委員會"}
 FSC_CONTACT_PERSON_TITLE_RE = r"(?:副)?(?:科長|組長|主任|專員|秘書|視察|科員|技正|稽核|先生|小姐)$"
 
 
 def html_to_text(html):
-    if BeautifulSoup is None:
-        return clean_text(html)
     return clean_text(BeautifulSoup(html or "", "html.parser").get_text(" ", strip=True))
 
 

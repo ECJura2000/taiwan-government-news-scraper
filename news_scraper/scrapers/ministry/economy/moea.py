@@ -4,7 +4,7 @@ from datetime import datetime
 from urllib.parse import urljoin
 
 from ....config import MOEA_RSS_TIMEOUT
-from ....models import make_news_item
+from ....models import NewsItem, make_news_item
 from ....utils.text import clean_text
 from ...base import (
     By,
@@ -91,7 +91,7 @@ def scrape_moea_this_week():
             ),
         )
 
-        results = []
+        results: list[NewsItem] = []
         seen_links = set()
         for _ in range(20):
             soup = make_soup(driver.page_source)

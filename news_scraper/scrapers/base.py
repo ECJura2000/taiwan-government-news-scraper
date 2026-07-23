@@ -3,8 +3,15 @@ import logging
 import re
 import time
 from datetime import datetime
+from typing import Any
 
 from bs4 import BeautifulSoup
+from selenium import webdriver
+from selenium.common.exceptions import TimeoutException, WebDriverException
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.support.ui import WebDriverWait
 
 from ..config import PARSER, REQUEST_TIMEOUT, RSS_FEED_TIMEOUT
 from ..http.client import fetch_html
@@ -20,27 +27,6 @@ from ..utils.dates import get_cached_week_range, roc_to_ad_date
 from ..utils.text import build_department_label, clean_text
 
 logger = logging.getLogger(__name__)
-
-try:
-    from selenium import webdriver
-    from selenium.common.exceptions import TimeoutException
-    from selenium.webdriver.chrome.options import Options
-    from selenium.webdriver.common.by import By
-    from selenium.webdriver.support import expected_conditions as EC
-    from selenium.webdriver.support.ui import WebDriverWait
-    from selenium.common.exceptions import WebDriverException
-except ImportError as exc:
-    webdriver = None
-    Options = None
-    By = None
-    EC = None
-    WebDriverWait = None
-    TimeoutException = RuntimeError
-    WebDriverException = RuntimeError
-    SELENIUM_IMPORT_ERROR = exc
-else:
-    SELENIUM_IMPORT_ERROR = None
-
 
 def make_soup(html):
     return BeautifulSoup(html, PARSER)
@@ -74,7 +60,7 @@ def fetch_page_summary(url, selectors, max_length=1200):
 
 def collect_weekly_results_from_ordered_rows(rows, date_extractor, item_builder):
     start_of_week, end_of_week = get_cached_week_range()
-    results = []
+    results: list[Any] = []
     for row in rows:
         news_date = date_extractor(row)
         if news_date is None:
@@ -214,9 +200,6 @@ def fetch_moj_detail_result(source, title_text, link, start_of_week, end_of_week
 
 
 def create_selenium_driver():
-    if SELENIUM_IMPORT_ERROR is not None:
-        raise ImportError("需要使用 Selenium 的來源才需安裝 selenium：{}".format(SELENIUM_IMPORT_ERROR))
-
     chrome_options = Options()
     chrome_options.add_argument("--headless=new")
     chrome_options.add_argument("--window-size=1920,1080")
@@ -259,7 +242,7 @@ def create_selenium_driver():
 
 
 def load_selenium_page(driver, url, wait_condition=None, sleep_seconds=0, attempts=2):
-    last_error = None
+    last_error: BaseException | None = None
     for attempt in range(attempts):
         try:
             driver.get(url)
@@ -274,15 +257,19 @@ def load_selenium_page(driver, url, wait_condition=None, sleep_seconds=0, attemp
                 time.sleep(2)
                 continue
             raise
-    raise last_error  # pragma: no cover - defensive fallback
+    if last_error is not None:
+        raise last_error
+    raise RuntimeError("Selenium 頁面載入未執行")  # pragma: no cover
 
 
-def fetch_html_by_selenium(url, wait_id=None, timeout=REQUEST_TIMEOUT, sleep_seconds=2):
+def fetch_html_by_selenium(url, wait_id=None, wait_css=None, timeout=REQUEST_TIMEOUT, sleep_seconds=2):
     driver = create_selenium_driver()
     try:
         driver.get(url)
         if wait_id:
             WebDriverWait(driver, timeout).until(EC.presence_of_element_located((By.ID, wait_id)))
+        if wait_css:
+            WebDriverWait(driver, timeout).until(EC.presence_of_element_located((By.CSS_SELECTOR, wait_css)))
         time.sleep(sleep_seconds)
         return driver.page_source
     finally:
@@ -290,7 +277,7 @@ def fetch_html_by_selenium(url, wait_id=None, timeout=REQUEST_TIMEOUT, sleep_sec
 
 
 def parse_mol_data_spans(data_div):
-    result = {}
+    result: dict[str, str] = {}
     if data_div is None:
         return result
 

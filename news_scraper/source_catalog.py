@@ -2,13 +2,14 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from .config import ORDERED_SOURCE_NAMES, SCRAPE_DIFFICULTY_ORDER, URLS
+from .config import ORDERED_SOURCE_NAMES, SCRAPE_DIFFICULTY_ORDER, URLS, get_source_urls
 
 
 @dataclass(frozen=True)
 class SourceSpec:
     name: str
-    url: str | list[str]
+    url: str
+    urls: tuple[str, ...]
     module: str
     function: str
     order: int
@@ -29,6 +30,7 @@ def build_source_catalog(scraper_specs: dict[str, tuple[str, str]]) -> dict[str,
         name: SourceSpec(
             name=name,
             url=URLS[name],
+            urls=get_source_urls(name),
             module=scraper_specs[name][0],
             function=scraper_specs[name][1],
             order=position,

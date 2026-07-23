@@ -62,7 +62,7 @@ from .runtime_config import (  # noqa: F401
     WDA_RSS_TIMEOUT,
 )
 
-URLS: dict[str, str | list[str]] = {
+URLS: dict[str, str] = {
     "數位發展部": "https://moda.gov.tw/press/press-releases/372",
     "數位產業署": "https://moda.gov.tw/ADI/news/latest-news/766",
     "資通安全署": "https://moda.gov.tw/ACS/press/news/press/820",
@@ -71,10 +71,7 @@ URLS: dict[str, str | list[str]] = {
     "監察院": "https://www.cy.gov.tw/OpenData.aspx?SN=ADE5198E06414AF5",
     "司法院": "https://www.judicial.gov.tw/tw/lp-1790-1-1-40.html",
     "文化部": "https://www.moc.gov.tw/OpenData.aspx?SN=C4E4E3A8E687AD91",
-    "財政部": [
-        "https://www.mof.gov.tw/Rss/384fb3077bb349ea973e7fc6f13b6974",
-        "https://www.etax.nat.gov.tw/etwmain/rss/news",
-    ],
+    "財政部": "https://www.mof.gov.tw/Rss/384fb3077bb349ea973e7fc6f13b6974",
     "外交部": "https://www.mofa.gov.tw/News.aspx?n=95&sms=73",
     "僑委會": "https://www.ocac.gov.tw/OCAC/Pages/List.aspx?nodeid=3018",
     "退輔會": "https://www.vac.gov.tw/lp-1788-1.html",
@@ -139,6 +136,21 @@ URLS: dict[str, str | list[str]] = {
     "國健署": "https://www.hpa.gov.tw/Pages/ashx/rsspage.ashx?nodeid=124",
     "社家署": "https://www.sfaa.gov.tw/sfaa/list/5cX",
 }
+
+SOURCE_URL_SETS: dict[str, tuple[str, ...]] = {
+    "財政部": (
+        "https://www.mof.gov.tw/Rss/384fb3077bb349ea973e7fc6f13b6974",
+        "https://www.etax.nat.gov.tw/etwmain/rss/news",
+    ),
+}
+
+
+def get_source_url(source: str) -> str:
+    return URLS[source]
+
+
+def get_source_urls(source: str) -> tuple[str, ...]:
+    return SOURCE_URL_SETS.get(source, (get_source_url(source),))
 
 ORDERED_SOURCE_NAMES = [
     "行政院",

@@ -25,19 +25,21 @@ from .client import (
 logger = logging.getLogger(__name__)
 
 AIOHTTP_IMPORT_ERROR: ImportError | None
+aiohttp_module: Any
 try:
-    import aiohttp
+    import aiohttp as imported_aiohttp
 except ImportError as exc:
-    aiohttp = None
+    aiohttp_module = None
     AIOHTTP_IMPORT_ERROR = exc
 else:
+    aiohttp_module = imported_aiohttp
     AIOHTTP_IMPORT_ERROR = None
 
 
 def _require_aiohttp():
-    if aiohttp is None:
+    if aiohttp_module is None:
         raise ImportError("aiohttp 未安裝，無法使用非同步 HTTP 抓取")
-    return aiohttp
+    return aiohttp_module
 
 
 async def async_fetch_page_text(session: Any, page: int, url: str, timeout: int | float = ASYNC_PAGE_TIMEOUT) -> tuple[int, str]:

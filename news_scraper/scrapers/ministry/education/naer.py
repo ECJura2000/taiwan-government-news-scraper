@@ -70,7 +70,7 @@ def scrape_naer_this_week():
                     continue
                 page_has_this_week_news = True
                 title_text = clean_text(a_tag.get("title", "")) or clean_text(a_tag.get_text(" ", strip=True))
-                link = urljoin(list_url, a_tag.get("href", "").strip())
+                link = urljoin(list_url, clean_text(a_tag.get("href", "")))
                 if not title_text or not link or link in seen_links:
                     continue
                 seen_links.add(link)

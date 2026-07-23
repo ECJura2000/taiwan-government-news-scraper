@@ -24,3 +24,7 @@ def get_zero_item_alert_runs(source):
 
 def get_quality_alert_thresholds():
     return dict(load_policy()["quality"])
+
+
+def get_summary_coverage_policy():
+    return dict(load_policy().get("summary_coverage", {}))

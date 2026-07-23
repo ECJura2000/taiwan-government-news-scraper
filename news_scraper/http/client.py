@@ -12,7 +12,7 @@ from requests.exceptions import RequestException, SSLError, TooManyRedirects
 from urllib3.exceptions import InsecureRequestWarning
 from urllib3.util.retry import Retry
 
-from ..errors import ParseError
+from ..errors import CurlRequestError, ParseError
 from ..config import (
     HEADERS,
     REQUEST_TIMEOUT,
@@ -24,6 +24,17 @@ from ..config import (
 logger = logging.getLogger(__name__)
 
 THREAD_LOCAL = threading.local()
+HTTP_STATUS_MARKER = "__NEWS_SCRAPER_HTTP_STATUS__:"
+CURL_ERROR_CATEGORIES = {
+    6: "connection",
+    7: "connection",
+    22: "http",
+    28: "timeout",
+    35: "ssl",
+    52: "connection",
+    56: "connection",
+    60: "ssl",
+}
 
 
 def set_retry_timeout_extra_seconds(seconds: int) -> None:
@@ -170,7 +181,7 @@ def fetch_html(
                 extra_headers=extra_headers,
                 insecure=False,
             )
-        except (OSError, RequestException, subprocess.SubprocessError) as curl_error:
+        except (CurlRequestError, OSError, RequestException, subprocess.SubprocessError) as curl_error:
             if not is_insecure_ssl_allowed(url):
                 raise ssl_error from curl_error
             remember_ssl_verify_failure(url)
@@ -229,6 +240,63 @@ def fetch_json_data(
         raise ParseError("JSON 解析失敗：{} ({})".format(exc, url)) from exc
 
 
+def _split_curl_output(stdout: str) -> tuple[str, int | None]:
+    marker = "\n" + HTTP_STATUS_MARKER
+    marker_index = stdout.rfind(marker)
+    if marker_index < 0:
+        return stdout, None
+    body = stdout[:marker_index]
+    status_text = stdout[marker_index + len(marker) :].strip()
+    try:
+        return body, int(status_text)
+    except ValueError:
+        return body, None
+
+
+def _short_curl_error(stderr: str) -> str:
+    lines = [line.strip() for line in stderr.splitlines() if line.strip()]
+    return (lines[-1] if lines else "curl failed")[:500]
+
+
+def _run_curl(command: list[str], *, url: str, timeout: int | float) -> str:
+    command.extend(["--write-out", "\n{}%{{http_code}}".format(HTTP_STATUS_MARKER)])
+    try:
+        completed = subprocess.run(
+            command,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=timeout + 2,
+            check=False,
+        )
+    except subprocess.TimeoutExpired as exc:
+        raise CurlRequestError(
+            "curl 執行逾時：{} 秒 ({})".format(timeout, url),
+            url=url,
+            error_category="timeout",
+        ) from exc
+
+    body, http_status = _split_curl_output(completed.stdout)
+    if completed.returncode != 0:
+        category = CURL_ERROR_CATEGORIES.get(completed.returncode, "connection")
+        if http_status is not None and http_status >= 400:
+            category = "http"
+        raise CurlRequestError(
+            "curl 抓取失敗：{}；exit_code={}；http_status={} ({})".format(
+                _short_curl_error(completed.stderr),
+                completed.returncode,
+                http_status or 0,
+                url,
+            ),
+            url=url,
+            exit_code=completed.returncode,
+            http_status=http_status,
+            error_category=category,
+        )
+    return body
+
+
 def fetch_html_by_curl(url: str, timeout: int | float | None = REQUEST_TIMEOUT) -> str:
     timeout = get_effective_timeout(timeout)
     if timeout is None:
@@ -240,6 +308,8 @@ def fetch_html_by_curl(url: str, timeout: int | float | None = REQUEST_TIMEOUT) 
         str(timeout),
         "--max-time",
         str(timeout),
+        "-sS",
+        "--fail-with-body",
         "-A",
         HEADERS["User-Agent"],
         "-H",
@@ -248,16 +318,7 @@ def fetch_html_by_curl(url: str, timeout: int | float | None = REQUEST_TIMEOUT) 
         "Accept-Language: {}".format(HEADERS["Accept-Language"]),
         url,
     ]
-    completed = subprocess.run(
-        command,
-        capture_output=True,
-        text=True,
-        timeout=timeout + 2,
-        check=False,
-    )
-    if completed.returncode != 0:
-        raise RequestException("curl 抓取失敗：{} ({})".format(completed.stderr.strip(), url))
-    return completed.stdout
+    return _run_curl(command, url=url, timeout=timeout)
 
 
 def fetch_html_by_curl_with_headers(
@@ -305,16 +366,7 @@ def fetch_html_by_curl_with_headers(
         command.extend(["--data-binary", str(data)])
     command.append(url)
 
-    completed = subprocess.run(
-        command,
-        capture_output=True,
-        text=True,
-        timeout=timeout + 2,
-        check=False,
-    )
-    if completed.returncode != 0:
-        raise RequestException("curl 抓取失敗：{} ({})".format(completed.stderr.strip(), url))
-    return completed.stdout
+    return _run_curl(command, url=url, timeout=timeout)
 
 
 def fetch_html_resilient(
@@ -333,6 +385,6 @@ def fetch_html_resilient(
     for fetcher in fetchers:
         try:
             return fetcher()
-        except (RequestException, OSError, subprocess.SubprocessError, ParseError) as exc:
+        except (CurlRequestError, RequestException, OSError, subprocess.SubprocessError, ParseError) as exc:
             errors.append(exc)
     raise errors[-1]

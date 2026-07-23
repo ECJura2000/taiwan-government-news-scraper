@@ -1,11 +1,13 @@
 import json
 import logging
 import os
+import re
+import statistics
 import threading
 from contextlib import contextmanager
 from contextvars import ContextVar
 from dataclasses import asdict, dataclass, field
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from enum import Enum
 from pathlib import Path
 from typing import Any, TypedDict, cast
@@ -16,10 +18,11 @@ from requests.exceptions import ConnectionError, HTTPError, SSLError, Timeout
 
 from .config import AI_POLICY_RULESET_VERSION, get_ai_policy_ruleset_hash
 from .io_utils import atomic_write_text
-from .policy import get_zero_item_alert_runs
+from .policy import get_summary_coverage_policy, get_zero_item_alert_runs
 
 CURRENT_RUN_CONTEXT = ContextVar("news_scraper_run_context", default=None)
 logger = logging.getLogger(__name__)
+REPORT_SCHEMA_VERSION = 2
 
 
 class QualitySummary(TypedDict, total=False):
@@ -173,6 +176,12 @@ def record_parser_warning(parser, value, error=None, source=""):
 def classify_error(error):
     if error is None:
         return ""
+    structured_category = getattr(error, "error_category", "")
+    if structured_category:
+        try:
+            return ErrorCategory(structured_category)
+        except ValueError:
+            return ErrorCategory.UNEXPECTED
     if isinstance(error, SSLError):
         return ErrorCategory.SSL
     if isinstance(error, Timeout) or "timeout" in type(error).__name__.lower():
@@ -191,7 +200,17 @@ def classify_error(error):
     return ErrorCategory.UNEXPECTED
 
 
-def build_run_report(*, context, started_at, finished_at, selected_sources, news_count, output_path):
+def build_run_report(
+    *,
+    context,
+    started_at,
+    finished_at,
+    selected_sources,
+    news_count,
+    output_path,
+    week_start: date | None = None,
+    week_end: date | None = None,
+):
     attempts = context.snapshot_attempts()
     error_counts: dict[str, int] = {}
     for attempt in attempts:
@@ -210,11 +229,15 @@ def build_run_report(*, context, started_at, finished_at, selected_sources, news
         status = RunStatus.SUCCESS
 
     return {
+        "report_schema_version": REPORT_SCHEMA_VERSION,
         "status": status,
         "started_at": started_at.isoformat(timespec="seconds"),
         "finished_at": finished_at.isoformat(timespec="seconds"),
         "duration_seconds": round((finished_at - started_at).total_seconds(), 3),
         "selected_source_count": len(selected_sources),
+        "selected_sources": list(selected_sources),
+        "week_start": week_start.isoformat() if week_start else "",
+        "week_end": week_end.isoformat() if week_end else "",
         "news_count": news_count,
         "failed_sources": list(context.failed_sources),
         "error_counts": error_counts,
@@ -260,10 +283,102 @@ def validate_run_report(report):
         raise ValueError("run report 的 source_attempts/quality 型別錯誤")
 
 
-def detect_run_anomalies(context, selected_sources, recent_reports):
+def _report_window(report: dict[str, Any], fallback_key: str) -> tuple[str, str, str]:
+    week_start = str(report.get("week_start") or "")
+    week_end = str(report.get("week_end") or "")
+    if week_start and week_end:
+        return "{}:{}".format(week_start, week_end), week_start, week_end
+
+    output_file = str(report.get("output_file") or "")
+    match = re.search(r"（(\d{3})(\d{2})(\d{2})至(\d{3})(\d{2})(\d{2})）", output_file)
+    if match:
+        start_year, start_month, start_day, end_year, end_month, end_day = (int(value) for value in match.groups())
+        inferred_start = date(start_year + 1911, start_month, start_day).isoformat()
+        inferred_end = date(end_year + 1911, end_month, end_day).isoformat()
+        return "{}:{}".format(inferred_start, inferred_end), inferred_start, inferred_end
+    return fallback_key, "", ""
+
+
+def _source_finished_successfully(report: dict[str, Any], source: str) -> bool:
+    attempts = [attempt for attempt in report.get("source_attempts", []) if attempt.get("source") == source]
+    if attempts:
+        return attempts[-1].get("status") == AttemptStatus.SUCCESS
+    if source in report.get("failed_sources", []):
+        return False
+    return source in report.get("quality", {}).get("source_counts", {})
+
+
+def _source_output_count(report: dict[str, Any], source: str) -> int | None:
+    source_counts = report.get("quality", {}).get("source_counts", {})
+    if source in source_counts:
+        value = source_counts[source]
+        return int(value) if isinstance(value, (int, float)) else None
+    attempts = [attempt for attempt in report.get("source_attempts", []) if attempt.get("source") == source]
+    if attempts and attempts[-1].get("status") == AttemptStatus.SUCCESS:
+        value = attempts[-1].get("item_count")
+        return int(value) if isinstance(value, (int, float)) else None
+    return None
+
+
+def _append_summary_coverage_anomaly(
+    anomalies: list[dict[str, Any]],
+    context: RunContext,
+    selected_sources: list[str],
+    recent_reports: list[dict[str, Any]],
+) -> None:
+    policy = get_summary_coverage_policy()
+    minimum_history = int(policy.get("minimum_history", 3))
+    minimum_output_count = int(policy.get("minimum_output_count", 20))
+    drop_ratio = float(policy.get("drop_ratio", 0.20))
+    current_output_count = int(context.quality_summary.get("output_count", 0))
+    current_coverage = float(context.quality_summary.get("summary_coverage_rate", 0.0))
+    if current_output_count < minimum_output_count:
+        return
+
+    selected_source_set = set(selected_sources)
+
+    def has_matching_sources(report: dict[str, Any]) -> bool:
+        historical_sources = report.get("selected_sources")
+        if isinstance(historical_sources, list):
+            return set(historical_sources) == selected_source_set
+        return report.get("selected_source_count") == len(selected_sources)
+
+    historical_coverages = [
+        float(report.get("quality", {}).get("summary_coverage_rate"))
+        for report in recent_reports
+        if has_matching_sources(report)
+        and not report.get("failed_sources")
+        and isinstance(report.get("quality", {}).get("summary_coverage_rate"), (int, float))
+    ]
+    if len(historical_coverages) < minimum_history:
+        return
+    reference_coverage = statistics.median(historical_coverages[:12])
+    if current_coverage < reference_coverage - drop_ratio:
+        anomalies.append(
+            {
+                "category": "summary_coverage_drop",
+                "current_coverage_rate": round(current_coverage, 4),
+                "reference_coverage_rate": round(reference_coverage, 4),
+                "drop_threshold": drop_ratio,
+                "history_count": min(len(historical_coverages), 12),
+                "message": "摘要覆蓋率 {:.1%}，低於近期中位數 {:.1%}。".format(
+                    current_coverage,
+                    reference_coverage,
+                ),
+            }
+        )
+
+
+def detect_run_anomalies(
+    context,
+    selected_sources,
+    recent_reports,
+    week_start: date | None = None,
+    week_end: date | None = None,
+):
     source_counts = context.quality_summary.get("source_counts", {})
     failed_sources = set(context.failed_sources)
-    anomalies = []
+    anomalies: list[dict[str, Any]] = []
 
     for source in selected_sources:
         if source in failed_sources or source_counts.get(source, 0) != 0:
@@ -272,36 +387,47 @@ def detect_run_anomalies(context, selected_sources, recent_reports):
         if required_zero_runs <= 0:
             continue
 
-        consecutive_zero_runs = 1
-        for report in recent_reports:
-            previous_source_counts = report.get("quality", {}).get("source_counts", {})
-            if source in previous_source_counts:
-                if previous_source_counts[source] == 0:
-                    consecutive_zero_runs += 1
-                    if consecutive_zero_runs >= required_zero_runs:
-                        break
-                    continue
+        current_window = (
+            "{}:{}".format(week_start.isoformat(), week_end.isoformat())
+            if week_start and week_end
+            else "current"
+        )
+        evidence_windows = [
+            {
+                "week_start": week_start.isoformat() if week_start else "",
+                "week_end": week_end.isoformat() if week_end else "",
+            }
+        ]
+        seen_windows = {current_window}
+        for index, report in enumerate(recent_reports):
+            window_key, previous_week_start, previous_week_end = _report_window(report, "legacy:{}".format(index))
+            if window_key in seen_windows:
+                continue
+            seen_windows.add(window_key)
+            if not _source_finished_successfully(report, source):
                 break
-            attempts = report.get("source_attempts", [])
-            successful_attempts = [
-                attempt
-                for attempt in attempts
-                if attempt.get("source") == source and attempt.get("status") == "success"
-            ]
-            if successful_attempts:
-                if successful_attempts[-1].get("item_count") == 0:
-                    consecutive_zero_runs += 1
+            if _source_output_count(report, source) != 0:
                 break
-        if consecutive_zero_runs >= required_zero_runs:
+            evidence_windows.append(
+                {
+                    "week_start": previous_week_start,
+                    "week_end": previous_week_end,
+                }
+            )
+            if len(evidence_windows) >= required_zero_runs:
+                break
+        if len(evidence_windows) >= required_zero_runs:
             anomalies.append(
                 {
                     "category": "consecutive_zero_items",
                     "source": source,
-                    "zero_run_count": consecutive_zero_runs,
+                    "zero_run_count": len(evidence_windows),
+                    "distinct_window_count": len(evidence_windows),
                     "threshold": required_zero_runs,
-                    "message": "{} 連續 {} 次成功執行但抓到 0 筆，可能是網站改版。".format(
+                    "evidence_windows": evidence_windows,
+                    "message": "{} 連續 {} 個不同週期成功執行但抓到 0 筆，可能是網站改版。".format(
                         source,
-                        consecutive_zero_runs,
+                        len(evidence_windows),
                     ),
                 }
             )
@@ -325,6 +451,7 @@ def detect_run_anomalies(context, selected_sources, recent_reports):
                 }
             )
 
+    _append_summary_coverage_anomaly(anomalies, context, selected_sources, recent_reports)
     context.anomalies = anomalies
     return anomalies
 

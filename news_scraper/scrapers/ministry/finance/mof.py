@@ -2,7 +2,7 @@ import logging
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from urllib.parse import urlparse
 
-from ....config import MOF_RSS_TIMEOUT, URLS
+from ....config import MOF_RSS_TIMEOUT, get_source_urls
 from ....http.client import fetch_html_by_curl
 from ....models import make_news_item
 from ....rss.parser import (
@@ -28,9 +28,7 @@ def fetch_mof_rss_items(rss_url):
 
 def scrape_mof_this_week():
     source = "財政部"
-    rss_urls = URLS[source]
-    if isinstance(rss_urls, str):
-        rss_urls = [rss_urls]
+    rss_urls = get_source_urls(source)
 
     start_of_week, end_of_week = get_cached_week_range()
     seen_links = set()

@@ -1,3 +1,5 @@
+from typing import Any
+
 from ..config import AFFILIATED_GROUPS
 from .text import clean_text, normalize_title_for_dedupe
 
@@ -32,8 +34,8 @@ def choose_preferred_affiliated_item(left, right):
 
 
 def dedupe_affiliated_news(news_items):
-    kept_items = []
-    affiliated_items = {}
+    kept_items: list[Any] = []
+    affiliated_items: dict[tuple[str, str, str], Any] = {}
 
     for item in news_items:
         source = clean_text(item.get("source", ""))

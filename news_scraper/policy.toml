@@ -27,3 +27,8 @@ duplicate_count = 5
 duplicate_ratio = 0.20
 excluded_non_news_count = 3
 excluded_non_news_ratio = 0.25
+
+[summary_coverage]
+minimum_history = 3
+minimum_output_count = 20
+drop_ratio = 0.20

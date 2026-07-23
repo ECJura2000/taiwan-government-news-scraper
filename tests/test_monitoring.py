@@ -39,11 +39,17 @@ def test_build_and_write_run_report(tmp_path):
         selected_sources=["財政部", "工程會"],
         news_count=4,
         output_path=tmp_path / "weekly.xlsx",
+        week_start=datetime(2026, 6, 1).date(),
+        week_end=datetime(2026, 6, 7).date(),
     )
     report_path = write_run_report(report, tmp_path / "reports")
     saved_report = json.loads(report_path.read_text(encoding="utf-8"))
 
     assert saved_report["status"] == "success"
+    assert saved_report["report_schema_version"] == 2
+    assert saved_report["week_start"] == "2026-06-01"
+    assert saved_report["week_end"] == "2026-06-07"
+    assert saved_report["selected_sources"] == ["財政部", "工程會"]
     assert saved_report["error_counts"] == {"timeout": 1}
     assert saved_report["insecure_ssl_hosts"] == ["www.pcc.gov.tw"]
     assert saved_report["ai_policy"]["version"] == "2.1.0"
@@ -85,6 +91,130 @@ def test_detect_run_anomalies_marks_consecutive_zero_items():
     assert anomalies[0]["category"] == "consecutive_zero_items"
     assert anomalies[0]["source"] == "行政院"
     assert anomalies[0]["threshold"] == 2
+
+
+def test_zero_item_anomaly_deduplicates_same_week_reruns(monkeypatch):
+    monkeypatch.setattr("news_scraper.monitoring.get_zero_item_alert_runs", lambda source: 2)
+    context = RunContext(quality_summary={"source_counts": {"行政院": 0}})
+    same_window = {
+        "week_start": "2026-06-01",
+        "week_end": "2026-06-07",
+        "failed_sources": [],
+        "source_attempts": [{"source": "行政院", "status": "success", "item_count": 0}],
+        "quality": {"source_counts": {"行政院": 0}},
+    }
+
+    anomalies = detect_run_anomalies(
+        context,
+        ["行政院"],
+        [same_window, same_window],
+        week_start=datetime(2026, 6, 1).date(),
+        week_end=datetime(2026, 6, 7).date(),
+    )
+
+    assert anomalies == []
+
+
+def test_zero_item_anomaly_stops_at_failed_history(monkeypatch):
+    monkeypatch.setattr("news_scraper.monitoring.get_zero_item_alert_runs", lambda source: 2)
+    context = RunContext(quality_summary={"source_counts": {"行政院": 0}})
+    failed_history = {
+        "week_start": "2026-05-25",
+        "week_end": "2026-05-31",
+        "failed_sources": ["行政院"],
+        "source_attempts": [{"source": "行政院", "status": "failed", "item_count": 0}],
+        "quality": {"source_counts": {"行政院": 0}},
+    }
+
+    anomalies = detect_run_anomalies(
+        context,
+        ["行政院"],
+        [failed_history],
+        week_start=datetime(2026, 6, 1).date(),
+        week_end=datetime(2026, 6, 7).date(),
+    )
+
+    assert anomalies == []
+
+
+def test_zero_item_anomaly_records_distinct_week_evidence(monkeypatch):
+    monkeypatch.setattr("news_scraper.monitoring.get_zero_item_alert_runs", lambda source: 2)
+    context = RunContext(quality_summary={"source_counts": {"行政院": 0}})
+    previous = {
+        "week_start": "2026-05-25",
+        "week_end": "2026-05-31",
+        "failed_sources": [],
+        "source_attempts": [{"source": "行政院", "status": "success", "item_count": 0}],
+        "quality": {"source_counts": {"行政院": 0}},
+    }
+
+    anomalies = detect_run_anomalies(
+        context,
+        ["行政院"],
+        [previous],
+        week_start=datetime(2026, 6, 1).date(),
+        week_end=datetime(2026, 6, 7).date(),
+    )
+
+    assert anomalies[0]["distinct_window_count"] == 2
+    assert anomalies[0]["evidence_windows"] == [
+        {"week_start": "2026-06-01", "week_end": "2026-06-07"},
+        {"week_start": "2026-05-25", "week_end": "2026-05-31"},
+    ]
+
+
+def test_summary_coverage_drop_compares_recent_matching_runs(monkeypatch):
+    monkeypatch.setattr("news_scraper.monitoring.get_zero_item_alert_runs", lambda source: 0)
+    monkeypatch.setattr(
+        "news_scraper.monitoring.get_summary_coverage_policy",
+        lambda: {"minimum_history": 3, "minimum_output_count": 20, "drop_ratio": 0.2},
+    )
+    context = RunContext(
+        quality_summary={
+            "source_counts": {"行政院": 10},
+            "output_count": 100,
+            "summary_coverage_rate": 0.4,
+        }
+    )
+    recent = [
+        {
+            "selected_source_count": 1,
+            "selected_sources": ["行政院"],
+            "failed_sources": [],
+            "quality": {"summary_coverage_rate": coverage},
+        }
+        for coverage in (0.8, 0.75, 0.78)
+    ]
+
+    anomalies = detect_run_anomalies(context, ["行政院"], recent)
+
+    assert anomalies[0]["category"] == "summary_coverage_drop"
+    assert anomalies[0]["reference_coverage_rate"] == 0.78
+
+
+def test_summary_coverage_drop_ignores_different_source_combination(monkeypatch):
+    monkeypatch.setattr("news_scraper.monitoring.get_zero_item_alert_runs", lambda source: 0)
+    monkeypatch.setattr(
+        "news_scraper.monitoring.get_summary_coverage_policy",
+        lambda: {"minimum_history": 1, "minimum_output_count": 20, "drop_ratio": 0.2},
+    )
+    context = RunContext(
+        quality_summary={
+            "source_counts": {"行政院": 10},
+            "output_count": 100,
+            "summary_coverage_rate": 0.1,
+        }
+    )
+    recent = [
+        {
+            "selected_source_count": 1,
+            "selected_sources": ["財政部"],
+            "failed_sources": [],
+            "quality": {"summary_coverage_rate": 0.9},
+        }
+    ]
+
+    assert detect_run_anomalies(context, ["行政院"], recent) == []
 
 
 def test_detect_run_anomalies_disables_zero_check_for_configured_source():

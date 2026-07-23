@@ -27,7 +27,8 @@ jobs:
           python -m pip install --require-hashes -r requirements-dev.lock.txt
           python -m pip install --no-deps -e .
       - run: python -m compileall -q news_scraper
-      - run: python -m pytest -q --cov=news_scraper.quality --cov=news_scraper.utils.text --cov-fail-under=80
+      - run: python -m pytest -q --cov=news_scraper --cov-report=term --cov-report=json:coverage-package.json
+      - run: python scripts/check_coverage.py coverage-package.json
 
   quality:
     runs-on: ubuntu-latest

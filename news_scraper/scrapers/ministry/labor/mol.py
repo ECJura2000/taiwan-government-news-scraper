@@ -4,6 +4,7 @@ from ....config import LIST_PAGE_TIMEOUT, PAGED_SITE_WORKERS, URLS
 from ....http.async_client import fetch_paginated_soups
 from ....models import make_news_item
 from ....utils.dates import get_cached_week_range
+from ....utils.text import clean_text
 from ...base import parse_mol_data_spans
 
 PAGE_FETCH_BATCH_SIZE = 3
@@ -72,7 +73,7 @@ def scrape_mol_this_week():
                         department_label,
                         news_date,
                         a_tag.get_text(" ", strip=True),
-                        urljoin(list_url, a_tag.get("href", "").strip()),
+                        urljoin(list_url, clean_text(a_tag.get("href", ""))),
                     )
                 )
 

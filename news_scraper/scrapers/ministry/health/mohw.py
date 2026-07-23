@@ -4,6 +4,7 @@ from ....config import MOHW_LIST_TIMEOUT, PAGED_SITE_WORKERS
 from ....http.async_client import fetch_paginated_soups
 from ....models import make_news_item
 from ....utils.dates import get_cached_week_range, roc_to_ad_date
+from ....utils.text import clean_text
 
 PAGE_FETCH_BATCH_SIZE = 3
 
@@ -69,7 +70,7 @@ def scrape_mohw_this_week():
                         source,
                         news_date,
                         p_tag.get_text(" ", strip=True),
-                        urljoin("https://www.mohw.gov.tw/", a_tag.get("href", "").strip()),
+                        urljoin("https://www.mohw.gov.tw/", clean_text(a_tag.get("href", ""))),
                     )
                 )
 
