@@ -95,7 +95,7 @@ chmod +x 各機關新聞整理
 Linux 與 macOS 可用下列方式核對雜湊：
 
 ```bash
-sha256sum -c taiwan-government-news-v1.2.1-SHA256SUMS.txt
+sha256sum -c taiwan-government-news-v1.3.0-SHA256SUMS.txt
 ```
 
 Windows 可用 `Get-FileHash` 計算後，與 `SHA256SUMS.txt` 的對應紀錄比對。正式 Release 單檔不得超過 90 MiB，全部資產不得超過 220 MiB；Actions 中間 artifacts 只保留 1 天。

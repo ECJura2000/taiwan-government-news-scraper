@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+## 1.3.0 - 2026-07-23
+
+- Added layered Taipei Veterans General Hospital fetching with Cloudflare detection, Selenium fallback, official-homepage fallback, and parser fixtures.
+- Added structured curl transport errors for timeout, HTTP, SSL, and connection failures while suppressing noisy progress output and tolerating isolated invalid UTF-8 bytes.
+- Added schema-v2 weekly reports with explicit week windows, distinct-week zero-item evidence, and source-combination-aware summary coverage trend alerts.
+- Expanded Mypy to the complete `news_scraper` package and added per-module coverage gates for HTTP, monitoring, main, and the Taipei Veterans General Hospital scraper.
+- Replaced URL-only scheduled smoke checks with rotating live parser runs covering every source and fixed high-risk sources.
 - Consolidated pending Dependabot updates for development dependencies and GitHub Actions.
 
 ## 1.2.1 - 2026-07-15

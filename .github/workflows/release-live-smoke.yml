@@ -11,7 +11,7 @@ on:
       tag:
         description: Existing release tag to verify
         required: true
-        default: v1.2.1
+        default: v1.3.0
         type: string
 
 permissions:

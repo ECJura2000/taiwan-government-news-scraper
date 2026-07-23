@@ -63,7 +63,8 @@ jobs:
           python -m ruff check .
           python -m mypy
           python -m compileall -q news_scraper build_entry.py scripts
-          python -m pytest -q --cov=news_scraper.quality --cov=news_scraper.utils.text --cov-fail-under=80
+          python -m pytest -q --cov=news_scraper --cov-report=term --cov-report=json:coverage-package.json
+          python scripts/check_coverage.py coverage-package.json
           python -m bandit -q -ll -r news_scraper scripts -x tests
           python -m pip_audit -r requirements.lock.txt --require-hashes
           python scripts/check_workflows.py
