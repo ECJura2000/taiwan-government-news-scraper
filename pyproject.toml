@@ -31,7 +31,7 @@ dev = [
     "pytest>=9,<10",
     "pytest-cov>=6,<8",
     "ruff>=0.15.17,<1",
-    "types-requests>=2.33,<3",
+    "types-requests>=2.33.0.20260712,<3",
 ]
 
 [project.scripts]
