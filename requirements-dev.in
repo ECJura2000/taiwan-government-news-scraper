@@ -1,6 +1,7 @@
-hypothesis>=6.155.2,<7
-mypy>=1.19,<2
-pytest>=9,<10
+coverage[toml]>=7.10.6,<8
+hypothesis>=6.156.7,<7
+mypy>=2.3.0,<3
+pytest>=9.1.1,<10
 pytest-cov>=6,<8
 ruff>=0.15.17,<1
-types-requests>=2.33,<3
+types-requests>=2.33.0.20260712,<3

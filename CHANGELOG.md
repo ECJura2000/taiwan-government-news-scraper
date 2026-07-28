@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+## 1.4.0 - 2026-07-28
+
+- Added a prominent latest-release download table, real GUI and Excel previews, and platform-specific first-run guides.
+- Split macOS portable builds into explicit Apple Silicon and Intel archives.
+- Simplified public Release assets while retaining per-platform size manifests as short-lived Actions artifacts.
+- Expanded generated Release notes with exact download choices and first-run requirements.
+- Consolidated pending Python and GitHub Actions dependency updates.
+
 ## 1.3.0 - 2026-07-23
 
 - Added layered Taipei Veterans General Hospital fetching with Cloudflare detection, Selenium fallback, official-homepage fallback, and parser fixtures.

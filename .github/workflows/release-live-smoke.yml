@@ -11,7 +11,7 @@ on:
       tag:
         description: Existing release tag to verify
         required: true
-        default: v1.3.0
+        default: v1.4.0
         type: string
 
 permissions:
@@ -32,6 +32,14 @@ jobs:
             label: Windows
             platform: windows
             executable: 各機關新聞整理.exe
+          - os: macos-15
+            label: macOS Apple Silicon
+            platform: macos-arm64
+            executable: 各機關新聞整理
+          - os: macos-15-intel
+            label: macOS Intel
+            platform: macos-x64
+            executable: 各機關新聞整理
     runs-on: ${{ matrix.os }}
     timeout-minutes: 20
     steps:

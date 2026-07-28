@@ -169,31 +169,43 @@ def test_cancelled_application_writes_report_without_excel(monkeypatch, tmp_path
     assert not (workspace.output / ".news-scraper.run.lock").exists()
 
 
-def test_portable_archive_has_expected_unicode_layout_and_permissions(tmp_path):
+@pytest.mark.parametrize(
+    ("platform", "executable_name"),
+    [
+        ("linux", "各機關新聞整理"),
+        ("windows", "各機關新聞整理.exe"),
+        ("macos-arm64", "各機關新聞整理"),
+        ("macos-x64", "各機關新聞整理"),
+    ],
+)
+def test_portable_archive_has_expected_unicode_layout_and_permissions(tmp_path, platform, executable_name):
     from scripts.package_release import build_archive
 
     project_root = Path(__file__).resolve().parents[1]
     dist_dir = tmp_path / "dist"
     output_dir = tmp_path / "release"
     dist_dir.mkdir()
-    executable = dist_dir / "各機關新聞整理"
+    executable = dist_dir / executable_name
     executable.write_bytes(b"binary")
 
     archive_path = build_archive(
         project_root=project_root,
         dist_dir=dist_dir,
         output_dir=output_dir,
-        platform="macos",
+        platform=platform,
         version="1.2.0",
         max_executable_mib=1,
     )
 
     import zipfile
 
+    assert archive_path.name == "taiwan-government-news-v1.2.0-{}.zip".format(platform)
     with zipfile.ZipFile(archive_path) as archive:
         names = archive.namelist()
-        executable_info = archive.getinfo("各機關新聞/各機關新聞整理")
+        executable_info = archive.getinfo("各機關新聞/{}".format(executable_name))
         assert "各機關新聞/新聞搜集區/執行紀錄/" in names
         assert "各機關新聞/程式資料/logs/" in names
         assert executable_info.external_attr >> 16 & 0o111
         assert "各機關新聞/SHA256SUMS.txt" in names
+        assert "各機關新聞/啟動圖解/Windows.svg" in names
+        assert "各機關新聞/啟動圖解/macOS.svg" in names

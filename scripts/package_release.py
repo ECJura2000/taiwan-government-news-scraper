@@ -19,6 +19,10 @@ from news_scraper.io_utils import atomic_write_text
 ROOT_FOLDER = "各機關新聞"
 EXECUTABLE_NAME = "各機關新聞整理"
 EMPTY_DIRECTORIES = ("程式資料/", "程式資料/logs/", "新聞搜集區/", "新聞搜集區/執行紀錄/")
+PORTABLE_GUIDES = (
+    ("docs/images/first-run-windows.svg", "啟動圖解/Windows.svg"),
+    ("docs/images/first-run-macos.svg", "啟動圖解/macOS.svg"),
+)
 
 
 def sha256(path: Path) -> str:
@@ -67,12 +71,12 @@ def build_archive(
         raise ValueError("執行檔 {:.2f} MiB 超過 {:.2f} MiB 上限".format(executable_size_mib, max_executable_mib))
 
     readme_path = project_root / "docs" / "PORTABLE_README.txt"
-    manifest_text = "{}  {}\n{}  {}\n".format(
-        sha256(executable_path),
-        executable_file,
-        sha256(readme_path),
-        "使用說明.txt",
-    )
+    manifest_entries = [
+        (executable_path, executable_file),
+        (readme_path, "使用說明.txt"),
+    ]
+    manifest_entries.extend((project_root / source, destination) for source, destination in PORTABLE_GUIDES)
+    manifest_text = "".join("{}  {}\n".format(sha256(source), destination) for source, destination in manifest_entries)
     output_dir.mkdir(parents=True, exist_ok=True)
     archive_path = output_dir / "taiwan-government-news-v{}-{}.zip".format(version, platform)
     descriptor, temporary_name = tempfile.mkstemp(dir=output_dir, prefix=".release-", suffix=".zip")
@@ -85,6 +89,8 @@ def build_archive(
                 add_directory(archive, directory)
             add_file(archive, executable_path, executable_file, executable=True)
             add_file(archive, readme_path, "使用說明.txt")
+            for source, destination in PORTABLE_GUIDES:
+                add_file(archive, project_root / source, destination)
             manifest_info = zipfile.ZipInfo("{}/SHA256SUMS.txt".format(ROOT_FOLDER))
             manifest_info.external_attr = (stat.S_IFREG | 0o644) << 16
             manifest_info.compress_type = zipfile.ZIP_DEFLATED
@@ -107,7 +113,11 @@ def build_archive(
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="建立各機關新聞跨平台可攜 ZIP。")
-    parser.add_argument("--platform", required=True, choices=("linux", "windows", "macos"))
+    parser.add_argument(
+        "--platform",
+        required=True,
+        choices=("linux", "windows", "macos-arm64", "macos-x64"),
+    )
     parser.add_argument("--dist-dir", type=Path, default=Path("dist"))
     parser.add_argument("--output-dir", type=Path, default=Path("release-assets"))
     parser.add_argument("--version")
