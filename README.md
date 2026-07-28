@@ -56,8 +56,6 @@ news_scraper/
 
 ## 下載執行檔
 
-維護者可在 GitHub Actions 的 `Build and release portable apps` 按 `Run workflow`，一次建置 Linux、Windows 與 macOS 三個可攜 ZIP。每個 ZIP 解壓後都會建立 `各機關新聞/`，內含同時支援 GUI 與 headless 的單檔執行檔、程式資料及新聞搜集區。正式發布前必須通過 registry、GUI 與 headless smoke test。
-
 Windows：
 
 解壓 ZIP 後，直接開啟 `各機關新聞整理.exe` 使用 GUI；Codex 或排程可執行：
