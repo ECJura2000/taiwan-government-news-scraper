@@ -2,13 +2,20 @@ import json
 import socket
 import subprocess
 import sys
+import types
 from datetime import datetime
 from pathlib import Path
 
 import pytest
 
 from news_scraper.application import RunOptions, RunResult, run_news_scraper
-from news_scraper.gui import GuiSettings, load_settings, save_settings
+from news_scraper.gui import (
+    GuiSettings,
+    enable_windows_dpi_awareness,
+    get_windows_dpi_awareness,
+    load_settings,
+    save_settings,
+)
 from news_scraper.io_utils import atomic_write_text
 from news_scraper.paths import WorkspacePaths
 from news_scraper.run_lock import RunAlreadyActiveError, RunLock
@@ -70,6 +77,92 @@ def test_invalid_gui_numeric_settings_fall_back_safely(tmp_path):
 
     assert settings.max_workers == 8
     assert settings.report_retention_days == 180
+
+
+def test_windows_dpi_awareness_prefers_per_monitor_v2(monkeypatch):
+    import news_scraper.gui as gui
+
+    calls = []
+    ctypes_stub = types.ModuleType("ctypes")
+    ctypes_stub.c_void_p = lambda value: value
+    ctypes_stub.windll = types.SimpleNamespace(
+        user32=types.SimpleNamespace(
+            SetProcessDpiAwarenessContext=lambda context: calls.append(context) or True,
+        ),
+    )
+    monkeypatch.setattr(gui.sys, "platform", "win32")
+    monkeypatch.setitem(sys.modules, "ctypes", ctypes_stub)
+
+    assert enable_windows_dpi_awareness() is True
+    assert calls == [-4]
+
+
+def test_windows_dpi_awareness_falls_back_for_older_windows(monkeypatch):
+    import news_scraper.gui as gui
+
+    calls = []
+    ctypes_stub = types.ModuleType("ctypes")
+    ctypes_stub.c_void_p = lambda value: value
+    ctypes_stub.windll = types.SimpleNamespace(
+        user32=types.SimpleNamespace(),
+        shcore=types.SimpleNamespace(
+            SetProcessDpiAwareness=lambda awareness: calls.append(awareness) or 0,
+        ),
+    )
+    monkeypatch.setattr(gui.sys, "platform", "win32")
+    monkeypatch.setitem(sys.modules, "ctypes", ctypes_stub)
+
+    assert enable_windows_dpi_awareness() is True
+    assert calls == [2]
+
+
+def test_windows_dpi_awareness_query_reports_per_monitor(monkeypatch):
+    import news_scraper.gui as gui
+
+    class StubFunction:
+        def __init__(self, callback):
+            self.callback = callback
+
+        def __call__(self, *args):
+            return self.callback(*args)
+
+    ctypes_stub = types.ModuleType("ctypes")
+    ctypes_stub.c_int = int
+    ctypes_stub.c_void_p = lambda value=None: value
+    ctypes_stub.windll = types.SimpleNamespace(
+        user32=types.SimpleNamespace(
+            GetThreadDpiAwarenessContext=StubFunction(lambda: "context"),
+            GetAwarenessFromDpiAwarenessContext=StubFunction(
+                lambda context: 2 if context == "context" else -1
+            ),
+        ),
+    )
+    monkeypatch.setattr(gui.sys, "platform", "win32")
+    monkeypatch.setitem(sys.modules, "ctypes", ctypes_stub)
+
+    assert get_windows_dpi_awareness() == 2
+
+
+def test_windows_gui_smoke_rejects_non_per_monitor_awareness(monkeypatch, capsys):
+    import news_scraper.gui as gui
+
+    monkeypatch.setattr(gui.sys, "platform", "win32")
+    monkeypatch.setattr(gui, "enable_windows_dpi_awareness", lambda: True)
+    monkeypatch.setattr(gui, "get_windows_dpi_awareness", lambda: 1)
+
+    assert gui.main(smoke_test=True) == 1
+    assert "Per-Monitor DPI awareness" in capsys.readouterr().err
+
+
+def test_windows_manifest_declares_per_monitor_v2():
+    project_root = Path(__file__).resolve().parents[1]
+    manifest = (project_root / "windows-dpi.manifest").read_text(encoding="utf-8")
+    spec = (project_root / "news-scraper.spec").read_text(encoding="utf-8")
+
+    assert "PerMonitorV2, PerMonitor" in manifest
+    assert "<dpiAware" in manifest
+    assert "{8e0f7a12-bfb3-4fe8-b9a5-48fd50a15a9a}" in manifest
+    assert "manifest=windows_manifest" in spec
 
 
 def test_headless_source_listing_does_not_import_tkinter():

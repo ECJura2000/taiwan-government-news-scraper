@@ -16,6 +16,7 @@ on:
       - "pyproject.toml"
       - "requirements*.txt"
       - "scripts/package_release.py"
+      - "windows-dpi.manifest"
   push:
     tags:
       - "v*"

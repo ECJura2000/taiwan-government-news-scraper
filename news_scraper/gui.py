@@ -76,6 +76,53 @@ def hide_windows_console() -> None:
         return
 
 
+def enable_windows_dpi_awareness() -> bool:
+    """Prevent Windows from bitmap-scaling the Tk interface on high-DPI displays."""
+
+    if sys.platform != "win32":
+        return False
+    try:
+        import ctypes
+    except ImportError:
+        return False
+
+    try:
+        if ctypes.windll.user32.SetProcessDpiAwarenessContext(ctypes.c_void_p(-4)):
+            return True
+    except (AttributeError, OSError, TypeError, ValueError):
+        pass
+
+    try:
+        result = ctypes.windll.shcore.SetProcessDpiAwareness(2)
+        if result in (0, -2147024891, 2147942405):
+            return True
+    except (AttributeError, OSError, TypeError, ValueError):
+        pass
+
+    try:
+        return bool(ctypes.windll.user32.SetProcessDPIAware())
+    except (AttributeError, OSError, TypeError, ValueError):
+        return False
+
+
+def get_windows_dpi_awareness() -> int | None:
+    """Return the Windows DPI_AWARENESS value for the current thread."""
+
+    if sys.platform != "win32":
+        return None
+    try:
+        import ctypes
+
+        get_context = ctypes.windll.user32.GetThreadDpiAwarenessContext
+        get_awareness = ctypes.windll.user32.GetAwarenessFromDpiAwarenessContext
+        get_context.restype = ctypes.c_void_p
+        get_awareness.argtypes = [ctypes.c_void_p]
+        get_awareness.restype = ctypes.c_int
+        return int(get_awareness(get_context()))
+    except (AttributeError, OSError, TypeError, ValueError):
+        return None
+
+
 class QueueLogHandler(logging.Handler):
     def __init__(self, events: queue.Queue):
         super().__init__()
@@ -455,6 +502,10 @@ class NewsScraperApp:
 
 
 def main(smoke_test: bool = False) -> int:
+    enable_windows_dpi_awareness()
+    if smoke_test and sys.platform == "win32" and get_windows_dpi_awareness() != 2:
+        print("Windows GUI 未啟用 Per-Monitor DPI awareness。", file=sys.stderr)
+        return 1
     hide_windows_console()
     try:
         import tkinter as tk

@@ -1,5 +1,6 @@
 # -*- mode: python ; coding: utf-8 -*-
 
+import sys
 from pathlib import Path
 
 from PyInstaller.utils.hooks import collect_all
@@ -15,6 +16,7 @@ def source_module_name(source_path):
 
 datas = [("news_scraper/policy.toml", "news_scraper")]
 binaries = []
+windows_manifest = str(Path(SPECPATH) / "windows-dpi.manifest") if sys.platform == "win32" else None
 scraper_root = Path(SPECPATH) / "news_scraper" / "scrapers" / "ministry"
 hiddenimports = sorted(
     {source_module_name(source_path) for source_path in scraper_root.rglob("*.py")}
@@ -60,4 +62,5 @@ executable = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
+    manifest=windows_manifest,
 )
