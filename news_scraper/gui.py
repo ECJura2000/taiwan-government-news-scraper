@@ -891,7 +891,12 @@ def main(smoke_test: bool = False) -> int:
         if smoke_test:
             editor = app._open_relevance_editor()
             if not editor.validate_smoke_test():
-                print("GUI 主題編輯器控制項或版面檢查失敗。", file=sys.stderr)
+                print(
+                    "GUI 主題編輯器控制項或版面檢查失敗：{}".format(
+                        editor.smoke_test_diagnostics
+                    ),
+                    file=sys.stderr,
+                )
                 root.destroy()
                 return 1
             root.after(250, root.destroy)

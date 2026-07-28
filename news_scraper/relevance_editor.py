@@ -49,6 +49,7 @@ class RelevanceProfileEditor:
         self.deleted_stack: list[tuple] = []
         self.imported_profile = False
         self.dragged_topic_id = ""
+        self.smoke_test_diagnostics = ""
 
         self.window = tk.Toplevel(parent)
         self.window.title("主題與關鍵字")
@@ -99,22 +100,31 @@ class RelevanceProfileEditor:
 
         header = self.ttk.Frame(container)
         header.pack(fill="x")
-        self.ttk.Label(header, text="設定名稱").pack(side="left")
+        self.ttk.Label(header, text="設定名稱").grid(row=0, column=0, sticky="w")
         self.ttk.Entry(
             header,
             textvariable=self.name_var,
             width=38,
             style="Latin.TEntry",
-        ).pack(
-            side="left",
+        ).grid(
+            row=0,
+            column=1,
+            sticky="ew",
             padx=(8, 18),
         )
         self.ttk.Checkbutton(
             header,
             text="只有全域脈絡詞時列為待人工判讀",
             variable=self.fallback_var,
-        ).pack(side="left")
-        self.ttk.Label(header, textvariable=self.summary_var).pack(side="right")
+        ).grid(row=0, column=2, sticky="w")
+        self.ttk.Label(header, textvariable=self.summary_var).grid(
+            row=1,
+            column=0,
+            columnspan=3,
+            sticky="w",
+            pady=(8, 0),
+        )
+        header.columnconfigure(1, weight=1)
 
         self.notebook = self.ttk.Notebook(container)
         self.notebook.pack(fill="both", expand=True, pady=(12, 10))
@@ -134,34 +144,38 @@ class RelevanceProfileEditor:
 
         utility_row = self.ttk.Frame(container)
         utility_row.pack(fill="x")
+        utility_left = self.ttk.Frame(utility_row)
+        utility_left.pack(fill="x")
         self.ttk.Button(
-            utility_row,
+            utility_left,
             text="匯入設定",
             command=self._import_profile,
         ).pack(side="left")
         self.ttk.Button(
-            utility_row,
+            utility_left,
             text="匯出設定",
             command=self._export_profile,
         ).pack(side="left", padx=6)
         self.ttk.Button(
-            utility_row,
+            utility_left,
             text="加入新版範本",
             command=self._merge_defaults,
         ).pack(side="left")
         self.ttk.Button(
-            utility_row,
+            utility_left,
             text="恢復 AI 十大建設範本",
             command=self._restore_defaults,
         ).pack(side="left", padx=6)
 
+        utility_right = self.ttk.Frame(utility_row)
+        utility_right.pack(fill="x", pady=(8, 0))
         self.ttk.Button(
-            utility_row,
+            utility_right,
             text="取消",
             command=self._cancel,
         ).pack(side="right")
         self.ttk.Button(
-            utility_row,
+            utility_right,
             text="儲存設定",
             style="Primary.TButton",
             command=self._save,
@@ -202,7 +216,7 @@ class RelevanceProfileEditor:
 
         actions = self.ttk.Frame(self.topic_tab)
         actions.pack(fill="x", pady=(8, 0))
-        for label, command in (
+        for index, (label, command) in enumerate((
             ("新增主題", self._add_topic),
             ("複製主題", self._duplicate_topic),
             ("編輯", self._edit_topic),
@@ -211,38 +225,53 @@ class RelevanceProfileEditor:
             ("復原刪除", self._undo_delete),
             ("上移", lambda: self._move_topic(-1)),
             ("下移", lambda: self._move_topic(1)),
-        ):
-            self.ttk.Button(actions, text=label, command=command).pack(
-                side="left",
+        )):
+            self.ttk.Button(actions, text=label, command=command).grid(
+                row=index // 4,
+                column=index % 4,
+                sticky="w",
                 padx=(0, 6),
+                pady=(0, 6) if index < 4 else 0,
             )
 
     def _build_keyword_tab(self):
         filters = self.ttk.Frame(self.keyword_tab)
         filters.pack(fill="x", pady=(0, 8))
-        self.ttk.Label(filters, text="搜尋").pack(side="left")
+        self.ttk.Label(filters, text="搜尋").grid(row=0, column=0, sticky="w")
         self.ttk.Entry(
             filters,
             textvariable=self.keyword_search_var,
             width=24,
             style="Latin.TEntry",
-        ).pack(
-            side="left",
+        ).grid(
+            row=0,
+            column=1,
+            sticky="ew",
             padx=(6, 14),
         )
-        self.ttk.Label(filters, text="主題").pack(side="left")
+        self.ttk.Label(filters, text="主題").grid(row=0, column=2, sticky="w")
         self.keyword_topic_filter = self.ttk.Combobox(
             filters,
             textvariable=self.keyword_topic_filter_var,
             state="readonly",
             width=28,
         )
-        self.keyword_topic_filter.pack(side="left", padx=(6, 14))
+        self.keyword_topic_filter.grid(
+            row=0,
+            column=3,
+            sticky="ew",
+            padx=(6, 0),
+        )
         self.keyword_topic_filter.bind(
             "<<ComboboxSelected>>",
             lambda _event: self._refresh_keywords(),
         )
-        self.ttk.Label(filters, text="類型").pack(side="left")
+        self.ttk.Label(filters, text="類型").grid(
+            row=1,
+            column=0,
+            sticky="w",
+            pady=(8, 0),
+        )
         keyword_type_filter = self.ttk.Combobox(
             filters,
             textvariable=self.keyword_type_filter_var,
@@ -250,12 +279,23 @@ class RelevanceProfileEditor:
             state="readonly",
             width=14,
         )
-        keyword_type_filter.pack(side="left", padx=(6, 0))
+        keyword_type_filter.grid(
+            row=1,
+            column=1,
+            sticky="w",
+            padx=(6, 14),
+            pady=(8, 0),
+        )
         keyword_type_filter.bind(
             "<<ComboboxSelected>>",
             lambda _event: self._refresh_keywords(),
         )
-        self.ttk.Label(filters, text="狀態").pack(side="left", padx=(14, 0))
+        self.ttk.Label(filters, text="狀態").grid(
+            row=1,
+            column=2,
+            sticky="w",
+            pady=(8, 0),
+        )
         keyword_status_filter = self.ttk.Combobox(
             filters,
             textvariable=self.keyword_status_filter_var,
@@ -263,11 +303,19 @@ class RelevanceProfileEditor:
             state="readonly",
             width=10,
         )
-        keyword_status_filter.pack(side="left", padx=(6, 0))
+        keyword_status_filter.grid(
+            row=1,
+            column=3,
+            sticky="w",
+            padx=(6, 0),
+            pady=(8, 0),
+        )
         keyword_status_filter.bind(
             "<<ComboboxSelected>>",
             lambda _event: self._refresh_keywords(),
         )
+        filters.columnconfigure(1, weight=1)
+        filters.columnconfigure(3, weight=1)
 
         self.keyword_tree = self._make_tree(
             self.keyword_tab,
@@ -282,41 +330,54 @@ class RelevanceProfileEditor:
         self.keyword_tree.bind("<Double-1>", lambda _event: self._edit_keyword())
         actions = self.ttk.Frame(self.keyword_tab)
         actions.pack(fill="x", pady=(8, 0))
-        for label, command in (
+        for index, (label, command) in enumerate((
             ("新增關鍵字", self._add_keyword),
             ("編輯", self._edit_keyword),
             ("啟用／停用", self._toggle_keyword),
             ("刪除", self._delete_keyword),
             ("復原刪除", self._undo_delete),
-        ):
-            self.ttk.Button(actions, text=label, command=command).pack(
-                side="left",
+        )):
+            self.ttk.Button(actions, text=label, command=command).grid(
+                row=index // 3,
+                column=index % 3,
+                sticky="w",
                 padx=(0, 6),
+                pady=(0, 6) if index < 3 else 0,
             )
 
     def _build_exclusion_tab(self):
         filters = self.ttk.Frame(self.exclusion_tab)
         filters.pack(fill="x", pady=(0, 8))
-        self.ttk.Label(filters, text="搜尋").pack(side="left")
+        self.ttk.Label(filters, text="搜尋").grid(row=0, column=0, sticky="w")
         self.ttk.Entry(
             filters,
             textvariable=self.exclusion_search_var,
             width=24,
             style="Latin.TEntry",
-        ).pack(side="left", padx=(6, 14))
-        self.ttk.Label(filters, text="範圍").pack(side="left")
+        ).grid(row=0, column=1, sticky="ew", padx=(6, 14))
+        self.ttk.Label(filters, text="範圍").grid(row=0, column=2, sticky="w")
         self.exclusion_topic_filter = self.ttk.Combobox(
             filters,
             textvariable=self.exclusion_topic_filter_var,
             state="readonly",
             width=28,
         )
-        self.exclusion_topic_filter.pack(side="left", padx=(6, 14))
+        self.exclusion_topic_filter.grid(
+            row=0,
+            column=3,
+            sticky="ew",
+            padx=(6, 0),
+        )
         self.exclusion_topic_filter.bind(
             "<<ComboboxSelected>>",
             lambda _event: self._refresh_exclusions(),
         )
-        self.ttk.Label(filters, text="狀態").pack(side="left")
+        self.ttk.Label(filters, text="狀態").grid(
+            row=1,
+            column=0,
+            sticky="w",
+            pady=(8, 0),
+        )
         exclusion_status_filter = self.ttk.Combobox(
             filters,
             textvariable=self.exclusion_status_filter_var,
@@ -324,11 +385,19 @@ class RelevanceProfileEditor:
             state="readonly",
             width=10,
         )
-        exclusion_status_filter.pack(side="left", padx=(6, 0))
+        exclusion_status_filter.grid(
+            row=1,
+            column=1,
+            sticky="w",
+            padx=(6, 0),
+            pady=(8, 0),
+        )
         exclusion_status_filter.bind(
             "<<ComboboxSelected>>",
             lambda _event: self._refresh_exclusions(),
         )
+        filters.columnconfigure(1, weight=1)
+        filters.columnconfigure(3, weight=1)
 
         self.exclusion_tree = self._make_tree(
             self.exclusion_tab,
@@ -343,16 +412,19 @@ class RelevanceProfileEditor:
         self.exclusion_tree.bind("<Double-1>", lambda _event: self._edit_exclusion())
         actions = self.ttk.Frame(self.exclusion_tab)
         actions.pack(fill="x", pady=(8, 0))
-        for label, command in (
+        for index, (label, command) in enumerate((
             ("新增排除詞", self._add_exclusion),
             ("編輯", self._edit_exclusion),
             ("啟用／停用", self._toggle_exclusion),
             ("刪除", self._delete_exclusion),
             ("復原刪除", self._undo_delete),
-        ):
-            self.ttk.Button(actions, text=label, command=command).pack(
-                side="left",
+        )):
+            self.ttk.Button(actions, text=label, command=command).grid(
+                row=index // 3,
+                column=index % 3,
+                sticky="w",
                 padx=(0, 6),
+                pady=(0, 6) if index < 3 else 0,
             )
 
     def _build_test_tab(self):
@@ -1239,8 +1311,26 @@ class RelevanceProfileEditor:
             str(self.notebook.tab(tab_id, "text"))
             for tab_id in self.notebook.tabs()
         }
-        return required_text <= visible_text and required_tabs == visible_tabs and (
-            self.window.winfo_reqwidth() <= self.window.winfo_screenwidth()
+        missing_text = sorted(required_text - visible_text)
+        missing_tabs = sorted(required_tabs - visible_tabs)
+        unexpected_tabs = sorted(visible_tabs - required_tabs)
+        requested_width = self.window.winfo_reqwidth()
+        screen_width = self.window.winfo_screenwidth()
+        self.smoke_test_diagnostics = (
+            "missing_text={!r}, missing_tabs={!r}, unexpected_tabs={!r}, "
+            "requested_width={}, screen_width={}"
+        ).format(
+            missing_text,
+            missing_tabs,
+            unexpected_tabs,
+            requested_width,
+            screen_width,
+        )
+        return (
+            not missing_text
+            and not missing_tabs
+            and not unexpected_tabs
+            and requested_width <= screen_width
         )
 
 
