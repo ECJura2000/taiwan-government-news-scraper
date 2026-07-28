@@ -38,6 +38,16 @@ def parse_args(argv=None):
     parser.add_argument("--headless", action="store_true", help="明確以無圖形介面模式執行")
     parser.add_argument("--json-summary", action="store_true", help="最後輸出一行機器可讀 JSON 摘要")
     parser.add_argument("--gui", action="store_true", help="開啟桌面圖形介面")
+    relevance_group = parser.add_mutually_exclusive_group()
+    relevance_group.add_argument(
+        "--relevance-profile",
+        help="使用指定的主題關聯性 JSON 設定檔",
+    )
+    relevance_group.add_argument(
+        "--no-relevance-profile",
+        action="store_true",
+        help="忽略程式資料中的共用設定並使用內建預設範本",
+    )
     return parser.parse_args(argv)
 
 
@@ -454,6 +464,12 @@ def main(argv=None):
                 report_retention_days=args.report_retention_days,
                 fail_on_source_error=args.fail_on_source_error,
                 alert_webhook=args.alert_webhook,
+                relevance_profile_path=(
+                    Path(args.relevance_profile)
+                    if args.relevance_profile
+                    else None
+                ),
+                use_saved_relevance_profile=not args.no_relevance_profile,
                 mode="headless",
             )
         )
@@ -462,7 +478,7 @@ def main(argv=None):
         if args.json_summary:
             print_json_error_summary("locked", str(exc))
         return 4
-    except (OSError, RuntimeError) as exc:
+    except (OSError, RuntimeError, ValueError) as exc:
         message = "新聞整理無法完成：{}".format(exc)
         print(message, file=sys.stderr)
         if args.json_summary:

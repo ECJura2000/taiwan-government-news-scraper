@@ -9,9 +9,9 @@ flowchart LR
     C --> D[NewsItem domain model]
     D --> E[Validation and dedupe]
     E --> F[Stable source/date sort]
-    F --> I[Versioned AI policy scoring]
+    F --> I[Versioned topic relevance scoring]
     I --> G[Excel exporter]
-    E --> H[Run report JSON]
+    I --> H[Run report JSON]
 ```
 
 `source_catalog.py` validates the source configuration boundary. Scrapers return
@@ -26,8 +26,10 @@ the reporting/export boundary.
 - `models.py`: domain news model with optional summary and mapping compatibility.
 - `quality.py`: validation, URL normalization, and duplicate removal.
 - `monitoring.py`: typed attempts, parser warnings, report schema validation.
+- `relevance.py`: validated topic profiles, fixed scoring, migration, and hashes.
+- `relevance_editor.py`: GUI editing, import/export, filtering, and test classification.
 - `excel_exporter.py`: presentation and workbook verification.
-- `ai_policy_evaluation.py`: labeled-corpus precision/recall measurement.
+- `ai_policy_evaluation.py`: compatibility regression measurement for the built-in AI template.
 
 ## Data-Structure Choices And Complexity
 
@@ -42,11 +44,12 @@ the reporting/export boundary.
 The scheduler order and final Excel order are intentionally separate: execution order
 optimizes latency, while final order optimizes reproducibility.
 
-AI policy definitions are frozen dataclasses validated during import. Classification uses
-title, optional summary, source ownership, positive terms, and negative terms to produce
-per-initiative 0-100 scores plus auditable reasons. The ruleset version and deterministic
-content hash are written to every run report. News records also retain date provenance, and
-quality reports expose summary coverage and date-source counts.
+Each run loads one validated, immutable relevance-profile snapshot. Classification uses
+title, optional summary, priority agencies, three include-keyword types, and scoped
+exclusions to produce independent per-topic 0-100 scores plus auditable reasons. The
+profile schema, template version, deterministic effective hash, and rule counts are written
+to every run report and workbook. News records also retain date provenance, and quality
+reports expose summary coverage and date-source counts.
 
 ## Error And Retry Policy
 

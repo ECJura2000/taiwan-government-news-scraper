@@ -15,7 +15,9 @@
    Linux/macOS：./各機關新聞整理 --headless --json-summary
 
 5. Excel 會放在「新聞搜集區」，JSON 報告會放在其下的「執行紀錄」。
-6. 國土管理署來源需要系統已安裝 Chrome 或 Chromium。
-7. 執行檔尚未使用 Windows Authenticode 或 Apple Developer ID 簽章。核對雜湊後，請依「啟動圖解」資料夾內的作業系統圖解開啟。
+6. GUI 的「主題與關鍵字」可自由新增、刪除、匯入、匯出及測試分析規則。
+7. 主題設定保存於「程式資料/relevance-profile.json」，GUI 與 headless 會共用。
+8. 國土管理署來源需要系統已安裝 Chrome 或 Chromium。
+9. 執行檔尚未使用 Windows Authenticode 或 Apple Developer ID 簽章。核對雜湊後，請依「啟動圖解」資料夾內的作業系統圖解開啟。
 
-不要將 webhook、密碼或其他憑證寫入 settings.json。
+不要將 webhook、密碼或其他憑證寫入 settings.json 或 relevance-profile.json。
