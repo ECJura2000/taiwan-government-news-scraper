@@ -7,6 +7,25 @@
 
 目前支援 72 個政府機關與所屬單位，提供 Excel 匯出、資料品質檢查、來源健康監控、異常告警與可重現的 CI 測試。專案支援 Python 3.10、3.12 與 3.13。
 
+## 立即下載
+
+前往 [最新版下載頁面](https://github.com/ECJura2000/taiwan-government-news-scraper/releases/latest)，展開 `Assets`，依電腦下載對應 ZIP。一般使用者不需要下載 `Source code`、`SHA256SUMS.txt` 或 `SIZE-MANIFEST.txt`。
+
+| 作業系統 | 請下載 |
+| --- | --- |
+| Windows 64 位元 | `taiwan-government-news-v<版本>-windows.zip` |
+| macOS Apple Silicon（M1、M2、M3、M4 等） | `taiwan-government-news-v<版本>-macos-arm64.zip` |
+| macOS Intel | `taiwan-government-news-v<版本>-macos-x64.zip` |
+| Linux 64 位元 | `taiwan-government-news-v<版本>-linux.zip` |
+
+下載後將整個 `各機關新聞/` 資料夾解壓縮到可寫入的位置，再開啟其中的 `各機關新聞整理`。Windows 與 macOS 首次啟動方式請見 [首次啟動說明](docs/FIRST_RUN.md)。
+
+## 畫面預覽
+
+![各機關新聞整理 GUI](docs/images/gui-overview.jpg)
+
+![Excel 新聞整理輸出](docs/images/excel-output.jpg)
+
 完整的政府資料入口、抓取方式與技術參考請見 [資料來源與參考資料](SOURCES.md)。本專案只整理各機關公開發布的新聞與公告；內容著作權、正確性與最終解釋均以原發布機關網站為準。
 
 專題成果請見 [正式報告](PROJECT_REPORT.md)、[操作示範](docs/DEMO.md)、[UAT](docs/UAT.md)、[災難復原](docs/DISASTER_RECOVERY.md) 與 [變更紀錄](CHANGELOG.md)。
@@ -54,7 +73,7 @@ news_scraper/
       veterans/           退輔會及相關機關
 ```
 
-## 下載執行檔
+## 可攜版使用方式
 
 Windows：
 
@@ -72,7 +91,7 @@ chmod +x 各機關新聞整理
 ./各機關新聞整理 --headless --json-summary
 ```
 
-macOS：
+macOS Apple Silicon 與 Intel：
 
 ```bash
 chmod +x 各機關新聞整理
@@ -90,13 +109,19 @@ chmod +x 各機關新聞整理
 
 執行檔目前未進行 Windows Authenticode 或 Apple Developer ID 簽章，作業系統可能顯示未知發行者警告。國土管理署來源使用 Selenium，因此即使使用單檔執行檔，環境仍須安裝 Chrome 或 Chromium。
 
-Linux 與 macOS 可用下列方式核對雜湊：
+Linux 可用下列方式核對雜湊：
 
 ```bash
-sha256sum -c taiwan-government-news-v1.3.0-SHA256SUMS.txt
+sha256sum taiwan-government-news-v1.4.0-linux.zip
 ```
 
-Windows 可用 `Get-FileHash` 計算後，與 `SHA256SUMS.txt` 的對應紀錄比對。正式 Release 單檔不得超過 90 MiB，全部資產不得超過 220 MiB；Actions 中間 artifacts 只保留 1 天。
+macOS 使用：
+
+```bash
+shasum -a 256 taiwan-government-news-v1.4.0-macos-arm64.zip
+```
+
+Intel Mac 請將檔名改為 `macos-x64.zip`。Windows 可用 `Get-FileHash` 計算後，與 `SHA256SUMS.txt` 的對應紀錄比對。正式 Release 單檔不得超過 90 MiB，全部資產不得超過 220 MiB；Actions 中間 artifacts 只保留 1 天。
 
 ## 安裝
 

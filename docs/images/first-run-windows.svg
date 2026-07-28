@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="520" viewBox="0 0 1200 520" role="img" aria-labelledby="title desc">
+  <title id="title">Windows 首次啟動圖解</title>
+  <desc id="desc">依序核對雜湊、解壓縮、開啟其他資訊，再執行程式。</desc>
+  <rect width="1200" height="520" rx="28" fill="#f3f7fb"/>
+  <text x="60" y="74" fill="#17324d" font-family="Microsoft JhengHei, sans-serif" font-size="34" font-weight="700">Windows 首次啟動</text>
+  <text x="60" y="112" fill="#4c6278" font-family="Microsoft JhengHei, sans-serif" font-size="20">只開啟從本專案 GitHub Releases 下載且 SHA-256 相符的檔案</text>
+  <g font-family="Microsoft JhengHei, sans-serif">
+    <rect x="55" y="160" width="250" height="270" rx="20" fill="#ffffff" stroke="#bad0e3" stroke-width="2"/>
+    <circle cx="95" cy="204" r="22" fill="#0b6fb8"/><text x="88" y="212" fill="#fff" font-size="22" font-weight="700">1</text>
+    <text x="78" y="255" fill="#17324d" font-size="25" font-weight="700">核對 ZIP 雜湊</text>
+    <text x="78" y="298" fill="#4c6278" font-size="18">Get-FileHash</text>
+    <text x="78" y="330" fill="#4c6278" font-size="18">-Algorithm SHA256</text>
+    <text x="78" y="382" fill="#0b6f46" font-size="18" font-weight="700">相符才繼續</text>
+
+    <rect x="335" y="160" width="250" height="270" rx="20" fill="#ffffff" stroke="#bad0e3" stroke-width="2"/>
+    <circle cx="375" cy="204" r="22" fill="#0b6fb8"/><text x="368" y="212" fill="#fff" font-size="22" font-weight="700">2</text>
+    <text x="358" y="255" fill="#17324d" font-size="25" font-weight="700">解壓縮 ZIP</text>
+    <text x="358" y="298" fill="#4c6278" font-size="18">保留完整</text>
+    <text x="358" y="330" fill="#4c6278" font-size="18">「各機關新聞」資料夾</text>
+
+    <rect x="615" y="160" width="250" height="270" rx="20" fill="#ffffff" stroke="#bad0e3" stroke-width="2"/>
+    <circle cx="655" cy="204" r="22" fill="#0b6fb8"/><text x="648" y="212" fill="#fff" font-size="22" font-weight="700">3</text>
+    <text x="638" y="255" fill="#17324d" font-size="25" font-weight="700">開啟執行檔</text>
+    <text x="638" y="298" fill="#4c6278" font-size="18">雙擊</text>
+    <text x="638" y="330" fill="#4c6278" font-size="18">各機關新聞整理.exe</text>
+
+    <rect x="895" y="160" width="250" height="270" rx="20" fill="#ffffff" stroke="#bad0e3" stroke-width="2"/>
+    <circle cx="935" cy="204" r="22" fill="#0b6fb8"/><text x="928" y="212" fill="#fff" font-size="22" font-weight="700">4</text>
+    <text x="918" y="255" fill="#17324d" font-size="25" font-weight="700">安全警告</text>
+    <text x="918" y="298" fill="#4c6278" font-size="18">確認檔名與雜湊後</text>
+    <text x="918" y="330" fill="#4c6278" font-size="18">其他資訊</text>
+    <text x="918" y="362" fill="#4c6278" font-size="18">仍要執行</text>
+  </g>
+</svg>

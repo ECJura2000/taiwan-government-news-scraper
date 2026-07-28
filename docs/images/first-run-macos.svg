@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="520" viewBox="0 0 1200 520" role="img" aria-labelledby="title desc">
+  <title id="title">macOS 首次啟動圖解</title>
+  <desc id="desc">依序選擇處理器架構、核對雜湊、以右鍵打開，再確認系統安全設定。</desc>
+  <rect width="1200" height="520" rx="28" fill="#f5f4ef"/>
+  <text x="60" y="74" fill="#23313d" font-family="PingFang TC, sans-serif" font-size="34" font-weight="700">macOS 首次啟動</text>
+  <text x="60" y="112" fill="#596a76" font-family="PingFang TC, sans-serif" font-size="20">Apple Silicon 選 arm64；Intel Mac 選 x64。雜湊相符後才開啟。</text>
+  <g font-family="PingFang TC, sans-serif">
+    <rect x="55" y="160" width="250" height="270" rx="20" fill="#ffffff" stroke="#c8c6bd" stroke-width="2"/>
+    <circle cx="95" cy="204" r="22" fill="#d65a31"/><text x="88" y="212" fill="#fff" font-size="22" font-weight="700">1</text>
+    <text x="78" y="255" fill="#23313d" font-size="25" font-weight="700">選擇架構</text>
+    <text x="78" y="298" fill="#596a76" font-size="18">M1／M2／M3／M4</text>
+    <text x="78" y="330" fill="#596a76" font-size="18">下載 arm64</text>
+    <text x="78" y="362" fill="#596a76" font-size="18">Intel 下載 x64</text>
+
+    <rect x="335" y="160" width="250" height="270" rx="20" fill="#ffffff" stroke="#c8c6bd" stroke-width="2"/>
+    <circle cx="375" cy="204" r="22" fill="#d65a31"/><text x="368" y="212" fill="#fff" font-size="22" font-weight="700">2</text>
+    <text x="358" y="255" fill="#23313d" font-size="25" font-weight="700">核對 ZIP 雜湊</text>
+    <text x="358" y="298" fill="#596a76" font-size="18">shasum -a 256</text>
+    <text x="358" y="350" fill="#0b6f46" font-size="18" font-weight="700">相符才繼續</text>
+
+    <rect x="615" y="160" width="250" height="270" rx="20" fill="#ffffff" stroke="#c8c6bd" stroke-width="2"/>
+    <circle cx="655" cy="204" r="22" fill="#d65a31"/><text x="648" y="212" fill="#fff" font-size="22" font-weight="700">3</text>
+    <text x="638" y="255" fill="#23313d" font-size="25" font-weight="700">在 Finder 右鍵</text>
+    <text x="638" y="298" fill="#596a76" font-size="18">各機關新聞整理</text>
+    <text x="638" y="330" fill="#596a76" font-size="18">選擇「打開」</text>
+
+    <rect x="895" y="160" width="250" height="270" rx="20" fill="#ffffff" stroke="#c8c6bd" stroke-width="2"/>
+    <circle cx="935" cy="204" r="22" fill="#d65a31"/><text x="928" y="212" fill="#fff" font-size="22" font-weight="700">4</text>
+    <text x="918" y="255" fill="#23313d" font-size="25" font-weight="700">仍被阻擋時</text>
+    <text x="918" y="298" fill="#596a76" font-size="18">系統設定</text>
+    <text x="918" y="330" fill="#596a76" font-size="18">隱私權與安全性</text>
+    <text x="918" y="362" fill="#596a76" font-size="18">仍要打開</text>
+  </g>
+</svg>
