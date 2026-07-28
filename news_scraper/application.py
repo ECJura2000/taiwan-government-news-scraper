@@ -17,6 +17,8 @@ class RunOptions:
     report_retention_days: int = 180
     fail_on_source_error: bool = False
     alert_webhook: str | None = None
+    relevance_profile_path: Path | None = None
+    use_saved_relevance_profile: bool = True
     mode: str = "headless"
 
 
@@ -91,8 +93,13 @@ def run_news_scraper(
         write_run_report,
     )
     from .quality import process_news_quality
+    from .relevance import (
+        get_relevance_profile_summary,
+        load_relevance_profile,
+    )
     from .run_lock import RunLock
     from .runtime import validate_runtime_environment
+    from .scrapers.registry import SCRAPER_REGISTRY
     from .utils.dates import get_cached_week_range
 
     cancel_event = cancel_event or threading.Event()
@@ -105,7 +112,27 @@ def run_news_scraper(
     output_dir.mkdir(parents=True, exist_ok=True)
     report_dir.mkdir(parents=True, exist_ok=True)
 
+    loaded_relevance = load_relevance_profile(
+        options.relevance_profile_path,
+        use_saved_profile=options.use_saved_relevance_profile,
+        default_path=workspace.program_data / "relevance-profile.json",
+        available_sources=SCRAPER_REGISTRY,
+    )
+    relevance_summary = get_relevance_profile_summary(
+        loaded_relevance.profile,
+        source_label=loaded_relevance.source_label,
+    )
     _emit(progress_callback, ProgressEvent("start", "開始整理新聞", total=len(selected_sources)))
+    _emit(
+        progress_callback,
+        ProgressEvent(
+            "settings",
+            "關聯性設定：{}（{} 個啟用主題）".format(
+                loaded_relevance.profile.name,
+                relevance_summary["enabled_topic_count"],
+            ),
+        ),
+    )
     if workspace.used_fallback:
         _emit(
             progress_callback,
@@ -156,6 +183,8 @@ def run_news_scraper(
                 news,
                 output_dir=output_dir,
                 dedupe_affiliated=options.dedupe_affiliated,
+                relevance_profile=loaded_relevance.profile,
+                relevance_profile_source=loaded_relevance.source_label,
             )
             detect_run_anomalies(
                 context,
@@ -175,6 +204,7 @@ def run_news_scraper(
             output_path=output_path,
             week_start=week_start,
             week_end=week_end,
+            relevance_policy=relevance_summary,
         )
         if not context.cancelled and should_send_alert(report):
             try:

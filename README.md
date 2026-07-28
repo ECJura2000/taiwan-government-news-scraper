@@ -40,6 +40,8 @@
 news_scraper/
   main.py                 CLI 入口
   config.py               URL、排序、timeout、headers
+  relevance.py            通用主題規則、設定與評分
+  relevance_editor.py     主題與關鍵字 GUI 編輯器
   models.py               資料模型
   excel_exporter.py       Excel 匯出
   http/                   requests / aiohttp 共用抓取
@@ -112,13 +114,13 @@ chmod +x 各機關新聞整理
 Linux 可用下列方式核對雜湊：
 
 ```bash
-sha256sum taiwan-government-news-v1.4.1-linux.zip
+sha256sum taiwan-government-news-v1.5.0-linux.zip
 ```
 
 macOS 使用：
 
 ```bash
-shasum -a 256 taiwan-government-news-v1.4.1-macos-arm64.zip
+shasum -a 256 taiwan-government-news-v1.5.0-macos-arm64.zip
 ```
 
 Intel Mac 請將檔名改為 `macos-x64.zip`。Windows 可用 `Get-FileHash` 計算後，與 `SHA256SUMS.txt` 的對應紀錄比對。正式 Release 單檔不得超過 90 MiB，全部資產不得超過 220 MiB；Actions 中間 artifacts 只保留 1 天。
@@ -222,6 +224,26 @@ python -m news_scraper
 python -m news_scraper --fail-on-source-error
 ```
 
+### 主題與關鍵字設定
+
+GUI 的「主題與關鍵字」可自由新增、複製、改名、排序、停用或刪除分析主題，並管理核心詞、輔助詞、脈絡詞與排除詞。AI 新十大建設只是首次啟動的預設範本，不限制未來可建立的主題。
+
+設定會保存到 `程式資料/relevance-profile.json`，GUI、headless 與既有排程會自動共用。設定視窗可匯入、匯出、加入新版範本，也能用自訂標題、摘要與發布機關立即測試分數。
+
+指定另一份設定檔：
+
+```bash
+python -m news_scraper --relevance-profile /path/to/relevance-profile.json
+```
+
+暫時忽略已保存設定並使用內建範本：
+
+```bash
+python -m news_scraper --no-relevance-profile
+```
+
+核心詞命中標題為 85 分、摘要為 60 分。輔助詞需搭配脈絡詞或由優先關聯機關發布；全域與主題排除詞可分別檢查標題、摘要或兩者，命中後扣 50 分。同一主題命中多個排除詞仍只扣一次。
+
 國土管理署網站是 JavaScript 動態頁，且會出現一般 `curl`/HTTP2 不易直接讀取的防護頁；程式會改用 Selenium 開啟瀏覽器取得列表。若只抓國土管理署，建議確認本機已安裝 Chrome/Chromium，並已安裝 `requirements.txt` 內的 `selenium`：
 
 ```bash
@@ -235,16 +257,14 @@ python -m news_scraper --sources 國土管理署 --max-workers 1
 - 終端機表格摘要
 - `本週新聞整理（民國起迄日期）.xlsx`
 - 全部新聞工作表
-- AI 新十大建設初步篩選工作表，高度相關整列標示黃色、可能相關整列標示淺黃色
-- `新聞摘要`、`日期來源`、`AI新十大建設`、`主政部會`、`關聯性`、`關聯分數`、`判定理由`、`命中關鍵字`、`排除關鍵字`、`各建設評分` 判讀欄位
-- AI 新十大建設、主政部會與關鍵字對照工作表
+- 通用主題初步篩選工作表，高度相關整列標示亮黃色、可能相關整列標示淺黃色
+- `新聞摘要`、`日期來源`、`關聯主題`、`優先關聯機關`、`關聯性`、`關聯分數`、`判定理由`、`命中關鍵字`、`排除關鍵字`、`各主題評分` 判讀欄位
+- `主題規則對照`、`關聯性規則` 與 `規則版本` 稽核工作表
 - 指定重點部會分頁
 
-AI 分級規則以完整建設名稱與精準詞優先；較廣的輔助詞必須搭配 AI 語境或由該建設主政部會發布才會納入。標題權重高於摘要，只有摘要命中時最高列為「可能相關」。`徵才`、`招募`、`職缺`、`採購`、`招標`、`決標`、`轉知` 會降低分數。只有一般 AI 字樣而無法判定建設項目時，會標示為「可能相關／待人工判讀」。
+關聯分數為 0 至 100 分：80 分以上為高度相關、40 至 79 分為可能相關、低於 40 分不納入初步篩選。同一新聞符合多個主題時，`各主題評分` 會保留每項自己的分數與相關性，不以單一最高分取代全部結果。設定載入時會驗證 ID、主題、機關、比對欄位、重複詞及納入／排除衝突；無效設定會明確停止執行，不會靜默改用其他規則。
 
-關聯分數為 0 至 100 分：80 分以上為高度相關、40 至 79 分為可能相關、低於 40 分不納入初步篩選。多項建設同時命中時，`各建設評分` 會保留每項自己的分數與相關性，不會以單一最高分代替全部結果。規則由 dataclass 定義並在啟動時驗證建設名稱、主政來源與重複關鍵字。
-
-可用 205 筆回歸語料與獨立的 2026-06-22 至 06-28 時間留存集重跑評估：
+預設 AI 十大建設範本仍可用 205 筆回歸語料與獨立的 2026-06-22 至 06-28 時間留存集重跑評估：
 
 ```bash
 python3 scripts/evaluate_ai_policy.py
@@ -278,7 +298,8 @@ python3 scripts/evaluate_ai_policy.py tests/fixtures/ai_policy_holdout_20260622.
 - `anomalies`：連續零筆與耗時異常
 - `parser_warnings`：日期或欄位格式已命中但解析失敗的紀錄，用來區分正常零筆與網站格式異常
 - `quality.alert_reasons`：超過告警門檻的資料品質問題；少量正常清理不會觸發告警
-- `ai_policy.version`、`ai_policy.ruleset_hash`：本次 Excel 使用的 AI 規則版本與內容雜湊
+- `relevance_policy`：本次 Excel 使用的設定名稱、schema、範本版本、有效規則雜湊及規則數量
+- `ai_policy.version`、`ai_policy.ruleset_hash`：保留一個版本的舊欄位相容別名
 
 程式依序嘗試 Requests 正常 SSL 驗證、安全 curl；兩者都失敗且主機位於白名單時，才會最後降級為 `verify=False`。不安全模式手動處理 redirect，目的 host 不在白名單時立即拒絕。這讓已修復憑證的網站可以自動恢復安全連線，並避免在安全 curl 可用時停用驗證。
 

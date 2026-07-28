@@ -3,6 +3,7 @@ import os
 import re
 import tempfile
 from contextlib import contextmanager
+from datetime import datetime
 from pathlib import Path
 
 import pandas as pd
@@ -12,14 +13,22 @@ from openpyxl.worksheet.datavalidation import DataValidation
 from openpyxl.styles import Alignment, Font, PatternFill
 from openpyxl.utils import get_column_letter
 
-from .config import AFFILIATED_SOURCE_PATHS, AI_POLICY_INITIATIVES, SOURCE_ORDER
+from .config import AFFILIATED_SOURCE_PATHS, SOURCE_ORDER
+from .relevance import (
+    RelevanceProfile,
+    build_default_relevance_profile,
+    classify_relevance,
+    get_relevance_profile_summary,
+)
 from .utils.dates import ad_date_to_roc_compact_str, ad_to_roc_str, get_cached_week_range
 from .utils.dedupe import dedupe_affiliated_news
-from .utils.text import classify_ai_policy_relevance, clean_text, normalize_department_metadata_text
+from .utils.text import clean_text, normalize_department_metadata_text
 
 logger = logging.getLogger(__name__)
-AI_POLICY_HIGHLIGHT_FILL = PatternFill(fill_type="solid", fgColor="FFFF00")
-AI_POLICY_POSSIBLE_FILL = PatternFill(fill_type="solid", fgColor="FFF2CC")
+RELEVANCE_HIGH_FILL = PatternFill(fill_type="solid", fgColor="FFFF00")
+RELEVANCE_POSSIBLE_FILL = PatternFill(fill_type="solid", fgColor="FFF2CC")
+AI_POLICY_HIGHLIGHT_FILL = RELEVANCE_HIGH_FILL
+AI_POLICY_POSSIBLE_FILL = RELEVANCE_POSSIBLE_FILL
 HEADER_FONT = Font(name="標楷體", sz=11)
 BODY_FONT = Font(name="Times New Roman", sz=11)
 LINK_FONT = Font(name="Times New Roman", sz=11, color="0563C1", underline="single")
@@ -167,58 +176,186 @@ def prepare_export_dataframe(df):
     return df.drop(columns=["原始來源"], errors="ignore")
 
 
-def add_ai_policy_metadata(df):
+def add_relevance_metadata(df, profile):
     df = df.copy()
     classifications = [
-        classify_ai_policy_relevance(
+        classify_relevance(
             row.get("新聞標題", ""),
             source=row.get("部會", ""),
             summary=row.get("新聞摘要", ""),
+            profile=profile,
         )
         for _, row in df.iterrows()
     ]
-    df["AI新十大建設"] = ["、".join(result["initiatives"]) for result in classifications]
-    df["主政部會"] = ["、".join(result["lead_agencies"]) for result in classifications]
+    df["關聯主題"] = ["、".join(result["topics"]) for result in classifications]
+    df["優先關聯機關"] = [
+        "、".join(result["priority_sources"]) for result in classifications
+    ]
     df["關聯性"] = [result["relevance"] for result in classifications]
     df["關聯分數"] = [result["score"] for result in classifications]
     df["判定理由"] = ["；".join(result["reasons"]) for result in classifications]
     df["命中關鍵字"] = ["、".join(result["matched_keywords"]) for result in classifications]
-    df["排除關鍵字"] = ["、".join(result["negative_keywords"]) for result in classifications]
-    df["各建設評分"] = [
+    df["排除關鍵字"] = [
+        "、".join(result["excluded_keywords"]) for result in classifications
+    ]
+    df["各主題評分"] = [
         "；".join(
             "{}（{}分，{}）".format(match["name"], match["score"], match["relevance"])
-            for match in result["initiative_matches"]
+            for match in result["topic_matches"]
         )
         for result in classifications
     ]
     return df
 
 
-def build_ai_policy_reference_dataframe():
+def add_ai_policy_metadata(df):
+    """Compatibility wrapper for callers that still use the v1.4 API."""
+
+    return add_relevance_metadata(df, build_default_relevance_profile())
+
+
+def build_relevance_reference_dataframe(profile):
+    global_context = "、".join(
+        rule.text for rule in profile.global_context_keywords if rule.enabled
+    )
+    global_exclusions = "、".join(
+        rule.text
+        for rule in profile.exclusions
+        if rule.enabled and not rule.topic_id
+    )
     return pd.DataFrame(
         [
             {
-                "AI新十大建設": initiative.name,
-                "主政部會": initiative.lead_agency,
-                "高度相關關鍵字": "、".join(
-                    initiative.exact_phrases + initiative.strong_keywords
+                "主題": topic.name,
+                "啟用": "是" if topic.enabled else "否",
+                "優先關聯機關": "、".join(topic.priority_sources),
+                "比對主題名稱": "是" if topic.match_name else "否",
+                "核心詞": "、".join(
+                    rule.text for rule in topic.core_keywords if rule.enabled
                 ),
-                "輔助關鍵字": "、".join(initiative.context_keywords),
+                "輔助詞": "、".join(
+                    rule.text for rule in topic.supporting_keywords if rule.enabled
+                ),
+                "主題脈絡詞": "、".join(
+                    rule.text for rule in topic.context_keywords if rule.enabled
+                ),
+                "全域脈絡詞": global_context,
+                "主題排除詞": "、".join(
+                    rule.text
+                    for rule in profile.exclusions
+                    if rule.enabled and rule.topic_id == topic.id
+                ),
+                "全域排除詞": global_exclusions,
             }
-            for initiative in AI_POLICY_INITIATIVES
+            for topic in profile.topics
         ]
     )
 
 
+def build_relevance_rules_dataframe(profile):
+    rows = []
+    for rule in profile.global_context_keywords:
+        rows.append(
+            {
+                "主題": "全域",
+                "規則類型": "脈絡詞",
+                "關鍵字": rule.text,
+                "比對欄位": "標題與摘要",
+                "啟用": "是" if rule.enabled else "否",
+                "來源": rule.origin,
+                "規則ID": rule.id,
+            }
+        )
+    for topic in profile.topics:
+        for label, rules in (
+            ("核心詞", topic.core_keywords),
+            ("輔助詞", topic.supporting_keywords),
+            ("脈絡詞", topic.context_keywords),
+        ):
+            for rule in rules:
+                rows.append(
+                    {
+                        "主題": topic.name,
+                        "規則類型": label,
+                        "關鍵字": rule.text,
+                        "比對欄位": "標題與摘要",
+                        "啟用": "是" if rule.enabled else "否",
+                        "來源": rule.origin,
+                        "規則ID": rule.id,
+                    }
+                )
+    topic_names = {topic.id: topic.name for topic in profile.topics}
+    for rule in profile.exclusions:
+        fields = {
+            ("title",): "標題",
+            ("summary",): "摘要",
+            ("summary", "title"): "標題與摘要",
+            ("title", "summary"): "標題與摘要",
+        }.get(tuple(rule.match_fields), "、".join(rule.match_fields))
+        rows.append(
+            {
+                "主題": topic_names.get(rule.topic_id, "全域"),
+                "規則類型": "排除詞",
+                "關鍵字": rule.text,
+                "比對欄位": fields,
+                "啟用": "是" if rule.enabled else "否",
+                "來源": rule.origin,
+                "規則ID": rule.id,
+            }
+        )
+    return pd.DataFrame(
+        rows,
+        columns=["主題", "規則類型", "關鍵字", "比對欄位", "啟用", "來源", "規則ID"],
+    )
+
+
+def build_relevance_version_dataframe(profile, source_label):
+    summary = get_relevance_profile_summary(profile, source_label=source_label)
+    labels = {
+        "schema_version": "設定格式版本",
+        "name": "設定名稱",
+        "template_version": "範本版本",
+        "ruleset_hash": "有效規則雜湊",
+        "source": "設定來源",
+        "topic_count": "主題總數",
+        "enabled_topic_count": "啟用主題數",
+        "disabled_topic_count": "停用主題數",
+        "keyword_count": "關鍵字總數",
+        "enabled_keyword_count": "啟用關鍵字數",
+        "disabled_keyword_count": "停用關鍵字數",
+        "exclusion_count": "排除詞總數",
+        "enabled_exclusion_count": "啟用排除詞數",
+        "disabled_exclusion_count": "停用排除詞數",
+        "custom_item_count": "自訂項目數",
+        "deleted_default_count": "已刪除預設項目數",
+    }
+    rows = [{"項目": labels[key], "內容": value} for key, value in summary.items()]
+    rows.append(
+        {
+            "項目": "匯出時間",
+            "內容": datetime.now().astimezone().isoformat(timespec="seconds"),
+        }
+    )
+    return pd.DataFrame(rows)
+
+
 def get_ai_policy_row_fill(relevance):
     if clean_text(relevance) == "高度相關":
-        return AI_POLICY_HIGHLIGHT_FILL
+        return RELEVANCE_HIGH_FILL
     if clean_text(relevance) == "可能相關":
-        return AI_POLICY_POSSIBLE_FILL
+        return RELEVANCE_POSSIBLE_FILL
     return None
 
 
-def export_to_excel(news_items, output_dir, dedupe_affiliated=False):
+def export_to_excel(
+    news_items,
+    output_dir,
+    dedupe_affiliated=False,
+    *,
+    relevance_profile: RelevanceProfile | None = None,
+    relevance_profile_source: str = "內建預設範本",
+):
+    relevance_profile = relevance_profile or build_default_relevance_profile()
     if news_items is None:
         news_items = []
     elif dedupe_affiliated:
@@ -252,7 +389,7 @@ def export_to_excel(news_items, output_dir, dedupe_affiliated=False):
     df = prepare_export_dataframe(df)
     if "新聞日期" in df.columns:
         df["新聞日期"] = df["新聞日期"].apply(lambda value: clean_text(value))
-    df = add_ai_policy_metadata(df)
+    df = add_relevance_metadata(df, relevance_profile)
 
     start_of_week, end_of_week = get_cached_week_range()
     file_name = "本週新聞整理（{}至{}）.xlsx".format(
@@ -268,13 +405,24 @@ def export_to_excel(news_items, output_dir, dedupe_affiliated=False):
     else:
         highlighted_df["_關聯排序"] = highlighted_df["關聯性"].map({"高度相關": 0, "可能相關": 1})
         highlighted_df["_分數排序"] = highlighted_df["關聯分數"]
+        topic_order = {
+            topic.name: position for position, topic in enumerate(relevance_profile.topics)
+        }
+        highlighted_df["_主題排序"] = highlighted_df["關聯主題"].map(
+            lambda value: topic_order.get(clean_text(value).split("、")[0], 9999)
+        )
         highlighted_df = highlighted_df.sort_values(
-            by=["_關聯排序", "_分數排序"],
-            ascending=[True, False],
+            by=["_關聯排序", "_分數排序", "_主題排序"],
+            ascending=[True, False, True],
             kind="stable",
-        ).drop(columns=["_關聯排序", "_分數排序"])
+        ).drop(columns=["_關聯排序", "_分數排序", "_主題排序"])
 
-    ai_policy_reference_df = build_ai_policy_reference_dataframe()
+    relevance_reference_df = build_relevance_reference_dataframe(relevance_profile)
+    relevance_rules_df = build_relevance_rules_dataframe(relevance_profile)
+    relevance_version_df = build_relevance_version_dataframe(
+        relevance_profile,
+        relevance_profile_source,
+    )
 
     source_sheet_map = {
         "財政部": "財政部",
@@ -287,7 +435,9 @@ def export_to_excel(news_items, output_dir, dedupe_affiliated=False):
     with atomic_excel_writer(output_path) as writer:
         df.to_excel(writer, sheet_name="全部新聞", index=False)
         highlighted_df.to_excel(writer, sheet_name="已初步篩選工作表", index=False)
-        ai_policy_reference_df.to_excel(writer, sheet_name="AI新十大建設對照", index=False)
+        relevance_reference_df.to_excel(writer, sheet_name="主題規則對照", index=False)
+        relevance_rules_df.to_excel(writer, sheet_name="關聯性規則", index=False)
+        relevance_version_df.to_excel(writer, sheet_name="規則版本", index=False)
 
         for source_name, sheet_name in source_sheet_map.items():
             source_df = df[df["部會"] == source_name].copy()
@@ -318,9 +468,34 @@ def export_to_excel(news_items, output_dir, dedupe_affiliated=False):
                             worksheet.cell(row=row_idx, column=col_idx).fill = row_fill
 
             format_excel_worksheet(worksheet, header_map)
-            if worksheet.title == "AI新十大建設對照":
-                for column_letter, width in {"A": 34, "B": 16, "C": 72, "D": 72}.items():
+            if worksheet.title == "主題規則對照":
+                for column_letter, width in {
+                    "A": 34,
+                    "B": 12,
+                    "C": 28,
+                    "D": 16,
+                    "E": 72,
+                    "F": 72,
+                    "G": 72,
+                    "H": 72,
+                    "I": 55,
+                    "J": 55,
+                }.items():
                     worksheet.column_dimensions[column_letter].width = width
+            elif worksheet.title == "關聯性規則":
+                for column_letter, width in {
+                    "A": 34,
+                    "B": 16,
+                    "C": 55,
+                    "D": 18,
+                    "E": 10,
+                    "F": 12,
+                    "G": 42,
+                }.items():
+                    worksheet.column_dimensions[column_letter].width = width
+            elif worksheet.title == "規則版本":
+                worksheet.column_dimensions["A"].width = 28
+                worksheet.column_dimensions["B"].width = 80
 
     logger.info("Excel 已輸出：%s", output_path)
     return output_path

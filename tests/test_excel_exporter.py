@@ -282,7 +282,7 @@ def test_export_styles_only_url_portion_of_labeled_hyperlinks(tmp_path, monkeypa
     assert cell.hyperlink.target == "https://www.nstc.gov.tw/news"
 
 
-def test_export_adds_ai_policy_metadata_and_two_relevance_colors(tmp_path, monkeypatch):
+def test_export_adds_generic_relevance_metadata_and_two_colors(tmp_path, monkeypatch):
     monkeypatch.setattr(
         "news_scraper.excel_exporter.get_cached_week_range",
         lambda: (date(2026, 6, 1), date(2026, 6, 7)),
@@ -311,6 +311,13 @@ def test_export_adds_ai_policy_metadata_and_two_relevance_colors(tmp_path, monke
                 "title": "一般行政公告",
                 "link": "https://example.com/unrelated",
             },
+            {
+                "source": "國科會",
+                "date": "2026-06-04",
+                "department": "國科會",
+                "title": "AI人才招募公告",
+                "link": "https://example.com/excluded",
+            },
         ],
         output_dir=tmp_path,
     )
@@ -321,19 +328,22 @@ def test_export_adds_ai_policy_metadata_and_two_relevance_colors(tmp_path, monke
 
     assert headers == [
         "部會", "新聞日期", "單位分類", "新聞標題", "新聞連結",
-        "新聞摘要", "日期來源", "AI新十大建設", "主政部會", "關聯性", "關聯分數",
-        "判定理由", "命中關鍵字", "排除關鍵字", "各建設評分",
+        "新聞摘要", "日期來源", "關聯主題", "優先關聯機關", "關聯性", "關聯分數",
+        "判定理由", "命中關鍵字", "排除關鍵字", "各主題評分",
     ]
     assert worksheet["G2"].value is None
     assert str(worksheet["H2"].value) == "主權AI及算力建設"
     assert worksheet["I2"].value == "國科會"
     assert worksheet["J2"].value == "高度相關"
     assert worksheet["K2"].value == 100
-    assert "標題命中完整建設名稱" in str(worksheet["L2"].value)
+    assert "標題命中完整主題名稱" in str(worksheet["L2"].value)
     assert worksheet["J3"].value == "可能相關"
     assert worksheet["K3"].value == 40
     assert worksheet["J4"].value is None
     assert str(worksheet["O2"].value) == "主權AI及算力建設（100分，高度相關）"
+    assert worksheet["J5"].value == "未納入"
+    assert worksheet["K5"].value == 35
+    assert "招募" in str(worksheet["N5"].value)
     assert all(cell.fill.fgColor.rgb.endswith("FFFF00") for cell in worksheet[2])
     assert all(cell.fill.fgColor.rgb.endswith("FFF2CC") for cell in worksheet[3])
     assert all(cell.fill.fill_type is None for cell in worksheet[4])
@@ -342,7 +352,7 @@ def test_export_adds_ai_policy_metadata_and_two_relevance_colors(tmp_path, monke
     assert [row[9] for row in filtered_rows] == ["高度相關", "可能相關"]
 
 
-def test_export_includes_ai_ten_initiatives_reference_sheet(tmp_path, monkeypatch):
+def test_export_includes_generic_topic_reference_and_version_sheets(tmp_path, monkeypatch):
     monkeypatch.setattr(
         "news_scraper.excel_exporter.get_cached_week_range",
         lambda: (date(2026, 6, 1), date(2026, 6, 7)),
@@ -351,15 +361,30 @@ def test_export_includes_ai_ten_initiatives_reference_sheet(tmp_path, monkeypatc
     output_path = export_to_excel([], output_dir=tmp_path)
 
     workbook = load_workbook(output_path, rich_text=True)
-    rows = list(workbook["AI新十大建設對照"].iter_rows(min_row=2, values_only=True))
+    rows = list(workbook["主題規則對照"].iter_rows(min_row=2, values_only=True))
     names = [str(row[0]) for row in rows]
-    lead_agencies = {str(row[0]): str(row[1]) for row in rows}
+    priority_sources = {str(row[0]): str(row[2]) for row in rows}
 
     assert len(names) == 10
     assert names[0] == "全民智慧生活圈"
     assert names[-1] == "千億資金驅動創新"
-    assert lead_agencies["AI數位產業登峰"] == "數發部"
-    assert lead_agencies["矽光子技術全球領先"] == "經濟部"
+    assert priority_sources["AI數位產業登峰"] == "數位發展部"
+    assert priority_sources["矽光子技術全球領先"] == "經濟部"
+    assert workbook["關聯性規則"].max_row > 10
+    reference_headers = [
+        str(cell.value) for cell in workbook["主題規則對照"][1]
+    ]
+    assert "全域脈絡詞" in reference_headers
+    assert "全域排除詞" in reference_headers
+    version_rows = dict(
+        workbook["規則版本"].iter_rows(min_row=2, values_only=True)
+    )
+    assert str(version_rows["設定名稱"]) == "AI 新十大建設預設範本"
+    assert len(str(version_rows["有效規則雜湊"])) == 16
+    assert version_rows["停用主題數"] == 0
+    assert version_rows["停用關鍵字數"] == 0
+    assert version_rows["停用排除詞數"] == 0
+    assert "T" in str(version_rows["匯出時間"])
 
 
 def test_export_uses_summary_for_possible_relevance(tmp_path, monkeypatch):
@@ -389,5 +414,5 @@ def test_export_uses_summary_for_possible_relevance(tmp_path, monkeypatch):
     assert str(row[7].value) == "矽光子技術全球領先"
     assert row[9].value == "可能相關"
     assert row[10].value == 70
-    assert "摘要命中完整建設名稱" in str(row[11].value)
+    assert "摘要命中完整主題名稱" in str(row[11].value)
     assert str(row[14].value) == "矽光子技術全球領先（70分，可能相關）"

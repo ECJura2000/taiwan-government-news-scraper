@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+## 1.5.0 - 2026-07-28
+
+- Replaced the fixed AI initiative classifier with a reusable topic relevance engine while preserving the existing AI Ten Major Initiatives as the initial template.
+- Added a four-tab GUI editor for freely creating, duplicating, renaming, ordering, disabling, deleting, importing, exporting, and testing topics and keywords.
+- Added core, supporting, context, global exclusion, and topic exclusion rules with title/summary field selection, stable IDs, tombstones, validation, and deterministic profile hashes.
+- Shared the saved relevance profile across GUI, headless, and scheduled runs, with explicit CLI override and built-in-profile options.
+- Generalized Excel columns and reference sheets, and added effective rule/version auditing to Excel and schema-v3 JSON reports.
+- Standardized GUI typography on Kai-style Traditional Chinese fonts and Times New Roman-compatible Latin fonts with dynamic high-DPI scaling.
+
 ## 1.4.1 - 2026-07-28
 
 - Added a Per-Monitor V2 Windows manifest so high-DPI displays render the GUI without bitmap blur.

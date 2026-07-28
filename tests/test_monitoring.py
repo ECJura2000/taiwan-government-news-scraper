@@ -46,7 +46,7 @@ def test_build_and_write_run_report(tmp_path):
     saved_report = json.loads(report_path.read_text(encoding="utf-8"))
 
     assert saved_report["status"] == "success"
-    assert saved_report["report_schema_version"] == 2
+    assert saved_report["report_schema_version"] == 3
     assert saved_report["week_start"] == "2026-06-01"
     assert saved_report["week_end"] == "2026-06-07"
     assert saved_report["selected_sources"] == ["財政部", "工程會"]
@@ -54,6 +54,8 @@ def test_build_and_write_run_report(tmp_path):
     assert saved_report["insecure_ssl_hosts"] == ["www.pcc.gov.tw"]
     assert saved_report["ai_policy"]["version"] == "2.1.0"
     assert len(saved_report["ai_policy"]["ruleset_hash"]) == 16
+    assert saved_report["relevance_policy"]["name"] == "AI 新十大建設預設範本"
+    assert saved_report["relevance_policy"]["enabled_topic_count"] == 10
     assert [attempt["attempt"] for attempt in saved_report["source_attempts"]] == [1, 1, 2]
 
 

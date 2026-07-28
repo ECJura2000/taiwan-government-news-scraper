@@ -16,13 +16,12 @@ from urllib.request import Request, urlopen
 
 from requests.exceptions import ConnectionError, HTTPError, SSLError, Timeout
 
-from .config import AI_POLICY_RULESET_VERSION, get_ai_policy_ruleset_hash
 from .io_utils import atomic_write_text
 from .policy import get_summary_coverage_policy, get_zero_item_alert_runs
 
 CURRENT_RUN_CONTEXT = ContextVar("news_scraper_run_context", default=None)
 logger = logging.getLogger(__name__)
-REPORT_SCHEMA_VERSION = 2
+REPORT_SCHEMA_VERSION = 3
 
 
 class QualitySummary(TypedDict, total=False):
@@ -210,6 +209,7 @@ def build_run_report(
     output_path,
     week_start: date | None = None,
     week_end: date | None = None,
+    relevance_policy: dict | None = None,
 ):
     attempts = context.snapshot_attempts()
     error_counts: dict[str, int] = {}
@@ -228,6 +228,16 @@ def build_run_report(
     else:
         status = RunStatus.SUCCESS
 
+    if relevance_policy is None:
+        from .relevance import (
+            build_default_relevance_profile,
+            get_relevance_profile_summary,
+        )
+
+        relevance_policy = get_relevance_profile_summary(
+            build_default_relevance_profile(),
+        )
+
     return {
         "report_schema_version": REPORT_SCHEMA_VERSION,
         "status": status,
@@ -243,9 +253,10 @@ def build_run_report(
         "error_counts": error_counts,
         "insecure_ssl_hosts": sorted(context.insecure_ssl_hosts),
         "quality": context.quality_summary,
+        "relevance_policy": relevance_policy,
         "ai_policy": {
-            "version": AI_POLICY_RULESET_VERSION,
-            "ruleset_hash": get_ai_policy_ruleset_hash(),
+            "version": relevance_policy["template_version"],
+            "ruleset_hash": relevance_policy["ruleset_hash"],
         },
         "anomalies": list(context.anomalies),
         "parser_warnings": [warning.to_dict() for warning in context.parser_warnings],

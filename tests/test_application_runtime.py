@@ -17,6 +17,7 @@ from news_scraper.gui import (
     save_settings,
 )
 from news_scraper.io_utils import atomic_write_text
+from news_scraper.main import parse_args
 from news_scraper.paths import WorkspacePaths
 from news_scraper.run_lock import RunAlreadyActiveError, RunLock
 
@@ -165,6 +166,27 @@ def test_windows_manifest_declares_per_monitor_v2():
     assert "manifest=windows_manifest" in spec
 
 
+def test_gui_uses_named_fonts_instead_of_tk_defaults():
+    project_root = Path(__file__).resolve().parents[1]
+    gui_source = (project_root / "news_scraper" / "gui.py").read_text(encoding="utf-8")
+
+    assert "TkDefaultFont" not in gui_source
+    assert "TkFixedFont" not in gui_source
+    assert "NewsScraperCJK" in gui_source
+    assert "NewsScraperLatin" in gui_source
+    assert "Times New Roman" in gui_source
+    assert "DFKai-SB" in gui_source
+
+
+def test_relevance_profile_cli_flags_are_mutually_exclusive():
+    args = parse_args(["--relevance-profile", "custom.json"])
+
+    assert args.relevance_profile == "custom.json"
+    assert args.no_relevance_profile is False
+    with pytest.raises(SystemExit):
+        parse_args(["--relevance-profile", "custom.json", "--no-relevance-profile"])
+
+
 def test_headless_source_listing_does_not_import_tkinter():
     project_root = Path(__file__).resolve().parents[1]
     script = (
@@ -260,6 +282,77 @@ def test_cancelled_application_writes_report_without_excel(monkeypatch, tmp_path
     assert json.loads(result.report_path.read_text(encoding="utf-8"))["output_file"] == ""
     assert list(workspace.output.glob("*.xlsx")) == []
     assert not (workspace.output / ".news-scraper.run.lock").exists()
+
+
+def test_gui_and_headless_runs_use_the_same_relevance_hash(monkeypatch, tmp_path):
+    import threading
+
+    import news_scraper.application as application
+    import news_scraper.main as main_module
+    import news_scraper.runtime as runtime
+    from news_scraper.relevance import (
+        KeywordRule,
+        RelevanceProfile,
+        TopicRule,
+        get_effective_relevance_hash,
+        save_relevance_profile,
+    )
+
+    workspace = WorkspacePaths(
+        root=tmp_path,
+        program_data=tmp_path / "程式資料",
+        logs=tmp_path / "程式資料" / "logs",
+        output=tmp_path / "新聞搜集區",
+        reports=tmp_path / "新聞搜集區" / "執行紀錄",
+    )
+    for directory in (
+        workspace.program_data,
+        workspace.logs,
+        workspace.output,
+        workspace.reports,
+    ):
+        directory.mkdir(parents=True, exist_ok=True)
+    profile = RelevanceProfile(
+        name="跨入口設定",
+        topics=[
+            TopicRule(
+                id="topic:cyber",
+                name="資安",
+                core_keywords=[KeywordRule(id="keyword:cyber", text="零信任")],
+            )
+        ],
+    )
+    profile_path = workspace.program_data / "relevance-profile.json"
+    save_relevance_profile(profile_path, profile)
+
+    monkeypatch.setattr(application, "prepare_workspace", lambda: workspace)
+    monkeypatch.setattr(runtime, "validate_runtime_environment", lambda **kwargs: True)
+    monkeypatch.setattr(main_module, "normalize_selected_sources", lambda sources: ["行政院"])
+
+    def cancel_during_collection(**kwargs):
+        kwargs["cancel_event"].set()
+        kwargs["context"].cancelled = True
+        return []
+
+    monkeypatch.setattr(main_module, "collect_all_this_week_news", cancel_during_collection)
+
+    hashes = []
+    for mode in ("gui", "headless"):
+        output_dir = tmp_path / mode
+        result = run_news_scraper(
+            RunOptions(
+                sources=("行政院",),
+                output_dir=output_dir,
+                relevance_profile_path=profile_path,
+                mode=mode,
+            ),
+            cancel_event=threading.Event(),
+        )
+        assert result.report_path is not None
+        report = json.loads(result.report_path.read_text(encoding="utf-8"))
+        hashes.append(report["relevance_policy"]["ruleset_hash"])
+
+    assert hashes == [get_effective_relevance_hash(profile)] * 2
 
 
 @pytest.mark.parametrize(
