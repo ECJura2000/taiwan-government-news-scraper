@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## 1.4.1 - 2026-07-28
+
+- Added a Per-Monitor V2 Windows manifest so high-DPI displays render the GUI without bitmap blur.
+- Added runtime DPI-awareness fallbacks for older supported Windows environments.
+
 ## 1.4.0 - 2026-07-28
 
 - Added a prominent latest-release download table, real GUI and Excel previews, and platform-specific first-run guides.

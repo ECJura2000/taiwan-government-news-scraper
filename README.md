@@ -112,13 +112,13 @@ chmod +x 各機關新聞整理
 Linux 可用下列方式核對雜湊：
 
 ```bash
-sha256sum taiwan-government-news-v1.4.0-linux.zip
+sha256sum taiwan-government-news-v1.4.1-linux.zip
 ```
 
 macOS 使用：
 
 ```bash
-shasum -a 256 taiwan-government-news-v1.4.0-macos-arm64.zip
+shasum -a 256 taiwan-government-news-v1.4.1-macos-arm64.zip
 ```
 
 Intel Mac 請將檔名改為 `macos-x64.zip`。Windows 可用 `Get-FileHash` 計算後，與 `SHA256SUMS.txt` 的對應紀錄比對。正式 Release 單檔不得超過 90 MiB，全部資產不得超過 220 MiB；Actions 中間 artifacts 只保留 1 天。

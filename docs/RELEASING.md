@@ -33,8 +33,8 @@ Workflow 會重新驗證原始碼，平行建置 Windows、Linux、macOS Apple S
 只有手動 workflow 無法使用且版本從未發布時才推送 tag：
 
 ```bash
-git tag -a v1.4.0 -m "Release v1.4.0"
-git push origin v1.4.0
+git tag -a v1.4.1 -m "Release v1.4.1"
+git push origin v1.4.1
 ```
 
 Tag 必須與 `pyproject.toml` 完全一致。
