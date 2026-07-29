@@ -202,6 +202,18 @@ def test_gui_uses_named_fonts_instead_of_tk_defaults():
     assert "DFKai-SB" in gui_source
 
 
+def test_gui_log_uses_same_cjk_font_as_buttons():
+    project_root = Path(__file__).resolve().parents[1]
+    gui_source = (project_root / "news_scraper" / "gui.py").read_text(encoding="utf-8")
+    log_widget = gui_source.split("self.log_text = self.tk.Text(", 1)[1].split(
+        "self.log_text.pack",
+        1,
+    )[0]
+
+    assert 'font="NewsScraperCJK"' in log_widget
+    assert 'font="NewsScraperLatin"' not in log_widget
+
+
 def test_relevance_profile_cli_flags_are_mutually_exclusive():
     args = parse_args(["--relevance-profile", "custom.json"])
 

@@ -12,7 +12,7 @@
 
 原始碼下載入口：
 
-- [v1.5.1 固定版本 AI 原始碼 ZIP](https://github.com/ECJura2000/taiwan-government-news-scraper/releases/download/v1.5.1/taiwan-government-news-v1.5.1-source.zip)
+- [v1.5.2 固定版本 AI 原始碼 ZIP](https://github.com/ECJura2000/taiwan-government-news-scraper/releases/download/v1.5.2/taiwan-government-news-v1.5.2-source.zip)
 - [main 最新版本 ZIP](https://github.com/ECJura2000/taiwan-government-news-scraper/archive/refs/heads/main.zip)
 - `git clone https://github.com/ECJura2000/taiwan-government-news-scraper.git`
 

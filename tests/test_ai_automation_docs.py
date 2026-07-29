@@ -1,13 +1,23 @@
 from pathlib import Path
 
+try:
+    import tomllib
+except ModuleNotFoundError:  # pragma: no cover - Python 3.10
+    import tomli as tomllib
+
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
 
 def test_readme_exposes_source_downloads_and_ai_guide():
     readme = (PROJECT_ROOT / "README.md").read_text(encoding="utf-8")
+    guide = (PROJECT_ROOT / "docs" / "AI_AUTOMATION.md").read_text(encoding="utf-8")
+    with (PROJECT_ROOT / "pyproject.toml").open("rb") as stream:
+        version = str(tomllib.load(stream)["project"]["version"])
+    source_archive = "taiwan-government-news-v{}-source.zip".format(version)
 
-    assert "taiwan-government-news-v1.5.1-source.zip" in readme
+    assert source_archive in readme
+    assert source_archive in guide
     assert "archive/refs/heads/main.zip" in readme
     assert "docs/AI_AUTOMATION.md" in readme
     assert "AGENTS.md" in readme

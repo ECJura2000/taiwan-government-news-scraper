@@ -38,7 +38,7 @@ macOS／Linux：
 
 如果希望 AI 能閱讀、修改或擴充程式，請改用下列原始碼入口：
 
-- [下載 v1.5.1 固定版本 AI 原始碼 ZIP](https://github.com/ECJura2000/taiwan-government-news-scraper/releases/download/v1.5.1/taiwan-government-news-v1.5.1-source.zip)
+- [下載 v1.5.2 固定版本 AI 原始碼 ZIP](https://github.com/ECJura2000/taiwan-government-news-scraper/releases/download/v1.5.2/taiwan-government-news-v1.5.2-source.zip)
 - [下載 main 最新原始碼 ZIP](https://github.com/ECJura2000/taiwan-government-news-scraper/archive/refs/heads/main.zip)
 - 使用 Git：`git clone https://github.com/ECJura2000/taiwan-government-news-scraper.git`
 
@@ -150,13 +150,13 @@ Windows 原始碼環境使用：
 Linux 可用下列方式核對雜湊：
 
 ```bash
-sha256sum taiwan-government-news-v1.5.1-linux.zip
+sha256sum taiwan-government-news-v1.5.2-linux.zip
 ```
 
 macOS 使用：
 
 ```bash
-shasum -a 256 taiwan-government-news-v1.5.1-macos-arm64.zip
+shasum -a 256 taiwan-government-news-v1.5.2-macos-arm64.zip
 ```
 
 Intel Mac 請將檔名改為 `macos-x64.zip`。Windows 可用 `Get-FileHash` 計算後，與 `SHA256SUMS.txt` 的對應紀錄比對。正式 Release 單一執行檔不得超過 65 MiB，全部資產（含 AI 原始碼 ZIP）不得超過 170 MiB；Actions 中間 artifacts 只保留 1 天。
