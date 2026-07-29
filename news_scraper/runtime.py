@@ -4,6 +4,7 @@ import sys
 CORE_DEPENDENCIES = {
     "requests": "requests",
     "bs4": "beautifulsoup4",
+    "tzdata": "tzdata",
 }
 
 SCRAPE_DEPENDENCIES = {

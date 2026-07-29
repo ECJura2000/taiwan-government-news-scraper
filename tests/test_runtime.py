@@ -6,6 +6,7 @@ def test_collect_required_dependencies_includes_optional_dependencies_for_all_so
 
     assert dependencies["defusedxml"] == "defusedxml"
     assert dependencies["feedparser"] == "feedparser"
+    assert dependencies["tzdata"] == "tzdata"
 
 
 def test_collect_required_dependencies_skips_unneeded_optional_dependencies_for_selected_sources():

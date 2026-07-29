@@ -56,6 +56,7 @@ hiddenimports += [
     "selenium.webdriver.remote.webdriver",
     "selenium.webdriver.support.expected_conditions",
     "selenium.webdriver.support.ui",
+    "tzdata",
 ]
 
 

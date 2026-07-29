@@ -19,6 +19,7 @@ dependencies = [
     "selenium",
     "soupsieve>=2.8.4",
     "tomli>=2; python_version < '3.11'",
+    "tzdata>=2026.3",
     "urllib3>=2.7.0",
 ]
 

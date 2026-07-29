@@ -179,6 +179,7 @@ def test_spec_collects_only_current_selenium_manager_and_excludes_data_stacks():
     assert '"pandas"' in spec
     assert "selenium.webdriver.firefox" in spec
     assert "selenium.webdriver.edge" in spec
+    assert '"tzdata"' in spec
 
 
 def test_browser_smoke_uses_local_page_and_headless_chrome():
