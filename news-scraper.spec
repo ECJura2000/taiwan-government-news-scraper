@@ -3,7 +3,8 @@
 import sys
 from pathlib import Path
 
-from PyInstaller.utils.hooks import collect_all
+import selenium
+from PyInstaller.utils.hooks import collect_all, copy_metadata
 
 
 def source_module_name(source_path):
@@ -21,11 +22,42 @@ scraper_root = Path(SPECPATH) / "news_scraper" / "scrapers" / "ministry"
 hiddenimports = sorted(
     {source_module_name(source_path) for source_path in scraper_root.rglob("*.py")}
 )
-for package_name in ("feedparser", "selenium"):
+for package_name in ("feedparser",):
     package_datas, package_binaries, package_hiddenimports = collect_all(package_name)
     datas += package_datas
     binaries += package_binaries
     hiddenimports += package_hiddenimports
+
+selenium_root = Path(selenium.__file__).parent
+selenium_manager_platform = {
+    "darwin": ("macos", "selenium-manager"),
+    "linux": ("linux", "selenium-manager"),
+    "win32": ("windows", "selenium-manager.exe"),
+}[sys.platform]
+manager_directory, manager_name = selenium_manager_platform
+manager_path = selenium_root / "webdriver" / "common" / manager_directory / manager_name
+binaries.append(
+    (
+        str(manager_path),
+        "selenium/webdriver/common/{}".format(manager_directory),
+    )
+)
+datas += copy_metadata("selenium")
+hiddenimports += [
+    "selenium.common.exceptions",
+    "selenium.webdriver.chrome.options",
+    "selenium.webdriver.chrome.service",
+    "selenium.webdriver.chrome.webdriver",
+    "selenium.webdriver.chromium.options",
+    "selenium.webdriver.chromium.service",
+    "selenium.webdriver.chromium.webdriver",
+    "selenium.webdriver.common.by",
+    "selenium.webdriver.common.selenium_manager",
+    "selenium.webdriver.remote.webdriver",
+    "selenium.webdriver.support.expected_conditions",
+    "selenium.webdriver.support.ui",
+    "tzdata",
+]
 
 
 analysis = Analysis(
@@ -37,7 +69,17 @@ analysis = Analysis(
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
-    excludes=[],
+    excludes=[
+        "numpy",
+        "pandas",
+        "pytest",
+        "selenium.webdriver.edge",
+        "selenium.webdriver.firefox",
+        "selenium.webdriver.ie",
+        "selenium.webdriver.safari",
+        "selenium.webdriver.webkitgtk",
+        "selenium.webdriver.wpewebkit",
+    ],
     noarchive=False,
     optimize=0,
 )

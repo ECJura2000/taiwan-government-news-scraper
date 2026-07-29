@@ -12,7 +12,7 @@
 
 原始碼下載入口：
 
-- [v1.5.0 固定版本 ZIP](https://github.com/ECJura2000/taiwan-government-news-scraper/archive/refs/tags/v1.5.0.zip)
+- [v1.5.1 固定版本 AI 原始碼 ZIP](https://github.com/ECJura2000/taiwan-government-news-scraper/releases/download/v1.5.1/taiwan-government-news-v1.5.1-source.zip)
 - [main 最新版本 ZIP](https://github.com/ECJura2000/taiwan-government-news-scraper/archive/refs/heads/main.zip)
 - `git clone https://github.com/ECJura2000/taiwan-government-news-scraper.git`
 
@@ -39,6 +39,8 @@ py -3.12 -m venv .venv
 ```
 
 若環境沒有 Python 3.12，可使用專案支援的 Python 3.10 或 3.13。
+
+從 v1.5.0 或更舊版本升級時，請重建 `.venv` 才能回收已移除的 pandas/numpy；更新鎖檔不會自動刪除舊環境中的套件。程式不會自行刪除 `.venv`。
 
 ## 交給 AI 的執行要求
 

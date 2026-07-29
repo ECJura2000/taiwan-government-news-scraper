@@ -23,9 +23,13 @@
 
 - 更新 `requirements.lock.txt` 與 `requirements-dev.lock.txt`。
 - 執行 `python3 scripts/benchmark_capacity.py --sizes 1000 10000 100000`。
+- 執行 `python3 scripts/benchmark_excel_export.py --rows 10000 --max-seconds 30`。
 - 檢查 CI benchmark artifact 與 observability budget warning。
 - CI 會和 `benchmarks/baseline.json` 比較；只有確認效能變更合理後才更新基準。
+- `python3 scripts/clean_workspace.py` 只預覽可重建暫存；人工確認後才可加 `--apply`。不得把 `.venv`、Excel、JSON 報告、主題設定或憑證加入清理範圍。
+- 移除 runtime 依賴後必須用全新 `.venv` 驗證；舊環境不會自動解除安裝套件。
 - 每日非阻擋 `Source smoke` workflow 會檢查代表性外部來源。
+- `SSL allowlist audit` 會保存 GitHub runner 的正常憑證驗證結果；只有它與本機 `audit_ssl_allowlist.py` 證據皆成功的交集可移出白名單。
 - 至少連續兩週使用 `python3 scripts/record_long_term_run.py --input <result.json>` 累積真實執行證據後，再提出穩定性結論。
 
 ## 排程維護

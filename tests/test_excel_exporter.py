@@ -416,3 +416,104 @@ def test_export_uses_summary_for_possible_relevance(tmp_path, monkeypatch):
     assert row[10].value == 70
     assert "摘要命中完整主題名稱" in str(row[11].value)
     assert str(row[14].value) == "矽光子技術全球領先（70分，可能相關）"
+
+
+def test_normalized_workbook_contract_preserves_structure_and_formatting(tmp_path, monkeypatch):
+    monkeypatch.setattr(
+        "news_scraper.excel_exporter.get_cached_week_range",
+        lambda: (date(2026, 7, 27), date(2026, 8, 2)),
+    )
+    output_path = export_to_excel(
+        [
+            {
+                "source": "國科會",
+                "date": "2026-07-29",
+                "department": "國科會",
+                "title": "主權AI及算力建設正式啟動",
+                "link": "https://example.test/high",
+                "summary": "計畫摘要",
+                "date_source": "published",
+            },
+            {
+                "source": "行政院",
+                "date": "2026-07-28",
+                "department": "行政院",
+                "title": "一般政策新聞",
+                "link": "https://example.test/general",
+            },
+        ],
+        output_dir=tmp_path,
+    )
+    workbook = load_workbook(output_path, rich_text=True)
+    all_news = workbook["全部新聞"]
+    filtered = workbook["已初步篩選工作表"]
+    link = all_news["E3"]
+
+    manifest = {
+        "sheets": workbook.sheetnames,
+        "all_news": {
+            "shape": [all_news.max_row, all_news.max_column],
+            "headers": [cell.value for cell in all_news[1]],
+            "freeze": all_news.freeze_panes,
+            "filter": all_news.auto_filter.ref,
+            "first_sources": [all_news["A2"].value, all_news["A3"].value],
+            "high_fill": all_news["A3"].fill.fgColor.rgb[-6:],
+            "header_font": all_news["A1"].font.name,
+            "body_font": all_news["B2"].font.name,
+            "link_target": link.hyperlink.target,
+            "date_validations": len(all_news.data_validations.dataValidation),
+        },
+        "filtered": {
+            "shape": [filtered.max_row, filtered.max_column],
+            "relevance": filtered["J2"].value,
+            "score": filtered["K2"].value,
+        },
+    }
+
+    assert manifest == {
+        "sheets": [
+            "全部新聞",
+            "已初步篩選工作表",
+            "主題規則對照",
+            "關聯性規則",
+            "規則版本",
+            "財政部",
+            "國發會",
+            "國科會",
+            "數發部",
+            "經濟部",
+        ],
+        "all_news": {
+            "shape": [3, 15],
+            "headers": [
+                "部會",
+                "新聞日期",
+                "單位分類",
+                "新聞標題",
+                "新聞連結",
+                "新聞摘要",
+                "日期來源",
+                "關聯主題",
+                "優先關聯機關",
+                "關聯性",
+                "關聯分數",
+                "判定理由",
+                "命中關鍵字",
+                "排除關鍵字",
+                "各主題評分",
+            ],
+            "freeze": "A2",
+            "filter": "A1:O3",
+            "first_sources": ["行政院", "國科會"],
+            "high_fill": "FFFF00",
+            "header_font": "標楷體",
+            "body_font": "Times New Roman",
+            "link_target": "https://example.test/high",
+            "date_validations": 2,
+        },
+        "filtered": {
+            "shape": [2, 15],
+            "relevance": "高度相關",
+            "score": 100,
+        },
+    }

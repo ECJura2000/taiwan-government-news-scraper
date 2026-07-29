@@ -6,9 +6,9 @@ from datetime import datetime
 from typing import Any
 
 from bs4 import BeautifulSoup
-from selenium import webdriver
 from selenium.common.exceptions import TimeoutException, WebDriverException
 from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.chrome.webdriver import WebDriver as ChromeWebDriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
@@ -213,7 +213,7 @@ def create_selenium_driver():
     )
 
     try:
-        driver = webdriver.Chrome(options=chrome_options)
+        driver = ChromeWebDriver(options=chrome_options)
     except WebDriverException:
         chrome_options = Options()
         chrome_options.add_argument("--headless")
@@ -226,7 +226,7 @@ def create_selenium_driver():
             "AppleWebKit/537.36 (KHTML, like Gecko) "
             "Chrome/135.0.0.0 Safari/537.36"
         )
-        driver = webdriver.Chrome(options=chrome_options)
+        driver = ChromeWebDriver(options=chrome_options)
 
     driver.execute_cdp_cmd(
         "Page.addScriptToEvaluateOnNewDocument",

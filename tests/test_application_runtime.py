@@ -63,8 +63,32 @@ def test_gui_settings_persist_only_declared_non_secret_fields(tmp_path):
     payload = json.loads(path.read_text(encoding="utf-8"))
 
     assert payload["sources"] == ["行政院"]
+    assert payload["schema_version"] == 2
+    assert "fail_on_source_error" not in payload
     assert "webhook" not in payload
     assert load_settings(path, ["行政院", "財政部"]).max_workers == 3
+
+
+def test_gui_settings_migrate_schema_one_and_ignore_removed_strict_flag(tmp_path):
+    path = tmp_path / "settings.json"
+    path.write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "sources": ["行政院"],
+                "fail_on_source_error": True,
+                "max_workers": 4,
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    settings = load_settings(path, ["行政院", "財政部"])
+
+    assert settings.schema_version == 2
+    assert settings.sources == ["行政院"]
+    assert settings.max_workers == 4
+    assert not hasattr(settings, "fail_on_source_error")
 
 
 def test_invalid_gui_numeric_settings_fall_back_safely(tmp_path):
@@ -224,6 +248,10 @@ def test_run_result_json_summary_uses_stable_machine_fields(tmp_path):
         "news_count": 4,
         "failed_sources": ["工程會"],
         "anomalies": [],
+        "duration_seconds": 0.0,
+        "error_counts": {},
+        "parser_warnings": [],
+        "relevance_policy": {},
         "quality": {"output_count": 4, "alert_reasons": []},
         "insecure_ssl_hosts": [],
         "cancelled": False,

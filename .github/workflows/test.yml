@@ -58,11 +58,14 @@ jobs:
           python -m pip install --no-deps -e .
       - run: python scripts/benchmark_capacity.py --sizes 1000 10000 --workers 1 4 16 > benchmark-results.json
       - run: python scripts/check_benchmark_budget.py benchmark-results.json benchmarks/baseline.json
+      - run: python scripts/benchmark_excel_export.py --rows 10000 --max-seconds 30 > excel-benchmark-results.json
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         with:
           name: taiwan-news-benchmark-results
-          path: benchmark-results.json
+          path: |
+            benchmark-results.json
+            excel-benchmark-results.json
           retention-days: 1
 
   security:

@@ -121,7 +121,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--dist-dir", type=Path, default=Path("dist"))
     parser.add_argument("--output-dir", type=Path, default=Path("release-assets"))
     parser.add_argument("--version")
-    parser.add_argument("--max-executable-mib", type=float, default=90)
+    parser.add_argument("--max-executable-mib", type=float, default=65)
     return parser.parse_args()
 
 

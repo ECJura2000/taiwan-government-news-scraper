@@ -386,6 +386,7 @@ def detect_run_anomalies(
     recent_reports,
     week_start: date | None = None,
     week_end: date | None = None,
+    current_duration_seconds: float | None = None,
 ):
     source_counts = context.quality_summary.get("source_counts", {})
     failed_sources = set(context.failed_sources)
@@ -443,21 +444,30 @@ def detect_run_anomalies(
                 }
             )
 
+    selected_source_set = set(selected_sources)
     durations = [
-        report.get("duration_seconds")
+        float(report["duration_seconds"])
         for report in recent_reports
         if isinstance(report.get("duration_seconds"), (int, float))
+        and not report.get("failed_sources")
+        and report.get("status") != "cancelled"
+        and set(report.get("selected_sources") or []) == selected_source_set
+        and int(report.get("selected_source_count") or 0) == len(selected_source_set)
     ]
-    if durations:
-        average_duration = sum(durations) / len(durations)
-        current_duration = sum(attempt["elapsed_seconds"] for attempt in context.snapshot_attempts())
-        if current_duration > max(30, average_duration * 3):
+    if current_duration_seconds is not None and not failed_sources and len(durations) >= 3:
+        reference_duration = statistics.median(durations)
+        threshold = max(reference_duration * 3, reference_duration + 60)
+        if current_duration_seconds > threshold:
             anomalies.append(
                 {
                     "category": "slow_run",
-                    "message": "本次來源總耗時 {:.1f} 秒，超過近期平均 {:.1f} 秒的三倍。".format(
-                        current_duration,
-                        average_duration,
+                    "current_duration_seconds": round(current_duration_seconds, 3),
+                    "reference_duration_seconds": round(reference_duration, 3),
+                    "history_count": len(durations),
+                    "threshold_seconds": round(threshold, 3),
+                    "message": "本次實際執行 {:.1f} 秒，超過相同來源近期中位數 {:.1f} 秒的告警門檻。".format(
+                        current_duration_seconds,
+                        reference_duration,
                     ),
                 }
             )

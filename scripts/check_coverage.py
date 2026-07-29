@@ -11,6 +11,12 @@ CRITICAL_FILE_MINIMUMS = {
     "news_scraper/http/client.py": 80.0,
     "news_scraper/main.py": 80.0,
     "news_scraper/monitoring.py": 80.0,
+    "news_scraper/scrapers/ministry/agriculture/afna.py": 80.0,
+    "news_scraper/scrapers/ministry/agriculture/fa.py": 80.0,
+    "news_scraper/scrapers/ministry/environment/moenv.py": 80.0,
+    "news_scraper/scrapers/ministry/health/sfaa.py": 80.0,
+    "news_scraper/scrapers/ministry/justice/mjac.py": 80.0,
+    "news_scraper/scrapers/ministry/regulators/pcc.py": 80.0,
     "news_scraper/scrapers/ministry/veterans/vghtpe.py": 80.0,
 }
 

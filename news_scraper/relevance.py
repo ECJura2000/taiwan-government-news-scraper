@@ -512,6 +512,12 @@ def save_relevance_profile(
     if backup and destination.exists():
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         shutil.copy2(destination, destination.with_name("{}-{}.json".format(destination.stem, timestamp)))
+        backups = sorted(
+            destination.parent.glob("{}-????????_??????.json".format(destination.stem)),
+            reverse=True,
+        )
+        for expired_backup in backups[10:]:
+            expired_backup.unlink(missing_ok=True)
     return atomic_write_text(
         destination,
         json.dumps(profile.to_dict(), ensure_ascii=False, indent=2) + "\n",

@@ -4,6 +4,7 @@ import sys
 CORE_DEPENDENCIES = {
     "requests": "requests",
     "bs4": "beautifulsoup4",
+    "tzdata": "tzdata",
 }
 
 SCRAPE_DEPENDENCIES = {
@@ -12,7 +13,6 @@ SCRAPE_DEPENDENCIES = {
 }
 
 EXPORT_DEPENDENCIES = {
-    "pandas": "pandas",
     "openpyxl": "openpyxl",
 }
 

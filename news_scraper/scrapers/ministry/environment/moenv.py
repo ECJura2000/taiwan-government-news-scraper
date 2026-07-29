@@ -1,7 +1,7 @@
 from urllib.parse import urljoin
 
 from ....config import URLS
-from ....http.client import fetch_html
+from ....http.client import fetch_html_resilient
 from ....models import make_news_item
 from ....utils.dates import get_cached_week_range, roc_to_ad_date
 from ...base import make_soup
@@ -9,7 +9,7 @@ from ...base import make_soup
 
 def scrape_moenv_this_week():
     source = "環境部"
-    soup = make_soup(fetch_html(URLS[source]))
+    soup = make_soup(fetch_html_resilient(URLS[source]))
     rows = soup.select("ul.list_group li")
     if not rows:
         raise ValueError("環境部頁面找不到 ul.list_group li。")

@@ -191,6 +191,23 @@ def test_profile_round_trip_and_effective_hash(tmp_path):
     assert json.loads(path.read_text(encoding="utf-8"))["schema_version"] == 1
 
 
+def test_profile_backup_retention_keeps_latest_ten(tmp_path):
+    profile = build_cyber_profile()
+    path = tmp_path / "relevance-profile.json"
+    save_relevance_profile(path, profile)
+    for index in range(12):
+        (tmp_path / "relevance-profile-202601{:02d}_120000.json".format(index + 1)).write_text(
+            "{}",
+            encoding="utf-8",
+        )
+
+    save_relevance_profile(path, profile, backup=True)
+
+    backups = sorted(tmp_path.glob("relevance-profile-????????_??????.json"))
+    assert len(backups) == 10
+    assert not (tmp_path / "relevance-profile-20260101_120000.json").exists()
+
+
 def test_pure_custom_profile_does_not_gain_ai_template_topics_on_load(tmp_path):
     profile = build_cyber_profile()
     path = tmp_path / "relevance-profile.json"

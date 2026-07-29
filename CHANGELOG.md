@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+## 1.5.1 - 2026-07-29
+
+- Replaced the pandas-backed Excel path with native rows and openpyxl while preserving workbook data, ordering, colors, fonts, hyperlinks, validation, filters, and frozen panes.
+- Removed pandas and numpy from runtime dependencies, locked environments, runtime checks, and portable executables; the optional DataFrame compatibility wrapper remains available only when callers install pandas themselves.
+- Reduced Selenium packaging to Chrome/Chromium, Remote WebDriver dependencies, the current platform Selenium Manager, and required license metadata, with an offline real-browser smoke test.
+- Added v1.5.0 four-platform ZIP and packaged-module baselines, a 15% ZIP reduction requirement, a 65 MiB executable limit, and a 170 MiB total Release budget.
+- Added a dedicated fixed source ZIP containing `AGENTS.md`, the AI automation guide, complete tracked source, and hash-locked dependency files.
+- Added a dry-run-first cleanup tool that only removes rebuildable build and test caches, plus a ten-backup limit for imported relevance profiles.
+- Corrected `slow_run` detection to use wall-clock duration and at least three normal runs with the exact same source set.
+- Preserved complete source-smoke reports and stderr, retried first failures after ten seconds, and distinguished unstable retry success from final failure.
+- Added stable fixtures and 80% per-file coverage gates for Corrections Agency, Agricultural Finance Agency, Fisheries Agency, Social and Family Affairs Administration, Ministry of Environment, and Public Construction Commission parsers.
+- Removed the ineffective strict-failure GUI option, migrated GUI settings to schema 2, and expanded machine-readable summaries with duration, errors, parser warnings, and relevance policy details.
+
 ## 1.5.0 - 2026-07-28
 
 - Replaced the fixed AI initiative classifier with a reusable topic relevance engine while preserving the existing AI Ten Major Initiatives as the initial template.
