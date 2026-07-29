@@ -1,23 +1,26 @@
 {
   "source": "新聞搜集區/執行紀錄/trend_summary.json",
   "report_count": 13,
-  "candidates": [
+  "audit_run": "https://github.com/ECJura2000/taiwan-government-news-scraper/actions/runs/30431556043",
+  "approved_removals": [
     "api.ncc.gov.tw",
     "indsr.org.tw",
     "moda.gov.tw",
     "www.afa.gov.tw",
     "www.ardswc.gov.tw",
     "www.cdc.gov.tw",
-    "www.dgpa.gov.tw",
-    "www.etax.nat.gov.tw",
     "www.ey.gov.tw",
     "www.fda.gov.tw",
     "www.moa.gov.tw",
     "www.moea.gov.tw",
     "www.moenv.gov.tw",
-    "www.mof.gov.tw",
     "www.nlma.gov.tw",
-    "www.thb.gov.tw",
     "www.wda.gov.tw"
+  ],
+  "candidates": [
+    "www.dgpa.gov.tw",
+    "www.etax.nat.gov.tw",
+    "www.mof.gov.tw",
+    "www.thb.gov.tw"
   ]
 }
