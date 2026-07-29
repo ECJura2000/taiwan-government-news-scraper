@@ -17,12 +17,11 @@ from .run_lock import RunAlreadyActiveError
 
 @dataclass
 class GuiSettings:
-    schema_version: int = 1
+    schema_version: int = 2
     sources: list[str] = field(default_factory=list)
     output_dir: str = ""
     max_workers: int = 8
     dedupe_affiliated: bool = False
-    fail_on_source_error: bool = False
     report_retention_days: int = 180
 
 
@@ -33,6 +32,7 @@ def load_settings(path: str | Path, available_sources: list[str]) -> GuiSettings
         settings = GuiSettings(**{key: data[key] for key in asdict(GuiSettings()) if key in data})
     except (OSError, TypeError, ValueError):
         settings = GuiSettings()
+    settings.schema_version = 2
     settings.sources = [source for source in settings.sources if source in available_sources]
     if not settings.sources:
         settings.sources = list(available_sources)
@@ -435,7 +435,6 @@ class NewsScraperApp:
         self.workers_var = tk.IntVar(value=self.settings.max_workers)
         self.retention_var = tk.IntVar(value=self.settings.report_retention_days)
         self.dedupe_var = tk.BooleanVar(value=self.settings.dedupe_affiliated)
-        self.strict_var = tk.BooleanVar(value=self.settings.fail_on_source_error)
         self.status_var = tk.StringVar(value="準備完成")
         self.progress_var = tk.DoubleVar(value=0)
         self.selected_count_var = tk.StringVar()
@@ -557,14 +556,8 @@ class NewsScraperApp:
             text="合併部會與所屬機關的同標題新聞",
             variable=self.dedupe_var,
         ).grid(row=4, column=0, columnspan=2, sticky="w", pady=(12, 4))
-        self.ttk.Checkbutton(
-            options_frame,
-            text="任何來源失敗時使用嚴格失敗狀態",
-            variable=self.strict_var,
-        ).grid(row=5, column=0, columnspan=2, sticky="w", pady=4)
-
         relevance_row = self.ttk.Frame(options_frame)
-        relevance_row.grid(row=6, column=0, columnspan=2, sticky="ew", pady=(12, 4))
+        relevance_row.grid(row=5, column=0, columnspan=2, sticky="ew", pady=(12, 4))
         self.relevance_button = self.ttk.Button(
             relevance_row,
             text="主題與關鍵字",
@@ -577,11 +570,11 @@ class NewsScraperApp:
         ).pack(side="left", padx=(10, 0))
 
         self.progress = self.ttk.Progressbar(options_frame, variable=self.progress_var, maximum=100)
-        self.progress.grid(row=7, column=0, columnspan=2, sticky="ew", pady=(14, 5))
-        self.ttk.Label(options_frame, textvariable=self.status_var).grid(row=8, column=0, columnspan=2, sticky="w")
+        self.progress.grid(row=6, column=0, columnspan=2, sticky="ew", pady=(14, 5))
+        self.ttk.Label(options_frame, textvariable=self.status_var).grid(row=7, column=0, columnspan=2, sticky="w")
 
         log_frame = self.ttk.Labelframe(options_frame, text="執行紀錄", padding=6)
-        log_frame.grid(row=9, column=0, columnspan=2, sticky="nsew", pady=(12, 10))
+        log_frame.grid(row=8, column=0, columnspan=2, sticky="nsew", pady=(12, 10))
         self.log_text = self.tk.Text(
             log_frame,
             height=12,
@@ -592,7 +585,7 @@ class NewsScraperApp:
         self.log_text.pack(fill="both", expand=True)
 
         action_row = self.ttk.Frame(options_frame)
-        action_row.grid(row=10, column=0, columnspan=2, sticky="ew")
+        action_row.grid(row=9, column=0, columnspan=2, sticky="ew")
         self.start_button = self.ttk.Button(
             action_row,
             text="開始整理新聞",
@@ -624,7 +617,7 @@ class NewsScraperApp:
         self.open_folder_button.pack(side="right", padx=8)
 
         options_frame.columnconfigure(0, weight=1)
-        options_frame.rowconfigure(9, weight=1)
+        options_frame.rowconfigure(8, weight=1)
 
     def _on_search_changed(self, *_args):
         self._sync_selected_from_view()
@@ -727,7 +720,6 @@ class NewsScraperApp:
             output_dir=str(output_dir.resolve()),
             max_workers=workers,
             dedupe_affiliated=bool(self.dedupe_var.get()),
-            fail_on_source_error=bool(self.strict_var.get()),
             report_retention_days=retention,
         )
 
@@ -765,7 +757,6 @@ class NewsScraperApp:
                     max_workers=settings.max_workers,
                     dedupe_affiliated=settings.dedupe_affiliated,
                     report_retention_days=settings.report_retention_days,
-                    fail_on_source_error=settings.fail_on_source_error,
                     relevance_profile_path=(
                         self.relevance_profile_path
                         if self.relevance_profile_path.exists()
@@ -807,6 +798,10 @@ class NewsScraperApp:
                     self.result = payload
                     if payload.cancelled:
                         self.status_var.set("已取消")
+                    elif payload.failed_sources:
+                        failed_text = "、".join(payload.failed_sources)
+                        self.status_var.set("完成，但有 {} 個來源失敗".format(len(payload.failed_sources)))
+                        self._append_log("抓取失敗來源：{}".format(failed_text))
                     elif payload.status == "success":
                         self.status_var.set("完成：共 {} 筆".format(payload.news_count))
                     else:

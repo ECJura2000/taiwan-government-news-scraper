@@ -4,9 +4,11 @@ import re
 import tempfile
 from contextlib import contextmanager
 from datetime import datetime
+from importlib import import_module
 from pathlib import Path
 
-import pandas as pd
+from openpyxl import Workbook
+from openpyxl.cell.cell import Cell
 from openpyxl.cell.rich_text import CellRichText, TextBlock
 from openpyxl.cell.text import InlineFont
 from openpyxl.worksheet.datavalidation import DataValidation
@@ -53,6 +55,24 @@ COLUMN_WIDTHS = {
     "O": 65,
 }
 ROW_HEIGHT = 22
+BASE_COLUMNS = ["source", "date", "department", "title", "link", "summary", "date_source"]
+EXPORT_COLUMNS = [
+    "部會",
+    "新聞日期",
+    "單位分類",
+    "新聞標題",
+    "新聞連結",
+    "新聞摘要",
+    "日期來源",
+    "關聯主題",
+    "優先關聯機關",
+    "關聯性",
+    "關聯分數",
+    "判定理由",
+    "命中關鍵字",
+    "排除關鍵字",
+    "各主題評分",
+]
 
 
 @contextmanager
@@ -67,8 +87,10 @@ def atomic_excel_writer(output_path):
     os.close(descriptor)
     temporary_path = Path(temporary_name)
     try:
-        with pd.ExcelWriter(temporary_path, engine="openpyxl") as writer:
-            yield writer
+        workbook = Workbook()
+        workbook.remove(workbook.active)
+        yield workbook
+        workbook.save(temporary_path)
         os.replace(temporary_path, destination)
     finally:
         temporary_path.unlink(missing_ok=True)
@@ -157,55 +179,81 @@ def split_news_link_display_text(link_text):
     return prefix, url
 
 
+def _coerce_records(value):
+    if value is None:
+        return []
+    to_dict = getattr(value, "to_dict", None)
+    if callable(to_dict):
+        try:
+            return [dict(row) for row in to_dict(orient="records")]
+        except TypeError:
+            pass
+    return [dict(row) for row in value]
+
+
+def _restore_optional_dataframe(original, rows):
+    if type(original).__module__.split(".", 1)[0] != "pandas":
+        return rows
+    pandas = import_module("pandas")
+    return pandas.DataFrame(rows)
+
+
+def prepare_export_rows(rows):
+    prepared = []
+    for input_row in rows:
+        row = dict(input_row)
+        original_source = clean_text(row.get("原始來源") or row.get("部會"))
+        row["原始來源"] = original_source
+        row["部會"] = get_parent_source(original_source)
+        row["單位分類"] = format_department_path(original_source, row.get("單位分類", ""))
+        prepared.append(row)
+    prepared.sort(key=agency_sort_key)
+    for row in prepared:
+        row.pop("原始來源", None)
+    return prepared
+
+
 def prepare_export_dataframe(df):
-    df = df.copy()
-    if "原始來源" not in df.columns:
-        df["原始來源"] = df["部會"]
+    """Compatibility wrapper for callers that still pass a pandas DataFrame."""
 
-    df["部會"] = df["原始來源"].apply(get_parent_source)
-    df["單位分類"] = df.apply(
-        lambda row: format_department_path(row["原始來源"], row["單位分類"]),
-        axis=1,
-    )
-
-    if df.empty:
-        return df.drop(columns=["原始來源"], errors="ignore")
-
-    df["_sort_key"] = df.apply(agency_sort_key, axis=1)
-    df = df.sort_values(by="_sort_key", kind="stable").drop(columns=["_sort_key"])
-    return df.drop(columns=["原始來源"], errors="ignore")
+    rows = prepare_export_rows(_coerce_records(df))
+    return _restore_optional_dataframe(df, rows)
 
 
-def add_relevance_metadata(df, profile):
-    df = df.copy()
-    classifications = [
-        classify_relevance(
+def add_relevance_metadata_rows(rows, profile):
+    enriched_rows = []
+    for input_row in rows:
+        row = dict(input_row)
+        result = classify_relevance(
             row.get("新聞標題", ""),
             source=row.get("部會", ""),
             summary=row.get("新聞摘要", ""),
             profile=profile,
         )
-        for _, row in df.iterrows()
-    ]
-    df["關聯主題"] = ["、".join(result["topics"]) for result in classifications]
-    df["優先關聯機關"] = [
-        "、".join(result["priority_sources"]) for result in classifications
-    ]
-    df["關聯性"] = [result["relevance"] for result in classifications]
-    df["關聯分數"] = [result["score"] for result in classifications]
-    df["判定理由"] = ["；".join(result["reasons"]) for result in classifications]
-    df["命中關鍵字"] = ["、".join(result["matched_keywords"]) for result in classifications]
-    df["排除關鍵字"] = [
-        "、".join(result["excluded_keywords"]) for result in classifications
-    ]
-    df["各主題評分"] = [
-        "；".join(
-            "{}（{}分，{}）".format(match["name"], match["score"], match["relevance"])
-            for match in result["topic_matches"]
+        row.update(
+            {
+                "關聯主題": "、".join(result["topics"]),
+                "優先關聯機關": "、".join(result["priority_sources"]),
+                "關聯性": result["relevance"],
+                "關聯分數": result["score"],
+                "判定理由": "；".join(result["reasons"]),
+                "命中關鍵字": "、".join(result["matched_keywords"]),
+                "排除關鍵字": "、".join(result["excluded_keywords"]),
+                "各主題評分": "；".join(
+                    "{}（{}分，{}）".format(match["name"], match["score"], match["relevance"])
+                    for match in result["topic_matches"]
+                ),
+            }
         )
-        for result in classifications
-    ]
-    return df
+        enriched_rows.append(row)
+    return enriched_rows
+
+
+def add_relevance_metadata(df, profile):
+    """Compatibility wrapper for callers that still pass a pandas DataFrame."""
+
+    rows = add_relevance_metadata_rows(_coerce_records(df), profile)
+    return _restore_optional_dataframe(df, rows)
 
 
 def add_ai_policy_metadata(df):
@@ -214,7 +262,7 @@ def add_ai_policy_metadata(df):
     return add_relevance_metadata(df, build_default_relevance_profile())
 
 
-def build_relevance_reference_dataframe(profile):
+def build_relevance_reference_rows(profile):
     global_context = "、".join(
         rule.text for rule in profile.global_context_keywords if rule.enabled
     )
@@ -223,36 +271,28 @@ def build_relevance_reference_dataframe(profile):
         for rule in profile.exclusions
         if rule.enabled and not rule.topic_id
     )
-    return pd.DataFrame(
-        [
-            {
-                "主題": topic.name,
-                "啟用": "是" if topic.enabled else "否",
-                "優先關聯機關": "、".join(topic.priority_sources),
-                "比對主題名稱": "是" if topic.match_name else "否",
-                "核心詞": "、".join(
-                    rule.text for rule in topic.core_keywords if rule.enabled
-                ),
-                "輔助詞": "、".join(
-                    rule.text for rule in topic.supporting_keywords if rule.enabled
-                ),
-                "主題脈絡詞": "、".join(
-                    rule.text for rule in topic.context_keywords if rule.enabled
-                ),
-                "全域脈絡詞": global_context,
-                "主題排除詞": "、".join(
-                    rule.text
-                    for rule in profile.exclusions
-                    if rule.enabled and rule.topic_id == topic.id
-                ),
-                "全域排除詞": global_exclusions,
-            }
-            for topic in profile.topics
-        ]
-    )
+    return [
+        {
+            "主題": topic.name,
+            "啟用": "是" if topic.enabled else "否",
+            "優先關聯機關": "、".join(topic.priority_sources),
+            "比對主題名稱": "是" if topic.match_name else "否",
+            "核心詞": "、".join(rule.text for rule in topic.core_keywords if rule.enabled),
+            "輔助詞": "、".join(rule.text for rule in topic.supporting_keywords if rule.enabled),
+            "主題脈絡詞": "、".join(rule.text for rule in topic.context_keywords if rule.enabled),
+            "全域脈絡詞": global_context,
+            "主題排除詞": "、".join(
+                rule.text
+                for rule in profile.exclusions
+                if rule.enabled and rule.topic_id == topic.id
+            ),
+            "全域排除詞": global_exclusions,
+        }
+        for topic in profile.topics
+    ]
 
 
-def build_relevance_rules_dataframe(profile):
+def build_relevance_rules_rows(profile):
     rows = []
     for rule in profile.global_context_keywords:
         rows.append(
@@ -303,13 +343,10 @@ def build_relevance_rules_dataframe(profile):
                 "規則ID": rule.id,
             }
         )
-    return pd.DataFrame(
-        rows,
-        columns=["主題", "規則類型", "關鍵字", "比對欄位", "啟用", "來源", "規則ID"],
-    )
+    return rows
 
 
-def build_relevance_version_dataframe(profile, source_label):
+def build_relevance_version_rows(profile, source_label):
     summary = get_relevance_profile_summary(profile, source_label=source_label)
     labels = {
         "schema_version": "設定格式版本",
@@ -336,7 +373,15 @@ def build_relevance_version_dataframe(profile, source_label):
             "內容": datetime.now().astimezone().isoformat(timespec="seconds"),
         }
     )
-    return pd.DataFrame(rows)
+    return rows
+
+
+def _append_worksheet(workbook, title, columns, rows):
+    worksheet = workbook.create_sheet(title)
+    worksheet.append(list(columns))
+    for row in rows:
+        worksheet.append([row.get(column, "") for column in columns])
+    return worksheet
 
 
 def get_ai_policy_row_fill(relevance):
@@ -361,7 +406,6 @@ def export_to_excel(
     elif dedupe_affiliated:
         news_items = dedupe_affiliated_news(news_items)
 
-    base_columns = ["source", "date", "department", "title", "link", "summary", "date_source"]
     rename_map = {
         "source": "部會",
         "date": "新聞日期",
@@ -371,25 +415,17 @@ def export_to_excel(
         "summary": "新聞摘要",
         "date_source": "日期來源",
     }
-    df = pd.DataFrame(news_items)
-    if df.empty:
-        df = pd.DataFrame(columns=base_columns)
-    else:
-        for col in base_columns:
-            if col not in df.columns:
-                df[col] = ""
-        df = df[base_columns]
-    df = df.rename(columns=rename_map)
-    df["原始來源"] = df["部會"]
-    if {"原始來源", "新聞連結"}.issubset(df.columns):
-        df["新聞連結"] = df.apply(
-            lambda row: format_news_link_display(row["原始來源"], row["新聞連結"]),
-            axis=1,
-        )
-    df = prepare_export_dataframe(df)
-    if "新聞日期" in df.columns:
-        df["新聞日期"] = df["新聞日期"].apply(lambda value: clean_text(value))
-    df = add_relevance_metadata(df, relevance_profile)
+    rows = []
+    for item in news_items:
+        normalized = {column: item.get(column, "") for column in BASE_COLUMNS}
+        row = {rename_map[column]: normalized[column] for column in BASE_COLUMNS}
+        row["原始來源"] = row["部會"]
+        row["新聞連結"] = format_news_link_display(row["原始來源"], row["新聞連結"])
+        rows.append(row)
+    rows = prepare_export_rows(rows)
+    for row in rows:
+        row["新聞日期"] = clean_text(row.get("新聞日期", ""))
+    rows = add_relevance_metadata_rows(rows, relevance_profile)
 
     start_of_week, end_of_week = get_cached_week_range()
     file_name = "本週新聞整理（{}至{}）.xlsx".format(
@@ -399,27 +435,25 @@ def export_to_excel(
     output_path = Path(output_dir) / file_name
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
-    highlighted_df = df[df["關聯性"].isin(("高度相關", "可能相關"))].copy()
-    if highlighted_df.empty:
-        highlighted_df = pd.DataFrame(columns=df.columns)
-    else:
-        highlighted_df["_關聯排序"] = highlighted_df["關聯性"].map({"高度相關": 0, "可能相關": 1})
-        highlighted_df["_分數排序"] = highlighted_df["關聯分數"]
-        topic_order = {
-            topic.name: position for position, topic in enumerate(relevance_profile.topics)
-        }
-        highlighted_df["_主題排序"] = highlighted_df["關聯主題"].map(
-            lambda value: topic_order.get(clean_text(value).split("、")[0], 9999)
+    topic_order = {
+        topic.name: position for position, topic in enumerate(relevance_profile.topics)
+    }
+    highlighted_rows = [
+        dict(row)
+        for row in rows
+        if row.get("關聯性") in ("高度相關", "可能相關")
+    ]
+    highlighted_rows.sort(
+        key=lambda row: (
+            {"高度相關": 0, "可能相關": 1}.get(clean_text(row.get("關聯性")), 2),
+            -int(row.get("關聯分數") or 0),
+            topic_order.get(clean_text(row.get("關聯主題", "")).split("、")[0], 9999),
         )
-        highlighted_df = highlighted_df.sort_values(
-            by=["_關聯排序", "_分數排序", "_主題排序"],
-            ascending=[True, False, True],
-            kind="stable",
-        ).drop(columns=["_關聯排序", "_分數排序", "_主題排序"])
+    )
 
-    relevance_reference_df = build_relevance_reference_dataframe(relevance_profile)
-    relevance_rules_df = build_relevance_rules_dataframe(relevance_profile)
-    relevance_version_df = build_relevance_version_dataframe(
+    relevance_reference_rows = build_relevance_reference_rows(relevance_profile)
+    relevance_rules_rows = build_relevance_rules_rows(relevance_profile)
+    relevance_version_rows = build_relevance_version_rows(
         relevance_profile,
         relevance_profile_source,
     )
@@ -432,20 +466,38 @@ def export_to_excel(
         "經濟部": "經濟部",
     }
 
-    with atomic_excel_writer(output_path) as writer:
-        df.to_excel(writer, sheet_name="全部新聞", index=False)
-        highlighted_df.to_excel(writer, sheet_name="已初步篩選工作表", index=False)
-        relevance_reference_df.to_excel(writer, sheet_name="主題規則對照", index=False)
-        relevance_rules_df.to_excel(writer, sheet_name="關聯性規則", index=False)
-        relevance_version_df.to_excel(writer, sheet_name="規則版本", index=False)
+    with atomic_excel_writer(output_path) as workbook:
+        _append_worksheet(workbook, "全部新聞", EXPORT_COLUMNS, rows)
+        _append_worksheet(workbook, "已初步篩選工作表", EXPORT_COLUMNS, highlighted_rows)
+        _append_worksheet(
+            workbook,
+            "主題規則對照",
+            [
+                "主題",
+                "啟用",
+                "優先關聯機關",
+                "比對主題名稱",
+                "核心詞",
+                "輔助詞",
+                "主題脈絡詞",
+                "全域脈絡詞",
+                "主題排除詞",
+                "全域排除詞",
+            ],
+            relevance_reference_rows,
+        )
+        _append_worksheet(
+            workbook,
+            "關聯性規則",
+            ["主題", "規則類型", "關鍵字", "比對欄位", "啟用", "來源", "規則ID"],
+            relevance_rules_rows,
+        )
+        _append_worksheet(workbook, "規則版本", ["項目", "內容"], relevance_version_rows)
 
         for source_name, sheet_name in source_sheet_map.items():
-            source_df = df[df["部會"] == source_name].copy()
-            if source_df.empty:
-                source_df = pd.DataFrame(columns=df.columns)
-            source_df.to_excel(writer, sheet_name=sheet_name, index=False)
+            source_rows = [dict(row) for row in rows if row.get("部會") == source_name]
+            _append_worksheet(workbook, sheet_name, EXPORT_COLUMNS, source_rows)
 
-        workbook = writer.book
         for worksheet in workbook.worksheets:
             worksheet.freeze_panes = "A2"
             last_col_letter = get_column_letter(worksheet.max_column)
@@ -515,19 +567,24 @@ def apply_date_dropdowns_to_sheet(ws):
     if date_col_idx is None:
         return
 
+    cells_by_options: dict[tuple[str, str], list[Cell]] = {}
     for row_idx in range(2, ws.max_row + 1):
         cell = ws.cell(row=row_idx, column=date_col_idx)
         ad_date = clean_text(str(cell.value)) if cell.value is not None else ""
         if not ad_date:
             continue
         roc_date = "民國{}".format(ad_to_roc_str(ad_date))
+        cells_by_options.setdefault((ad_date, roc_date), []).append(cell)
+
+    for (ad_date, roc_date), cells in cells_by_options.items():
         validation = DataValidation(type="list", formula1='"{},{}"'.format(ad_date, roc_date), allow_blank=False)
         validation.error = "請選擇西元日期或民國日期。"
         validation.errorTitle = "日期格式不正確"
         validation.prompt = "可選擇西元紀年或民國紀年。"
         validation.promptTitle = "新聞日期格式"
         ws.add_data_validation(validation)
-        validation.add(cell)
+        for cell in cells:
+            validation.add(cell)
 
 
 def apply_hyperlinks_to_sheet(ws):
@@ -667,6 +724,7 @@ def format_excel_worksheet(worksheet, header_map=None):
     if worksheet is None or worksheet.max_column < 1:
         return
 
+    max_column = worksheet.max_column
     if header_map is None:
         header_map = {
             clean_text(cell.value): col_idx
@@ -685,7 +743,7 @@ def format_excel_worksheet(worksheet, header_map=None):
         apply_cell_font(cell, is_header=True)
 
     for row_idx in range(2, worksheet.max_row + 1):
-        for col_idx in range(1, worksheet.max_column + 1):
+        for col_idx in range(1, max_column + 1):
             cell = worksheet.cell(row=row_idx, column=col_idx)
             cell.alignment = cell_alignment
             apply_cell_font(cell)

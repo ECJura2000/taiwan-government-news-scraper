@@ -1,0 +1,5 @@
+{
+  "allowed": {
+    "base_library.zip": "v1.5.1 adds the offline Chrome browser smoke entrypoint and its required Python standard-library imports."
+  }
+}

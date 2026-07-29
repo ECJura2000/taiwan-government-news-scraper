@@ -1,7 +1,7 @@
 from urllib.parse import urljoin
 
 from ....config import FA_LIST_TIMEOUT, URLS
-from ....http.client import fetch_html
+from ....http.client import fetch_html_resilient
 from ....models import make_news_item
 from ....utils.dates import get_cached_week_range, roc_to_ad_date
 from ....utils.text import clean_text
@@ -10,7 +10,13 @@ from ...base import make_soup
 
 def scrape_fa_this_week():
     source = "漁業署"
-    soup = make_soup(fetch_html(URLS[source], timeout=FA_LIST_TIMEOUT, extra_headers={"Connection": "close"}))
+    soup = make_soup(
+        fetch_html_resilient(
+            URLS[source],
+            timeout=FA_LIST_TIMEOUT,
+            extra_headers={"Connection": "close"},
+        )
+    )
     rows = soup.select("tbody tr")
     if not rows:
         raise ValueError("漁業署頁面找不到 tbody tr。")

@@ -12,7 +12,6 @@ SCRAPE_DEPENDENCIES = {
 }
 
 EXPORT_DEPENDENCIES = {
-    "pandas": "pandas",
     "openpyxl": "openpyxl",
 }
 

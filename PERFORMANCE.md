@@ -6,6 +6,12 @@
 python3 scripts/benchmark_capacity.py --sizes 1000 10000 100000 --workers 1 4 16 30
 ```
 
+Excel 匯出另有純 openpyxl 的 10,000 筆門檻：
+
+```bash
+python3 scripts/benchmark_excel_export.py --rows 10000 --max-seconds 30
+```
+
 ## 品質檢查與去重
 
 | 筆數 | 最佳 | 平均 | P95 | 峰值記憶體 |
@@ -25,4 +31,3 @@ python3 scripts/benchmark_capacity.py --sizes 1000 10000 100000 --workers 1 4 16
 
 合成 I/O 顯示提高 worker 可降低等待時間，但真實網站仍受連線限制、伺服器負載
 與防護機制影響。正式執行預設值應以來源健康與失敗率共同判斷。
-

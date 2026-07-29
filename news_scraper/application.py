@@ -42,6 +42,10 @@ class RunResult:
     anomalies: tuple[dict, ...] = ()
     quality: dict = field(default_factory=dict)
     insecure_ssl_hosts: tuple[str, ...] = ()
+    duration_seconds: float = 0.0
+    error_counts: dict[str, int] = field(default_factory=dict)
+    parser_warnings: tuple[dict, ...] = ()
+    relevance_policy: dict = field(default_factory=dict)
     cancelled: bool = False
     news_items: tuple[dict, ...] = field(default_factory=tuple, repr=False)
 
@@ -58,6 +62,10 @@ class RunResult:
             "anomalies": list(self.anomalies),
             "quality": quality_summary,
             "insecure_ssl_hosts": list(self.insecure_ssl_hosts),
+            "duration_seconds": self.duration_seconds,
+            "error_counts": dict(self.error_counts),
+            "parser_warnings": list(self.parser_warnings),
+            "relevance_policy": dict(self.relevance_policy),
             "cancelled": self.cancelled,
         }
 
@@ -177,6 +185,7 @@ def run_news_scraper(
         if cancel_event.is_set():
             context.cancelled = True
             _emit(progress_callback, ProgressEvent("cancelled", "已取消；不產生正式 Excel。"))
+            finished_at = datetime.now().astimezone()
         else:
             _emit(progress_callback, ProgressEvent("export", "正在產生 Excel。"))
             output_path = export_to_excel(
@@ -186,15 +195,16 @@ def run_news_scraper(
                 relevance_profile=loaded_relevance.profile,
                 relevance_profile_source=loaded_relevance.source_label,
             )
+            finished_at = datetime.now().astimezone()
             detect_run_anomalies(
                 context,
                 selected_sources,
                 recent_reports,
                 week_start=week_start,
                 week_end=week_end,
+                current_duration_seconds=(finished_at - started_at).total_seconds(),
             )
 
-        finished_at = datetime.now().astimezone()
         report = build_run_report(
             context=context,
             started_at=started_at,
@@ -236,6 +246,10 @@ def run_news_scraper(
         anomalies=tuple(context.anomalies),
         quality=dict(context.quality_summary),
         insecure_ssl_hosts=tuple(sorted(context.insecure_ssl_hosts)),
+        duration_seconds=float(report["duration_seconds"]),
+        error_counts=dict(report["error_counts"]),
+        parser_warnings=tuple(report["parser_warnings"]),
+        relevance_policy=dict(report["relevance_policy"]),
         cancelled=context.cancelled,
         news_items=tuple(news),
     )

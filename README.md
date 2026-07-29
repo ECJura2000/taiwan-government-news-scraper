@@ -9,7 +9,7 @@
 
 ## 立即下載
 
-前往 [最新版下載頁面](https://github.com/ECJura2000/taiwan-government-news-scraper/releases/latest)，展開 `Assets`，依電腦下載對應 ZIP。一般使用者不需要下載 `Source code`、`SHA256SUMS.txt` 或 `SIZE-MANIFEST.txt`。
+前往 [最新版下載頁面](https://github.com/ECJura2000/taiwan-government-news-scraper/releases/latest)，展開 `Assets`，依電腦下載對應 ZIP。一般使用者不需要下載 `source.zip`、GitHub 自動產生的 `Source code`、`SHA256SUMS.txt` 或 `SIZE-MANIFEST.txt`。
 
 | 作業系統 | 請下載 |
 | --- | --- |
@@ -38,7 +38,7 @@ macOS／Linux：
 
 如果希望 AI 能閱讀、修改或擴充程式，請改用下列原始碼入口：
 
-- [下載 v1.5.0 固定版本原始碼 ZIP](https://github.com/ECJura2000/taiwan-government-news-scraper/archive/refs/tags/v1.5.0.zip)
+- [下載 v1.5.1 固定版本 AI 原始碼 ZIP](https://github.com/ECJura2000/taiwan-government-news-scraper/releases/download/v1.5.1/taiwan-government-news-v1.5.1-source.zip)
 - [下載 main 最新原始碼 ZIP](https://github.com/ECJura2000/taiwan-government-news-scraper/archive/refs/heads/main.zip)
 - 使用 Git：`git clone https://github.com/ECJura2000/taiwan-government-news-scraper.git`
 
@@ -150,16 +150,16 @@ Windows 原始碼環境使用：
 Linux 可用下列方式核對雜湊：
 
 ```bash
-sha256sum taiwan-government-news-v1.5.0-linux.zip
+sha256sum taiwan-government-news-v1.5.1-linux.zip
 ```
 
 macOS 使用：
 
 ```bash
-shasum -a 256 taiwan-government-news-v1.5.0-macos-arm64.zip
+shasum -a 256 taiwan-government-news-v1.5.1-macos-arm64.zip
 ```
 
-Intel Mac 請將檔名改為 `macos-x64.zip`。Windows 可用 `Get-FileHash` 計算後，與 `SHA256SUMS.txt` 的對應紀錄比對。正式 Release 單檔不得超過 90 MiB，全部資產不得超過 220 MiB；Actions 中間 artifacts 只保留 1 天。
+Intel Mac 請將檔名改為 `macos-x64.zip`。Windows 可用 `Get-FileHash` 計算後，與 `SHA256SUMS.txt` 的對應紀錄比對。正式 Release 單一執行檔不得超過 65 MiB，全部資產（含 AI 原始碼 ZIP）不得超過 170 MiB；Actions 中間 artifacts 只保留 1 天。
 
 ## 安裝
 
@@ -178,6 +178,16 @@ python3 -m pip install -e .
 ```bash
 python3 -m pip install --require-hashes -r requirements.lock.txt
 ```
+
+v1.5.1 已移除 pandas 與 numpy。若既有 `.venv` 曾安裝舊版依賴，單純更新不會刪除舊套件；需要重建環境才會真正回收空間：
+
+```bash
+mv .venv .venv-old
+python3.12 -m venv .venv
+.venv/bin/python -m pip install --require-hashes -r requirements.lock.txt
+```
+
+確認新環境可正常執行後，再自行刪除 `.venv-old`。程式不會自動刪除任何虛擬環境。
 
 開發與測試環境：
 
@@ -200,6 +210,14 @@ python3 -m mypy
 python3 -m compileall -q news_scraper build_entry.py
 python3 -m pytest -q
 ```
+
+預覽可重建暫存的可回收容量：
+
+```bash
+python3 scripts/clean_workspace.py
+```
+
+確認清單後才可執行 `python3 scripts/clean_workspace.py --apply`。清理工具不會碰 `.git`、`.venv`、新聞 Excel、JSON 執行紀錄、主題設定或憑證。
 
 > 若你的系統沒有 `python` 指令，請把下列指令的 `python` 改成 `python3`。
 
@@ -383,7 +401,7 @@ python -m news_scraper --list-sources
 pytest -q
 ```
 
-GitHub Actions 會在 Python 3.10、3.12 與 3.13 執行測試，並另外執行 Ruff、Mypy、Bandit、pip-audit、workflow SHA 檢查、跨平台 PyInstaller 建置與封裝後 smoke test。runtime、dev、build 與 security 鎖檔均含套件雜湊。
+GitHub Actions 會在 Python 3.10、3.12 與 3.13 執行測試，並另外執行 Ruff、Mypy、Bandit、pip-audit、workflow SHA 檢查、10,000 筆 Excel 效能門檻、跨平台 PyInstaller 建置，以及 runtime、GUI、headless、browser、registry 與來源 smoke test。runtime、dev、build 與 security 鎖檔均含套件雜湊。
 
 ## 安全性與授權
 

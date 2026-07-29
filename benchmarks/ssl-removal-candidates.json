@@ -1,0 +1,23 @@
+{
+  "source": "新聞搜集區/執行紀錄/trend_summary.json",
+  "report_count": 13,
+  "candidates": [
+    "api.ncc.gov.tw",
+    "indsr.org.tw",
+    "moda.gov.tw",
+    "www.afa.gov.tw",
+    "www.ardswc.gov.tw",
+    "www.cdc.gov.tw",
+    "www.dgpa.gov.tw",
+    "www.etax.nat.gov.tw",
+    "www.ey.gov.tw",
+    "www.fda.gov.tw",
+    "www.moa.gov.tw",
+    "www.moea.gov.tw",
+    "www.moenv.gov.tw",
+    "www.mof.gov.tw",
+    "www.nlma.gov.tw",
+    "www.thb.gov.tw",
+    "www.wda.gov.tw"
+  ]
+}

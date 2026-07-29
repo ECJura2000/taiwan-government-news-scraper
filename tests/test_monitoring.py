@@ -226,6 +226,96 @@ def test_detect_run_anomalies_disables_zero_check_for_configured_source():
     assert detect_run_anomalies(context, ["農科園區"], previous_reports) == []
 
 
+def test_slow_run_uses_wall_clock_for_same_source_set_only(monkeypatch):
+    monkeypatch.setattr("news_scraper.monitoring.get_zero_item_alert_runs", lambda source: 0)
+    context = RunContext(quality_summary={"source_counts": {"行政院": 1, "財政部": 1}})
+    recent = [
+        {
+            "status": "success",
+            "duration_seconds": duration,
+            "selected_source_count": 2,
+            "selected_sources": ["財政部", "行政院"],
+            "failed_sources": [],
+        }
+        for duration in (100, 110, 120)
+    ]
+    recent.append(
+        {
+            "status": "success",
+            "duration_seconds": 1,
+            "selected_source_count": 1,
+            "selected_sources": ["行政院"],
+            "failed_sources": [],
+        }
+    )
+
+    anomalies = detect_run_anomalies(
+        context,
+        ["行政院", "財政部"],
+        recent,
+        current_duration_seconds=200,
+    )
+
+    assert not any(item["category"] == "slow_run" for item in anomalies)
+
+
+def test_slow_run_requires_three_normal_matching_runs(monkeypatch):
+    monkeypatch.setattr("news_scraper.monitoring.get_zero_item_alert_runs", lambda source: 0)
+    context = RunContext(quality_summary={"source_counts": {"行政院": 1}})
+    recent = [
+        {
+            "status": "success",
+            "duration_seconds": 10,
+            "selected_source_count": 1,
+            "selected_sources": ["行政院"],
+            "failed_sources": [],
+        },
+        {
+            "status": "partial_failure",
+            "duration_seconds": 10,
+            "selected_source_count": 1,
+            "selected_sources": ["行政院"],
+            "failed_sources": ["行政院"],
+        },
+    ]
+
+    anomalies = detect_run_anomalies(
+        context,
+        ["行政院"],
+        recent,
+        current_duration_seconds=500,
+    )
+
+    assert not any(item["category"] == "slow_run" for item in anomalies)
+
+
+def test_slow_run_alerts_above_three_times_median_plus_floor(monkeypatch):
+    monkeypatch.setattr("news_scraper.monitoring.get_zero_item_alert_runs", lambda source: 0)
+    context = RunContext(quality_summary={"source_counts": {"行政院": 1}})
+    recent = [
+        {
+            "status": "success",
+            "duration_seconds": duration,
+            "selected_source_count": 1,
+            "selected_sources": ["行政院"],
+            "failed_sources": [],
+        }
+        for duration in (20, 22, 24)
+    ]
+
+    anomalies = detect_run_anomalies(
+        context,
+        ["行政院"],
+        recent,
+        current_duration_seconds=90,
+    )
+
+    slow_run = next(item for item in anomalies if item["category"] == "slow_run")
+    assert slow_run["reference_duration_seconds"] == 22
+    assert slow_run["threshold_seconds"] == 82
+    assert slow_run["current_duration_seconds"] == 90
+
+
 def test_build_trend_summary_calculates_source_success_rate():
     summary = build_trend_summary(
         [

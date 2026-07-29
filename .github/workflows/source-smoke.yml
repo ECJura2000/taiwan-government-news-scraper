@@ -17,4 +17,47 @@ jobs:
       - run: |
           python -m pip install --require-hashes -r requirements.lock.txt
           python -m pip install --no-deps -e .
-      - run: python scripts/smoke_sources.py
+      - name: Run rotating source smoke
+        run: python scripts/smoke_sources.py --evidence-dir source-smoke-evidence
+
+      - name: Write source smoke summary
+        if: always()
+        shell: bash
+        run: |
+          if [[ ! -f source-smoke-evidence/source-smoke-report.json ]]; then
+            echo "Source smoke evidence was not produced." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          python - <<'PY' >> "$GITHUB_STEP_SUMMARY"
+          import json
+          from pathlib import Path
+
+          report = json.loads(Path("source-smoke-evidence/source-smoke-report.json").read_text(encoding="utf-8"))
+          print("# Source smoke")
+          print()
+          print("- Status: `{}`".format(report["status"]))
+          print("- Unstable: {}".format("、".join(report["unstable_sources"]) or "none"))
+          print("- Failed: {}".format("、".join(report["failed_sources"]) or "none"))
+          print()
+          print("| Source | Attempt | Result | Status | Error counts |")
+          print("| --- | ---: | --- | --- | --- |")
+          for attempt in report["attempts"]:
+              summary = attempt.get("summary") or {}
+              run_report = attempt.get("report") or {}
+              print("| {} | {} | {} | {} | `{}` |".format(
+                  attempt["source"],
+                  attempt["attempt"],
+                  "pass" if attempt["success"] else "fail",
+                  summary.get("status", ""),
+                  json.dumps(run_report.get("error_counts", {}), ensure_ascii=False, separators=(",", ":")),
+              ))
+          PY
+
+      - name: Upload source smoke evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: source-smoke-evidence
+          path: source-smoke-evidence/
+          if-no-files-found: warn
+          retention-days: 7

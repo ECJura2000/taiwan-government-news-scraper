@@ -15,7 +15,8 @@ on:
       - "news_scraper/**"
       - "pyproject.toml"
       - "requirements*.txt"
-      - "scripts/package_release.py"
+      - "scripts/**"
+      - "benchmarks/**"
       - "windows-dpi.manifest"
   push:
     tags:
@@ -123,6 +124,11 @@ jobs:
           "dist/${{ matrix.executable }}" --headless --list-sources > packaged-sources.txt
           grep -q "行政院" packaged-sources.txt
 
+      - name: Smoke-test packaged browser integration
+        shell: bash
+        run: |
+          "dist/${{ matrix.executable }}" --browser-smoke-test
+
       - name: Smoke-test packaged GUI on Linux
         if: runner.os == 'Linux'
         run: xvfb-run -a "dist/${{ matrix.executable }}" --gui-smoke-test
@@ -139,16 +145,40 @@ jobs:
           --platform "${{ matrix.platform }}"
           --dist-dir dist
           --output-dir release-assets
-          --max-executable-mib 90
+          --max-executable-mib 65
+
+      - name: Report largest packaged modules
+        shell: bash
+        run: >-
+          python scripts/report_build_size.py
+          --executable "dist/${{ matrix.executable }}"
+          --output "release-assets/build-size-${{ matrix.platform }}.json"
+          --limit 30
+
+      - name: Check packaged module growth
+        shell: bash
+        run: >-
+          python scripts/check_build_growth.py
+          "release-assets/build-size-${{ matrix.platform }}.json"
+          "benchmarks/build-contents-v1.5.0/${{ matrix.platform }}.json"
+          --max-growth 0.05
+          --allowlist benchmarks/build-growth-allowlist.json
+
+      - name: Reject removed data packages
+        shell: bash
+        run: >-
+          python scripts/check_forbidden_packages.py
+          "release-assets/build-size-${{ matrix.platform }}.json"
 
       - name: Upload smoke diagnostics
-        if: failure()
+        if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: smoke-diagnostics-${{ matrix.platform }}
           path: |
             packaged-sources.txt
-            build/各機關新聞整理/warn-各機關新聞整理.txt
+            build/*/warn-*.txt
+            release-assets/build-size-${{ matrix.platform }}.json
           if-no-files-found: warn
           retention-days: 1
 
@@ -207,6 +237,12 @@ jobs:
           path: release-assets
           merge-multiple: true
 
+      - name: Build fixed source archive for AI agents
+        run: >-
+          python scripts/package_source.py
+          --output-dir release-assets
+          --version "${{ steps.release.outputs.version }}"
+
       - name: Verify release set, checksums and total size
         shell: bash
         run: |
@@ -215,12 +251,17 @@ jobs:
           test -f "release-assets/taiwan-government-news-v${version}-windows.zip"
           test -f "release-assets/taiwan-government-news-v${version}-macos-arm64.zip"
           test -f "release-assets/taiwan-government-news-v${version}-macos-x64.zip"
+          test -f "release-assets/taiwan-government-news-v${version}-source.zip"
+          python scripts/check_release_regression.py release-assets \
+            --baseline benchmarks/release-size-v1.5.0.json \
+            --version "$version" \
+            --minimum-reduction 0.15
           cd release-assets
           sha256sum *.zip > "taiwan-government-news-v${version}-SHA256SUMS.txt"
           cd ..
           python scripts/check_release_size.py release-assets \
-            --max-file-mib 90 \
-            --max-total-mib 220 \
+            --max-file-mib 65 \
+            --max-total-mib 170 \
             --manifest "release-assets/taiwan-government-news-v${version}-SIZE-MANIFEST.txt" \
             --pattern 'taiwan-government-news-*'
 
@@ -241,6 +282,7 @@ jobs:
             "release-assets/taiwan-government-news-v${version}-macos-arm64.zip"
             "release-assets/taiwan-government-news-v${version}-macos-x64.zip"
             "release-assets/taiwan-government-news-v${version}-linux.zip"
+            "release-assets/taiwan-government-news-v${version}-source.zip"
             "release-assets/taiwan-government-news-v${version}-SHA256SUMS.txt"
             "release-assets/taiwan-government-news-v${version}-SIZE-MANIFEST.txt"
           )
@@ -252,8 +294,8 @@ jobs:
             "- macOS Intel：taiwan-government-news-v${version}-macos-x64.zip" \
             "- Linux 64 位元：taiwan-government-news-v${version}-linux.zip" \
             "" \
-            "一般使用者不需要下載 Source code、SHA256SUMS.txt 或 SIZE-MANIFEST.txt。" \
-            "若要交給 Codex、AI agent 或原始碼排程，請下載固定版本原始碼：https://github.com/${GITHUB_REPOSITORY}/archive/refs/tags/${RELEASE_TAG}.zip" \
+            "一般使用者不需要下載 source.zip、Source code、SHA256SUMS.txt 或 SIZE-MANIFEST.txt。" \
+            "若要交給 Codex、AI agent 或原始碼排程，請下載 taiwan-government-news-v${version}-source.zip。" \
             "AI 執行與成功判定請見：https://github.com/${GITHUB_REPOSITORY}/blob/${RELEASE_TAG}/docs/AI_AUTOMATION.md" \
             "執行檔未簽章，請先核對 SHA-256，再依 ZIP 內的首次啟動圖解操作。" \
             "國土管理署來源需要 Chrome 或 Chromium。")
