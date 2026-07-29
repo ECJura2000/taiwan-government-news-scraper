@@ -1,6 +1,9 @@
 import importlib.util
+import json
 from pathlib import Path
 import sys
+
+from news_scraper.config import SSL_FALLBACK_HOSTS
 
 
 def load_audit_module():
@@ -44,3 +47,12 @@ def test_failed_probe_keeps_error_evidence(monkeypatch):
     assert result["success"] is False
     assert result["status_code"] is None
     assert "certificate failed" in result["error"]
+
+
+def test_dual_environment_approved_hosts_are_removed_from_allowlist():
+    path = Path(__file__).resolve().parents[1] / "benchmarks" / "ssl-removal-candidates.json"
+    audit = json.loads(path.read_text(encoding="utf-8"))
+
+    assert audit["audit_run"].endswith("/30431556043")
+    assert set(audit["approved_removals"]).isdisjoint(SSL_FALLBACK_HOSTS)
+    assert set(audit["candidates"]).issubset(SSL_FALLBACK_HOSTS)
