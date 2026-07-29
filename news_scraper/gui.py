@@ -580,7 +580,7 @@ class NewsScraperApp:
             height=12,
             wrap="word",
             state="disabled",
-            font="NewsScraperLatin",
+            font="NewsScraperCJK",
         )
         self.log_text.pack(fill="both", expand=True)
 
@@ -884,10 +884,26 @@ def main(smoke_test: bool = False) -> int:
             root.destroy()
             return 1
         if smoke_test:
+            if str(app.log_text.cget("font")) != "NewsScraperCJK":
+                print(
+                    "GUI 執行紀錄未使用按鈕的中文字型。",
+                    file=sys.stderr,
+                )
+                root.destroy()
+                return 1
             editor = app._open_relevance_editor()
             if not editor.validate_smoke_test():
                 print(
                     "GUI 主題編輯器控制項或版面檢查失敗：{}".format(
+                        editor.smoke_test_diagnostics
+                    ),
+                    file=sys.stderr,
+                )
+                root.destroy()
+                return 1
+            if not editor.validate_topic_dialog_smoke_test():
+                print(
+                    "GUI 主題調色盤或版面檢查失敗：{}".format(
                         editor.smoke_test_diagnostics
                     ),
                     file=sys.stderr,

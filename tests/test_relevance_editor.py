@@ -1,5 +1,7 @@
+from pathlib import Path
+
 from news_scraper.relevance import ExclusionRule, KeywordRule, RelevanceProfile, TopicRule
-from news_scraper.relevance_editor import RelevanceProfileEditor
+from news_scraper.relevance_editor import RelevanceProfileEditor, _normalize_display_color
 
 
 class FakeTree:
@@ -116,3 +118,22 @@ def test_keyword_and_exclusion_actions_toggle_delete_tombstone_and_undo():
     editor._undo_delete()
     assert editor.profile.exclusions == [exclusion]
     assert exclusion.id not in editor.profile.deleted_default_ids
+
+
+def test_topic_display_color_normalization_accepts_only_hex_rgb():
+    assert _normalize_display_color(" #a1b2c3 ") == "#A1B2C3"
+    assert _normalize_display_color("#FFFF00") == "#FFFF00"
+    assert _normalize_display_color("yellow") is None
+    assert _normalize_display_color("#FFF") is None
+
+
+def test_topic_editor_exposes_color_picker():
+    source = (
+        Path(__file__).resolve().parents[1]
+        / "news_scraper"
+        / "relevance_editor.py"
+    ).read_text(encoding="utf-8")
+
+    assert "colorchooser.askcolor" in source
+    assert "開啟調色盤" in source
+    assert "color_preview" in source

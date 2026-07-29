@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 1.5.2 - 2026-07-29
+
+- Added a native topic color picker with a synchronized hex field, live color preview, and immediate invalid-color feedback.
+- Changed the GUI execution log to use the same Traditional Chinese named font as buttons, labels, and topic controls.
+- Expanded packaged GUI smoke coverage to open the topic dialog, simulate a palette choice, verify the preview, and reject high-DPI layout overflow.
+
 ## 1.5.1 - 2026-07-29
 
 - Replaced the pandas-backed Excel path with native rows and openpyxl while preserving workbook data, ordering, colors, fonts, hyperlinks, validation, filters, and frozen panes.

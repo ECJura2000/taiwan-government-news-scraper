@@ -1,5 +1,6 @@
 import copy
 from pathlib import Path
+import re
 from typing import Any
 
 from .relevance import (
@@ -19,6 +20,13 @@ from .relevance import (
     validate_relevance_profile,
 )
 
+_HEX_COLOR_PATTERN = re.compile(r"#[0-9A-Fa-f]{6}")
+
+
+def _normalize_display_color(value: str) -> str | None:
+    normalized = value.strip().upper()
+    return normalized if _HEX_COLOR_PATTERN.fullmatch(normalized) else None
+
 
 def _topic_label(topic: TopicRule) -> str:
     return "{}{}".format("" if topic.enabled else "（停用）", topic.name)
@@ -35,10 +43,11 @@ class RelevanceProfileEditor:
         on_saved,
     ):
         import tkinter as tk
-        from tkinter import filedialog, messagebox, simpledialog, ttk
+        from tkinter import colorchooser, filedialog, messagebox, simpledialog, ttk
 
         self.tk = tk
         self.ttk = ttk
+        self.askcolor: Any = colorchooser.askcolor
         self.filedialog = filedialog
         self.messagebox = messagebox
         self.simpledialog = simpledialog
@@ -626,7 +635,7 @@ class RelevanceProfileEditor:
         frame = self.ttk.Frame(dialog, padding=14)
         frame.pack(fill="both", expand=True)
         for row, (label, variable) in enumerate(
-            (("主題名稱", name_var), ("說明", description_var), ("顯示顏色", color_var))
+            (("主題名稱", name_var), ("說明", description_var))
         ):
             self.ttk.Label(frame, text=label).grid(row=row * 2, column=0, sticky="w")
             self.ttk.Entry(
@@ -640,6 +649,47 @@ class RelevanceProfileEditor:
                 sticky="ew",
                 pady=(3, 8),
             )
+        self.ttk.Label(frame, text="顯示顏色").grid(row=4, column=0, sticky="w")
+        color_row = self.ttk.Frame(frame)
+        color_row.grid(row=5, column=0, sticky="ew", pady=(3, 8))
+        self.ttk.Entry(
+            color_row,
+            textvariable=color_var,
+            width=20,
+            style="Latin.TEntry",
+        ).pack(side="left", fill="x", expand=True)
+        color_preview = self.tk.Canvas(
+            color_row,
+            width=42,
+            height=26,
+            highlightthickness=1,
+            highlightbackground="#707070",
+        )
+        color_preview.pack(side="left", padx=8)
+
+        def refresh_color_preview(*_args):
+            color = _normalize_display_color(color_var.get())
+            color_preview.configure(
+                background=color or str(dialog.cget("background")),
+            )
+
+        def choose_color():
+            initial_color = _normalize_display_color(color_var.get()) or "#FFFF00"
+            _rgb, selected_color = self.askcolor(
+                color=initial_color,
+                title="選擇主題顏色",
+                parent=dialog,
+            )
+            if selected_color:
+                color_var.set(selected_color.upper())
+
+        self.ttk.Button(
+            color_row,
+            text="開啟調色盤",
+            command=choose_color,
+        ).pack(side="left")
+        color_var.trace_add("write", refresh_color_preview)
+        refresh_color_preview()
         self.ttk.Checkbutton(frame, text="啟用主題", variable=enabled_var).grid(
             row=6,
             column=0,
@@ -671,9 +721,17 @@ class RelevanceProfileEditor:
         actions.grid(row=10, column=0, sticky="e")
 
         def accept():
+            display_color = _normalize_display_color(color_var.get())
+            if display_color is None:
+                self.messagebox.showerror(
+                    "設定錯誤",
+                    "顯示顏色必須是 #RRGGBB 色碼，或使用調色盤選擇。",
+                    parent=dialog,
+                )
+                return
             topic.name = name_var.get().strip()
             topic.description = description_var.get().strip()
-            topic.display_color = color_var.get().strip().upper()
+            topic.display_color = display_color
             topic.enabled = bool(enabled_var.get())
             topic.match_name = bool(match_name_var.get())
             topic.priority_sources = [
@@ -693,7 +751,11 @@ class RelevanceProfileEditor:
         frame.columnconfigure(0, weight=1)
         frame.rowconfigure(9, weight=1)
         dialog.geometry("560x590")
-        dialog.wait_window()
+        self.active_topic_dialog = dialog
+        try:
+            dialog.wait_window()
+        finally:
+            self.active_topic_dialog = None
         return result_value[0]
 
     def _add_topic(self):
@@ -1332,6 +1394,82 @@ class RelevanceProfileEditor:
             and not unexpected_tabs
             and requested_width <= screen_width
         )
+
+    def validate_topic_dialog_smoke_test(self) -> bool:
+        result = {"valid": False}
+
+        def inspect_dialog():
+            dialog = getattr(self, "active_topic_dialog", None)
+            if dialog is None:
+                self.smoke_test_diagnostics = "topic_dialog=missing"
+                return
+            widgets: list[Any] = []
+            pending: list[Any] = [dialog]
+            while pending:
+                widget = pending.pop()
+                widgets.append(widget)
+                pending.extend(widget.winfo_children())
+            picker_buttons = [
+                widget
+                for widget in widgets
+                if widget.winfo_class() == "TButton"
+                and str(widget.cget("text")) == "開啟調色盤"
+            ]
+            color_canvases = [
+                widget for widget in widgets if widget.winfo_class() == "Canvas"
+            ]
+            color_entries = []
+            if picker_buttons:
+                color_entries = [
+                    widget
+                    for widget in picker_buttons[0].master.winfo_children()
+                    if widget.winfo_class() == "TEntry"
+                ]
+            original_askcolor = self.askcolor
+            try:
+                self.askcolor = lambda **_kwargs: (
+                    (18, 52, 86),
+                    "#123456",
+                )
+                if picker_buttons:
+                    picker_buttons[0].invoke()
+                dialog.update_idletasks()
+                selected_color = color_entries[0].get() if color_entries else ""
+                preview_color = (
+                    str(color_canvases[0].cget("background")).upper()
+                    if color_canvases
+                    else ""
+                )
+                requested_width = dialog.winfo_reqwidth()
+                screen_width = dialog.winfo_screenwidth()
+                result["valid"] = bool(
+                    picker_buttons
+                    and color_entries
+                    and color_canvases
+                    and selected_color == "#123456"
+                    and preview_color == "#123456"
+                    and requested_width <= screen_width
+                )
+                self.smoke_test_diagnostics = (
+                    "picker_count={}, entry_count={}, preview_count={}, "
+                    "selected_color={!r}, preview_color={!r}, "
+                    "requested_width={}, screen_width={}"
+                ).format(
+                    len(picker_buttons),
+                    len(color_entries),
+                    len(color_canvases),
+                    selected_color,
+                    preview_color,
+                    requested_width,
+                    screen_width,
+                )
+            finally:
+                self.askcolor = original_askcolor
+                dialog.destroy()
+
+        self.window.after(80, inspect_dialog)
+        self._ask_topic()
+        return bool(result["valid"])
 
 
 def open_relevance_profile_editor(
