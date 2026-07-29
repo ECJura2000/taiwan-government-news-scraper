@@ -19,5 +19,7 @@
 7. 主題設定保存於「程式資料/relevance-profile.json」，GUI 與 headless 會共用。
 8. 國土管理署來源需要系統已安裝 Chrome 或 Chromium。
 9. 執行檔尚未使用 Windows Authenticode 或 Apple Developer ID 簽章。核對雜湊後，請依「啟動圖解」資料夾內的作業系統圖解開啟。
+10. 若要讓 AI 閱讀或修改程式碼，請下載固定版本原始碼並依下列指南建立 Python 環境：
+    https://github.com/ECJura2000/taiwan-government-news-scraper/blob/main/docs/AI_AUTOMATION.md
 
 不要將 webhook、密碼或其他憑證寫入 settings.json 或 relevance-profile.json。

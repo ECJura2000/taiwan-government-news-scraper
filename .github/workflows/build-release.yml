@@ -253,6 +253,8 @@ jobs:
             "- Linux 64 位元：taiwan-government-news-v${version}-linux.zip" \
             "" \
             "一般使用者不需要下載 Source code、SHA256SUMS.txt 或 SIZE-MANIFEST.txt。" \
+            "若要交給 Codex、AI agent 或原始碼排程，請下載固定版本原始碼：https://github.com/${GITHUB_REPOSITORY}/archive/refs/tags/${RELEASE_TAG}.zip" \
+            "AI 執行與成功判定請見：https://github.com/${GITHUB_REPOSITORY}/blob/${RELEASE_TAG}/docs/AI_AUTOMATION.md" \
             "執行檔未簽章，請先核對 SHA-256，再依 ZIP 內的首次啟動圖解操作。" \
             "國土管理署來源需要 Chrome 或 Chromium。")
           gh release create "$RELEASE_TAG" "${release_files[@]}" \

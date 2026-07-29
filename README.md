@@ -20,6 +20,36 @@
 
 下載後將整個 `各機關新聞/` 資料夾解壓縮到可寫入的位置，再開啟其中的 `各機關新聞整理`。Windows 與 macOS 首次啟動方式請見 [首次啟動說明](docs/FIRST_RUN.md)。
 
+## 給 AI／Codex 使用的原始碼
+
+如果只需要讓 AI、Codex 或排程啟動新聞整理，使用上表的可攜版 ZIP 即可，不必安裝 Python。
+
+Windows：
+
+```powershell
+.\各機關新聞整理.exe --headless --json-summary
+```
+
+macOS／Linux：
+
+```bash
+./各機關新聞整理 --headless --json-summary
+```
+
+如果希望 AI 能閱讀、修改或擴充程式，請改用下列原始碼入口：
+
+- [下載 v1.5.0 固定版本原始碼 ZIP](https://github.com/ECJura2000/taiwan-government-news-scraper/archive/refs/tags/v1.5.0.zip)
+- [下載 main 最新原始碼 ZIP](https://github.com/ECJura2000/taiwan-government-news-scraper/archive/refs/heads/main.zip)
+- 使用 Git：`git clone https://github.com/ECJura2000/taiwan-government-news-scraper.git`
+
+對 Codex 或其他可開啟資料夾的 AI 工具，操作方式如下：
+
+1. 下載並解壓縮原始碼 ZIP。
+2. 在 AI 工具中開啟解壓後的整個專案資料夾。
+3. 要求 AI「依照 `AGENTS.md` 建立環境並以 headless 模式執行」。
+
+建議正式排程使用固定版本，避免程式在未確認的情況下自動改變。完整步驟請見 [AI／Codex 自動化指南](docs/AI_AUTOMATION.md)；專案根目錄的 [AGENTS.md](AGENTS.md) 會讓支援此格式的 AI 工具自動讀取正確執行方式。
+
 ## 畫面預覽
 
 ![各機關新聞整理 GUI](docs/images/gui-overview.jpg)
@@ -105,6 +135,12 @@ chmod +x 各機關新聞整理
 
 ```bash
 .venv/bin/python -m news_scraper
+```
+
+Windows 原始碼環境使用：
+
+```powershell
+.\.venv\Scripts\python.exe -m news_scraper --headless --json-summary
 ```
 
 `python -m news_scraper` 無參數時永遠執行 CLI；只有封裝檔無參數時才開啟 GUI。
