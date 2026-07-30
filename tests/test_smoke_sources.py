@@ -88,6 +88,58 @@ def test_main_fails_only_after_retry_still_fails(monkeypatch, tmp_path):
     assert report["failed_sources"] == ["行政院"]
 
 
+def test_main_marks_transient_network_retry_failure_as_unstable(monkeypatch, tmp_path):
+    smoke = load_smoke_module()
+    outcomes = iter(
+        [
+            (
+                False,
+                "first failed",
+                {
+                    "source": "社家署",
+                    "attempt": 1,
+                    "summary": {
+                        "error_counts": {"connection": 2},
+                    },
+                    "stderr_tail": "Network is unreachable",
+                    "stdout_tail": "",
+                },
+            ),
+            (
+                False,
+                "retry failed",
+                {
+                    "source": "社家署",
+                    "attempt": 2,
+                    "summary": {
+                        "error_counts": {"connection": 2},
+                    },
+                    "stderr_tail": "Failed to establish a new connection",
+                    "stdout_tail": "",
+                },
+            ),
+        ]
+    )
+    monkeypatch.setattr(smoke, "run_source", lambda *_args, **_kwargs: next(outcomes))
+
+    exit_code = smoke.main(
+        [
+            "--sources",
+            "社家署",
+            "--retry-delay",
+            "0",
+            "--evidence-dir",
+            str(tmp_path),
+        ]
+    )
+    report = json.loads((tmp_path / "source-smoke-report.json").read_text(encoding="utf-8"))
+
+    assert exit_code == 0
+    assert report["status"] == "unstable"
+    assert report["unstable_sources"] == ["社家署"]
+    assert report["failed_sources"] == []
+
+
 def test_write_evidence_preserves_report_and_stderr(tmp_path):
     smoke = load_smoke_module()
     record = {
@@ -102,3 +154,14 @@ def test_write_evidence_preserves_report_and_stderr(tmp_path):
 
     assert saved["report"]["error_counts"] == {"http": 1}
     assert saved["stderr_tail"] == "HTTP 503"
+
+
+def test_is_transient_network_failure_detects_connection_errors():
+    smoke = load_smoke_module()
+    record = {
+        "summary": {"error_counts": {"connection": 2}},
+        "stderr_tail": "HTTPSConnectionPool host='www.sfaa.gov.tw' Network is unreachable",
+        "stdout_tail": "",
+    }
+
+    assert smoke.is_transient_network_failure(record) is True

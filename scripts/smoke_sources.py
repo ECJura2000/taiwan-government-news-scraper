@@ -13,6 +13,15 @@ from news_scraper.scrapers.registry import SCRAPER_REGISTRY
 
 HIGH_RISK_SOURCES = ("榮總", "司法院", "財政部")
 DEFAULT_BATCH_COUNT = 7
+TRANSIENT_FAILURE_HINTS = (
+    "network is unreachable",
+    "failed to establish a new connection",
+    "max retries exceeded",
+    "temporary failure in name resolution",
+    "name or service not known",
+    "connection timed out",
+    "read timed out",
+)
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
@@ -69,6 +78,25 @@ def _write_evidence(evidence_dir: Path, source: str, attempt: int, record: dict)
     evidence_dir.mkdir(parents=True, exist_ok=True)
     path = evidence_dir / "{}-attempt-{}.json".format(source, attempt)
     path.write_text(json.dumps(record, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+
+
+def is_transient_network_failure(record: dict) -> bool:
+    summary = record.get("summary") or {}
+    if not isinstance(summary, dict):
+        return False
+
+    error_counts = summary.get("error_counts") or record.get("report", {}).get("error_counts") or {}
+    if not isinstance(error_counts, dict):
+        return False
+
+    non_zero_error_types = {name for name, count in error_counts.items() if count}
+    if not non_zero_error_types or not non_zero_error_types <= {"connection"}:
+        return False
+
+    combined_text = "\n".join(
+        text for text in (record.get("stderr_tail"), record.get("stdout_tail")) if isinstance(text, str)
+    ).lower()
+    return any(hint in combined_text for hint in TRANSIENT_FAILURE_HINTS)
 
 
 def run_source(source: str, timeout: int, *, attempt: int, evidence_dir: Path) -> tuple[bool, str, dict]:
@@ -202,6 +230,8 @@ def main(argv: list[str] | None = None) -> int:
             print(message)
             attempts.append(record)
             if success:
+                unstable_sources.append(source)
+            elif is_transient_network_failure(record):
                 unstable_sources.append(source)
             else:
                 final_failures.append(source)
