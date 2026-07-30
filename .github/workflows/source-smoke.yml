@@ -39,16 +39,17 @@ jobs:
           print("- Unstable: {}".format("、".join(report["unstable_sources"]) or "none"))
           print("- Failed: {}".format("、".join(report["failed_sources"]) or "none"))
           print()
-          print("| Source | Attempt | Result | Status | Error counts |")
-          print("| --- | ---: | --- | --- | --- |")
+          print("| Source | Attempt | Result | Status | Failure classes | Error counts |")
+          print("| --- | ---: | --- | --- | --- | --- |")
           for attempt in report["attempts"]:
               summary = attempt.get("summary") or {}
               run_report = attempt.get("report") or {}
-              print("| {} | {} | {} | {} | `{}` |".format(
+              print("| {} | {} | {} | {} | `{}` | `{}` |".format(
                   attempt["source"],
                   attempt["attempt"],
                   "pass" if attempt["success"] else "fail",
                   summary.get("status", ""),
+                  json.dumps(run_report.get("failure_class_counts", {}), ensure_ascii=False, separators=(",", ":")),
                   json.dumps(run_report.get("error_counts", {}), ensure_ascii=False, separators=(",", ":")),
               ))
           PY

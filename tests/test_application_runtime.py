@@ -63,7 +63,8 @@ def test_gui_settings_persist_only_declared_non_secret_fields(tmp_path):
     payload = json.loads(path.read_text(encoding="utf-8"))
 
     assert payload["sources"] == ["行政院"]
-    assert payload["schema_version"] == 2
+    assert payload["schema_version"] == 3
+    assert payload["recent_topic_colors"] == []
     assert "fail_on_source_error" not in payload
     assert "webhook" not in payload
     assert load_settings(path, ["行政院", "財政部"]).max_workers == 3
@@ -85,7 +86,7 @@ def test_gui_settings_migrate_schema_one_and_ignore_removed_strict_flag(tmp_path
 
     settings = load_settings(path, ["行政院", "財政部"])
 
-    assert settings.schema_version == 2
+    assert settings.schema_version == 3
     assert settings.sources == ["行政院"]
     assert settings.max_workers == 4
     assert not hasattr(settings, "fail_on_source_error")
@@ -262,7 +263,11 @@ def test_run_result_json_summary_uses_stable_machine_fields(tmp_path):
         "anomalies": [],
         "duration_seconds": 0.0,
         "error_counts": {},
+        "failure_class_counts": {},
         "parser_warnings": [],
+        "source_diagnostics": [],
+        "route_attempts": [],
+        "source_health": {},
         "relevance_policy": {},
         "quality": {"output_count": 4, "alert_reasons": []},
         "insecure_ssl_hosts": [],

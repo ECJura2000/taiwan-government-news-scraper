@@ -6,6 +6,7 @@ from contextlib import contextmanager
 from datetime import datetime
 from importlib import import_module
 from pathlib import Path
+from typing import Any
 
 from openpyxl import Workbook
 from openpyxl.cell.cell import Cell
@@ -15,6 +16,7 @@ from openpyxl.worksheet.datavalidation import DataValidation
 from openpyxl.styles import Alignment, Font, PatternFill
 from openpyxl.utils import get_column_letter
 
+from .color_utils import readable_text_color
 from .config import AFFILIATED_SOURCE_PATHS, SOURCE_ORDER
 from .relevance import (
     RelevanceProfile,
@@ -222,6 +224,8 @@ def prepare_export_dataframe(df):
 
 def add_relevance_metadata_rows(rows, profile):
     enriched_rows = []
+    topics_by_id = {topic.id: topic for topic in profile.topics}
+    topic_order = {topic.id: index for index, topic in enumerate(profile.topics)}
     for input_row in rows:
         row = dict(input_row)
         result = classify_relevance(
@@ -230,6 +234,15 @@ def add_relevance_metadata_rows(rows, profile):
             summary=row.get("新聞摘要", ""),
             profile=profile,
         )
+        dominant_match: dict[str, Any] = min(
+            result["topic_matches"],
+            key=lambda match: (
+                -int(match.get("score") or 0),
+                topic_order.get(str(match.get("id") or ""), 9999),
+            ),
+            default={},
+        )
+        dominant_topic = topics_by_id.get(str(dominant_match.get("id") or ""))
         row.update(
             {
                 "關聯主題": "、".join(result["topics"]),
@@ -243,6 +256,7 @@ def add_relevance_metadata_rows(rows, profile):
                     "{}（{}分，{}）".format(match["name"], match["score"], match["relevance"])
                     for match in result["topic_matches"]
                 ),
+                "_主題識別色": dominant_topic.display_color if dominant_topic else "",
             }
         )
         enriched_rows.append(row)
@@ -277,6 +291,7 @@ def build_relevance_reference_rows(profile):
             "啟用": "是" if topic.enabled else "否",
             "優先關聯機關": "、".join(topic.priority_sources),
             "比對主題名稱": "是" if topic.match_name else "否",
+            "顯示顏色": topic.display_color,
             "核心詞": "、".join(rule.text for rule in topic.core_keywords if rule.enabled),
             "輔助詞": "、".join(rule.text for rule in topic.supporting_keywords if rule.enabled),
             "主題脈絡詞": "、".join(rule.text for rule in topic.context_keywords if rule.enabled),
@@ -392,6 +407,20 @@ def get_ai_policy_row_fill(relevance):
     return None
 
 
+def apply_topic_identity_colors(worksheet, rows, header_map):
+    topic_col_idx = header_map.get("關聯主題")
+    if not topic_col_idx:
+        return
+    for row_idx, row in enumerate(rows, 2):
+        color = clean_text(row.get("_主題識別色", ""))
+        if not re.fullmatch(r"#[0-9A-Fa-f]{6}", color):
+            continue
+        text_color, _ratio = readable_text_color(color)
+        cell = worksheet.cell(row=row_idx, column=topic_col_idx)
+        cell.fill = PatternFill(fill_type="solid", fgColor=color[1:].upper())
+        cell.font = Font(name="標楷體", sz=11, color=text_color[1:])
+
+
 def export_to_excel(
     news_items,
     output_dir,
@@ -477,6 +506,7 @@ def export_to_excel(
                 "啟用",
                 "優先關聯機關",
                 "比對主題名稱",
+                "顯示顏色",
                 "核心詞",
                 "輔助詞",
                 "主題脈絡詞",
@@ -520,18 +550,32 @@ def export_to_excel(
                             worksheet.cell(row=row_idx, column=col_idx).fill = row_fill
 
             format_excel_worksheet(worksheet, header_map)
+            if worksheet.title == "全部新聞":
+                apply_topic_identity_colors(worksheet, rows, header_map)
+            elif worksheet.title == "已初步篩選工作表":
+                apply_topic_identity_colors(worksheet, highlighted_rows, header_map)
+            elif worksheet.title in source_sheet_map.values():
+                source_name = next(
+                    name for name, title in source_sheet_map.items() if title == worksheet.title
+                )
+                apply_topic_identity_colors(
+                    worksheet,
+                    [row for row in rows if row.get("部會") == source_name],
+                    header_map,
+                )
             if worksheet.title == "主題規則對照":
                 for column_letter, width in {
                     "A": 34,
                     "B": 12,
                     "C": 28,
                     "D": 16,
-                    "E": 72,
+                    "E": 16,
                     "F": 72,
                     "G": 72,
                     "H": 72,
-                    "I": 55,
+                    "I": 72,
                     "J": 55,
+                    "K": 55,
                 }.items():
                     worksheet.column_dimensions[column_letter].width = width
             elif worksheet.title == "關聯性規則":

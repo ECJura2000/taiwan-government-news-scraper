@@ -29,13 +29,15 @@ python3 scripts/check_workflows.py
 
 Workflow 會重新驗證原始碼，平行建置 Windows、Linux、macOS Apple Silicon 與 macOS Intel 單檔，執行 registry、runtime、headless、GUI 與離線 browser smoke test，再建立四個可攜 ZIP、固定 AI 原始碼 ZIP、SHA-256 清單及容量 manifest。版本 tag 或 Release 已存在時會失敗，絕不覆蓋既有資產。普通 `main` push 不發布，避免未經確認的版本與重複 Actions 用量。
 
+正式發布還會在 Ubuntu 執行全來源健康測試並重試一次。`parser_regression`、`browser_runtime`、`unknown`、缺少 schema 4 JSON 或未產生 Excel 會阻止發布；具明確證據的外部來源故障、runner 網路、TLS 或存取限制只列為警告。
+
 ## Tag 備援
 
 只有手動 workflow 無法使用且版本從未發布時才推送 tag：
 
 ```bash
-git tag -a v1.5.2 -m "Release v1.5.2"
-git push origin v1.5.2
+git tag -a v1.6.0 -m "Release v1.6.0"
+git push origin v1.6.0
 ```
 
 Tag 必須與 `pyproject.toml` 完全一致。
@@ -49,6 +51,8 @@ Tag 必須與 `pyproject.toml` 完全一致。
 - `taiwan-government-news-v<版本>-source.zip`
 - `taiwan-government-news-v<版本>-SHA256SUMS.txt`
 - `taiwan-government-news-v<版本>-SIZE-MANIFEST.txt`
+- `source-health-summary.json`
+- `source-health-summary.md`
 
 每個可攜 ZIP 內含 `各機關新聞/各機關新聞整理[.exe]`、使用說明、首次啟動圖解、內部 SHA-256、`程式資料/` 與 `新聞搜集區/`。固定 AI 原始碼 ZIP 包含 `AGENTS.md`、自動化指南、完整 tracked source 與四份含雜湊鎖檔。每平台容量與最大 30 項模組報告只保留在一天期的 Actions artifact。
 

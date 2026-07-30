@@ -2,6 +2,7 @@ import json
 from datetime import datetime, timedelta, timezone
 
 import requests
+from selenium.common.exceptions import NoSuchDriverException, TimeoutException
 
 from news_scraper.monitoring import (
     RunContext,
@@ -9,6 +10,7 @@ from news_scraper.monitoring import (
     build_trend_summary,
     build_run_report,
     classify_error,
+    classify_failure,
     detect_run_anomalies,
     load_recent_reports,
     prune_old_reports,
@@ -23,6 +25,8 @@ def test_classify_error_distinguishes_operational_failures():
     assert classify_error(requests.HTTPError("503")) == "http"
     assert classify_error(ValueError("missing field")) == "parse"
     assert classify_error(RuntimeError("chromedriver failed")) == "browser"
+    assert classify_error(NoSuchDriverException("Unable to obtain driver")) == "browser"
+    assert classify_error(TimeoutException("Chrome startup timeout")) == "browser"
 
 
 def test_build_and_write_run_report(tmp_path):
@@ -46,17 +50,75 @@ def test_build_and_write_run_report(tmp_path):
     saved_report = json.loads(report_path.read_text(encoding="utf-8"))
 
     assert saved_report["status"] == "success"
-    assert saved_report["report_schema_version"] == 3
+    assert saved_report["report_schema_version"] == 4
     assert saved_report["week_start"] == "2026-06-01"
     assert saved_report["week_end"] == "2026-06-07"
     assert saved_report["selected_sources"] == ["財政部", "工程會"]
     assert saved_report["error_counts"] == {"timeout": 1}
+    assert saved_report["failure_class_counts"] == {"source_outage": 1}
     assert saved_report["insecure_ssl_hosts"] == ["www.pcc.gov.tw"]
     assert saved_report["ai_policy"]["version"] == "2.1.0"
     assert len(saved_report["ai_policy"]["ruleset_hash"]) == 16
     assert saved_report["relevance_policy"]["name"] == "AI 新十大建設預設範本"
     assert saved_report["relevance_policy"]["enabled_topic_count"] == 10
     assert [attempt["attempt"] for attempt in saved_report["source_attempts"]] == [1, 1, 2]
+    assert saved_report["source_health"]["healthy_count"] == 1
+    assert saved_report["source_health"]["unstable_count"] == 1
+    assert len(saved_report["source_diagnostics"]) == 2
+    assert saved_report["route_attempts"] == []
+
+
+def test_classify_failure_distinguishes_release_impact_classes():
+    from news_scraper.errors import ParserContractError
+
+    blocked = requests.HTTPError("Forbidden")
+    blocked.response = requests.Response()
+    blocked.response.status_code = 403
+    outage = requests.HTTPError("Unavailable")
+    outage.response = requests.Response()
+    outage.response.status_code = 503
+
+    assert classify_failure(requests.Timeout("slow")) == "source_outage"
+    assert classify_failure(requests.exceptions.SSLError("certificate failed")) == "tls_certificate"
+    assert classify_failure(blocked) == "access_blocked"
+    assert classify_failure(outage) == "source_outage"
+    assert classify_failure(ParserContractError("missing", selector=".news")) == "parser_regression"
+    assert classify_failure(RuntimeError("chromedriver failed")) == "browser_runtime"
+    assert classify_failure(NoSuchDriverException("Unable to obtain driver")) == "browser_runtime"
+    assert classify_failure(ValueError("ambiguous value")) == "unknown"
+
+
+def test_three_failed_official_hosts_become_runner_network(monkeypatch, tmp_path):
+    context = RunContext()
+    for source, host in (
+        ("行政院", "www.ey.gov.tw"),
+        ("財政部", "www.mof.gov.tw"),
+        ("社家署", "www.sfaa.gov.tw"),
+    ):
+        error = requests.ConnectionError("network unavailable")
+        error.request = requests.Request("GET", "https://{}/news".format(host)).prepare()
+        context.record_source_attempt(source, 1, 0, 1, error)
+        context.failed_sources.append(source)
+    monkeypatch.setattr("news_scraper.monitoring.network_control_available", lambda timeout=5: False)
+    started_at = datetime(2026, 7, 30, tzinfo=timezone.utc)
+
+    report = build_run_report(
+        context=context,
+        started_at=started_at,
+        finished_at=started_at + timedelta(seconds=3),
+        selected_sources=["行政院", "財政部", "社家署"],
+        news_count=0,
+        output_path=tmp_path / "weekly.xlsx",
+    )
+
+    assert report["failure_class_counts"] == {"runner_network": 3}
+    assert {item["failure_class"] for item in report["source_diagnostics"]} == {
+        "runner_network"
+    }
+    assert all(
+        item["failure_evidence"]["network_control_probe"] == "failed"
+        for item in report["source_diagnostics"]
+    )
 
 
 def test_parser_warning_marks_report_for_attention(tmp_path):
@@ -320,18 +382,25 @@ def test_build_trend_summary_calculates_source_success_rate():
     summary = build_trend_summary(
         [
             {
-                "source_attempts": [
-                    {"source": "財政部", "status": "success", "item_count": 2, "elapsed_seconds": 1.0},
-                    {"source": "財政部", "status": "failed", "item_count": 0, "elapsed_seconds": 3.0},
+                "selected_sources": ["財政部"],
+                "source_diagnostics": [
+                    {"source": "財政部", "status": "success", "item_count": 2, "elapsed_seconds": 1.0}
                 ],
-                "quality": {"source_counts": {"財政部": 0}},
-            }
+            },
+            {
+                "selected_sources": ["財政部"],
+                "failed_sources": ["財政部"],
+                "source_diagnostics": [
+                    {"source": "財政部", "status": "failed", "item_count": 0, "elapsed_seconds": 3.0}
+                ],
+            },
         ]
     )
 
+    assert summary["trend_schema_version"] == 2
     assert summary["sources"]["財政部"]["success_rate"] == 0.5
     assert summary["sources"]["財政部"]["average_elapsed_seconds"] == 2.0
-    assert summary["sources"]["財政部"]["zero_item_successes"] == 1
+    assert summary["sources"]["財政部"]["zero_item_successes"] == 0
 
 
 def test_ssl_allowlist_audit_lists_unused_hosts_as_removal_candidates():

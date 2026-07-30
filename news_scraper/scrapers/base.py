@@ -14,6 +14,7 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
 
 from ..config import PARSER, REQUEST_TIMEOUT, RSS_FEED_TIMEOUT
+from ..errors import ParserContractError
 from ..http.client import fetch_html
 from ..models import make_news_item
 from ..monitoring import record_parser_warning
@@ -34,6 +35,16 @@ def make_soup(html):
 
 def make_xml_soup(xml_text):
     return BeautifulSoup(xml_text, "xml")
+
+
+def parser_contract_error(source, url, html, selector):
+    return ParserContractError(
+        "{}頁面找不到 {}。".format(source, selector),
+        url=url,
+        content_type="text/html",
+        response_bytes=len(html.encode("utf-8", errors="replace")),
+        selector=selector,
+    )
 
 
 def fetch_page_summary(url, selectors, max_length=1200):

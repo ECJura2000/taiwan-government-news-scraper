@@ -5,6 +5,7 @@ import queue
 import subprocess
 import sys
 import threading
+import webbrowser
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any
@@ -17,12 +18,13 @@ from .run_lock import RunAlreadyActiveError
 
 @dataclass
 class GuiSettings:
-    schema_version: int = 2
+    schema_version: int = 3
     sources: list[str] = field(default_factory=list)
     output_dir: str = ""
     max_workers: int = 8
     dedupe_affiliated: bool = False
     report_retention_days: int = 180
+    recent_topic_colors: list[str] = field(default_factory=list)
 
 
 def load_settings(path: str | Path, available_sources: list[str]) -> GuiSettings:
@@ -32,7 +34,9 @@ def load_settings(path: str | Path, available_sources: list[str]) -> GuiSettings
         settings = GuiSettings(**{key: data[key] for key in asdict(GuiSettings()) if key in data})
     except (OSError, TypeError, ValueError):
         settings = GuiSettings()
-    settings.schema_version = 2
+    from .color_utils import normalize_hex_color
+
+    settings.schema_version = 3
     settings.sources = [source for source in settings.sources if source in available_sources]
     if not settings.sources:
         settings.sources = list(available_sources)
@@ -44,6 +48,13 @@ def load_settings(path: str | Path, available_sources: list[str]) -> GuiSettings
     except (TypeError, ValueError):
         settings.max_workers = 8
         settings.report_retention_days = 180
+    settings.recent_topic_colors = list(
+        dict.fromkeys(
+            color
+            for value in settings.recent_topic_colors
+            if (color := normalize_hex_color(value))
+        )
+    )[:8]
     return settings
 
 
@@ -564,6 +575,18 @@ class NewsScraperApp:
             command=self._open_relevance_editor,
         )
         self.relevance_button.pack(side="left")
+        self.health_button = self.ttk.Button(
+            relevance_row,
+            text="來源健康",
+            command=self._open_health_dashboard,
+        )
+        self.health_button.pack(side="left", padx=(8, 0))
+        self.update_button = self.ttk.Button(
+            relevance_row,
+            text="檢查更新",
+            command=self._check_updates,
+        )
+        self.update_button.pack(side="left", padx=(8, 0))
         self.ttk.Label(
             relevance_row,
             textvariable=self.relevance_summary_var,
@@ -683,7 +706,40 @@ class NewsScraperApp:
             profile_path=self.relevance_profile_path,
             available_sources=self.all_sources,
             on_saved=self._on_relevance_saved,
+            recent_colors=self.settings.recent_topic_colors,
+            on_recent_colors_changed=self._on_recent_colors_changed,
         )
+
+    def _on_recent_colors_changed(self, colors):
+        self.settings.recent_topic_colors = list(colors)[:8]
+        save_settings(self.settings_path, self.settings)
+
+    def _open_health_dashboard(self):
+        from .health_dashboard import build_health_dashboard_model, open_health_dashboard
+        from .monitoring import load_recent_reports
+
+        report_dir = Path(self.output_var.get()).expanduser() / "執行紀錄"
+        reports = load_recent_reports(report_dir, limit=52)
+        model = build_health_dashboard_model(reports, self.all_sources)
+        return open_health_dashboard(self.root, model)
+
+    def _check_updates(self):
+        if str(self.update_button.cget("state")) == "disabled":
+            return
+        self.update_button.configure(state="disabled")
+        self.status_var.set("正在檢查更新...")
+
+        def worker():
+            try:
+                from .update_checker import check_latest_release
+
+                result = check_latest_release(timeout=5)
+            except Exception as exc:
+                self.events.put(("update_error", "{}: {}".format(type(exc).__name__, exc)))
+            else:
+                self.events.put(("update_result", result))
+
+        threading.Thread(target=worker, daemon=True).start()
 
     def _on_relevance_saved(self, profile):
         self.relevance_profile = profile
@@ -721,6 +777,7 @@ class NewsScraperApp:
             max_workers=workers,
             dedupe_affiliated=bool(self.dedupe_var.get()),
             report_retention_days=retention,
+            recent_topic_colors=list(self.settings.recent_topic_colors),
         )
 
     def _start(self):
@@ -739,6 +796,7 @@ class NewsScraperApp:
         self.start_button.configure(state="disabled")
         self.cancel_button.configure(state="normal")
         self.relevance_button.configure(state="disabled")
+        self.health_button.configure(state="disabled")
         self.open_excel_button.configure(state="disabled")
         self.open_folder_button.configure(state="disabled")
         self._append_log("開始整理 {} 個來源。".format(len(settings.sources)))
@@ -813,10 +871,37 @@ class NewsScraperApp:
                     self.status_var.set("執行失敗")
                     self._append_log(payload)
                     messagebox.showerror("新聞整理失敗", payload)
+                elif kind == "update_error":
+                    self.update_button.configure(state="normal")
+                    self.status_var.set("無法檢查更新")
+                    messagebox.showinfo(
+                        "檢查更新",
+                        "目前無法連線至 GitHub，新聞整理功能不受影響。\n\n{}".format(payload),
+                    )
+                elif kind == "update_result":
+                    self.update_button.configure(state="normal")
+                    if payload.update_available:
+                        self.status_var.set("有新版可下載：v{}".format(payload.latest_version))
+                        message = (
+                            "目前版本：v{}\n最新版本：v{}\n發布日期：{}\n\n要開啟下載頁面嗎？"
+                        ).format(
+                            payload.current_version,
+                            payload.latest_version,
+                            payload.published_at or "未提供",
+                        )
+                        if messagebox.askyesno("發現新版", message):
+                            webbrowser.open(payload.release_url)
+                    else:
+                        self.status_var.set("目前已是最新版")
+                        messagebox.showinfo(
+                            "檢查更新",
+                            "目前版本 v{} 已是最新正式版本。".format(payload.current_version),
+                        )
                 elif kind == "worker_done":
                     self.start_button.configure(state="normal")
                     self.cancel_button.configure(state="disabled")
                     self.relevance_button.configure(state="normal")
+                    self.health_button.configure(state="normal")
                     if self.close_requested:
                         self.root.destroy()
                         return
@@ -889,6 +974,24 @@ def main(smoke_test: bool = False) -> int:
                     "GUI 執行紀錄未使用按鈕的中文字型。",
                     file=sys.stderr,
                 )
+                root.destroy()
+                return 1
+            if app.health_button.cget("text") != "來源健康":
+                print("GUI 缺少來源健康入口。", file=sys.stderr)
+                root.destroy()
+                return 1
+            health_window = app._open_health_dashboard()
+            root.update_idletasks()
+            if health_window.title() != "來源健康":
+                print("GUI 來源健康視窗未正確建立。", file=sys.stderr)
+                root.destroy()
+                return 1
+            health_window.destroy()
+            if (
+                app.update_button.cget("text") != "檢查更新"
+                or not str(app.update_button.cget("command"))
+            ):
+                print("GUI 缺少手動檢查更新入口。", file=sys.stderr)
                 root.destroy()
                 return 1
             editor = app._open_relevance_editor()

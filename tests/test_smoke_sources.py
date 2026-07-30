@@ -156,7 +156,7 @@ def test_write_evidence_preserves_report_and_stderr(tmp_path):
     assert saved["stderr_tail"] == "HTTP 503"
 
 
-def test_is_transient_network_failure_detects_connection_errors():
+def test_get_failure_class_uses_structured_error_counts():
     smoke = load_smoke_module()
     record = {
         "summary": {"error_counts": {"connection": 2}},
@@ -164,4 +164,58 @@ def test_is_transient_network_failure_detects_connection_errors():
         "stdout_tail": "",
     }
 
-    assert smoke.is_transient_network_failure(record) is True
+    assert smoke.get_failure_class(record) == "source_outage"
+
+
+def test_subprocess_timeout_is_source_outage():
+    smoke = load_smoke_module()
+
+    assert smoke.get_failure_class({"timed_out": True}) == "source_outage"
+
+
+def test_route_parser_regression_blocks_release_even_when_fallback_succeeds():
+    smoke = load_smoke_module()
+    record = {
+        "report": {
+            "route_attempts": [
+                {
+                    "route_id": "primary",
+                    "status": "failed",
+                    "failure_class": "parser_regression",
+                },
+                {
+                    "route_id": "fallback",
+                    "status": "success",
+                    "failure_class": "",
+                },
+            ]
+        }
+    }
+
+    assert smoke.get_blocking_route_classes(record) == {"parser_regression"}
+
+
+def test_classify_retry_failures_requires_three_hosts_and_failed_control_probe(monkeypatch):
+    smoke = load_smoke_module()
+    records = [
+        {
+            "source": source,
+            "report": {
+                "source_diagnostics": [
+                    {
+                        "source": source,
+                        "failure_class": "source_outage",
+                        "final_route": {"url_host": host},
+                    }
+                ]
+            },
+        }
+        for source, host in (
+            ("行政院", "www.ey.gov.tw"),
+            ("財政部", "www.mof.gov.tw"),
+            ("社家署", "www.sfaa.gov.tw"),
+        )
+    ]
+    monkeypatch.setattr(smoke, "control_network_available", lambda: False)
+
+    assert set(smoke.classify_retry_failures(records).values()) == {"runner_network"}

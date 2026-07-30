@@ -44,7 +44,11 @@ class RunResult:
     insecure_ssl_hosts: tuple[str, ...] = ()
     duration_seconds: float = 0.0
     error_counts: dict[str, int] = field(default_factory=dict)
+    failure_class_counts: dict[str, int] = field(default_factory=dict)
     parser_warnings: tuple[dict, ...] = ()
+    source_diagnostics: tuple[dict, ...] = ()
+    route_attempts: tuple[dict, ...] = ()
+    source_health: dict = field(default_factory=dict)
     relevance_policy: dict = field(default_factory=dict)
     cancelled: bool = False
     news_items: tuple[dict, ...] = field(default_factory=tuple, repr=False)
@@ -64,7 +68,11 @@ class RunResult:
             "insecure_ssl_hosts": list(self.insecure_ssl_hosts),
             "duration_seconds": self.duration_seconds,
             "error_counts": dict(self.error_counts),
+            "failure_class_counts": dict(self.failure_class_counts),
             "parser_warnings": list(self.parser_warnings),
+            "source_diagnostics": list(self.source_diagnostics),
+            "route_attempts": list(self.route_attempts),
+            "source_health": dict(self.source_health),
             "relevance_policy": dict(self.relevance_policy),
             "cancelled": self.cancelled,
         }
@@ -248,7 +256,11 @@ def run_news_scraper(
         insecure_ssl_hosts=tuple(sorted(context.insecure_ssl_hosts)),
         duration_seconds=float(report["duration_seconds"]),
         error_counts=dict(report["error_counts"]),
+        failure_class_counts=dict(report["failure_class_counts"]),
         parser_warnings=tuple(report["parser_warnings"]),
+        source_diagnostics=tuple(report["source_diagnostics"]),
+        route_attempts=tuple(report["route_attempts"]),
+        source_health=dict(report["source_health"]),
         relevance_policy=dict(report["relevance_policy"]),
         cancelled=context.cancelled,
         news_items=tuple(news),

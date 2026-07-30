@@ -16,12 +16,14 @@ from urllib.request import Request, urlopen
 
 from requests.exceptions import ConnectionError, HTTPError, SSLError, Timeout
 
+from .errors import ParserContractError
 from .io_utils import atomic_write_text
 from .policy import get_summary_coverage_policy, get_zero_item_alert_runs
 
 CURRENT_RUN_CONTEXT = ContextVar("news_scraper_run_context", default=None)
 logger = logging.getLogger(__name__)
-REPORT_SCHEMA_VERSION = 3
+REPORT_SCHEMA_VERSION = 4
+TREND_SCHEMA_VERSION = 2
 
 
 class QualitySummary(TypedDict, total=False):
@@ -61,6 +63,20 @@ class ErrorCategory(str, Enum):
     UNEXPECTED = "unexpected"
 
 
+class FailureClass(str, Enum):
+    SOURCE_OUTAGE = "source_outage"
+    RUNNER_NETWORK = "runner_network"
+    TLS_CERTIFICATE = "tls_certificate"
+    ACCESS_BLOCKED = "access_blocked"
+    PARSER_REGRESSION = "parser_regression"
+    BROWSER_RUNTIME = "browser_runtime"
+    UNKNOWN = "unknown"
+
+
+def _failure_class_value(value) -> str:
+    return value.value if isinstance(value, FailureClass) else str(value or "")
+
+
 def new_quality_summary() -> QualitySummary:
     return cast(QualitySummary, {})
 
@@ -73,6 +89,37 @@ class SourceAttempt:
     item_count: int
     elapsed_seconds: float
     error_category: str = ""
+    error_type: str = ""
+    error_message: str = ""
+    route_id: str = ""
+    url_host: str = ""
+    http_status: int | None = None
+    failure_class: str = ""
+    failure_evidence: dict[str, Any] = field(default_factory=dict)
+
+    def to_dict(self):
+        return asdict(self)
+
+
+@dataclass(frozen=True)
+class RouteAttempt:
+    source: str
+    route_id: str
+    url: str
+    url_host: str
+    kind: str
+    parser: str
+    priority: int
+    official: bool
+    coverage_reduced: bool
+    status: str
+    item_count: int
+    elapsed_seconds: float
+    error_category: str = ""
+    failure_class: str = ""
+    http_status: int | None = None
+    content_type: str = ""
+    response_bytes: int = 0
     error_type: str = ""
     error_message: str = ""
 
@@ -102,6 +149,8 @@ class ParserWarning:
 @dataclass
 class RunContext:
     source_attempts: list[SourceAttempt] = field(default_factory=list)
+    route_attempts: list[RouteAttempt] = field(default_factory=list)
+    final_routes: dict[str, dict[str, Any]] = field(default_factory=dict)
     insecure_ssl_hosts: set[str] = field(default_factory=set)
     failed_sources: list[str] = field(default_factory=list)
     quality_summary: QualitySummary = field(default_factory=new_quality_summary)
@@ -114,6 +163,11 @@ class RunContext:
     lock: threading.RLock = field(default_factory=threading.RLock, repr=False)
 
     def record_source_attempt(self, source, attempt, item_count, elapsed_seconds, error=None):
+        evidence = extract_failure_evidence(error)
+        if error is None:
+            final_route = self.final_routes.get(source, {})
+            evidence["route_id"] = str(final_route.get("route_id") or "")
+            evidence["url_host"] = str(final_route.get("url_host") or "")
         result = SourceAttempt(
             source=source,
             attempt=attempt,
@@ -123,10 +177,53 @@ class RunContext:
             error_category=classify_error(error),
             error_type=type(error).__name__ if error else "",
             error_message=str(error) if error else "",
+            route_id=str(evidence.get("route_id") or ""),
+            url_host=str(evidence.get("url_host") or ""),
+            http_status=evidence.get("http_status"),
+            failure_class=classify_failure(error),
+            failure_evidence=evidence,
         )
         with self.lock:
             self.source_attempts.append(result)
         return result
+
+    def record_route_attempt(self, source, route, elapsed_seconds, item_count=0, error=None):
+        evidence = extract_failure_evidence(error)
+        result = RouteAttempt(
+            source=source,
+            route_id=route.id,
+            url=route.url,
+            url_host=urlparse(route.url).netloc.lower(),
+            kind=route.kind,
+            parser=route.parser,
+            priority=route.priority,
+            official=route.official,
+            coverage_reduced=route.coverage_reduced,
+            status=AttemptStatus.FAILED if error else AttemptStatus.SUCCESS,
+            item_count=item_count,
+            elapsed_seconds=round(elapsed_seconds, 3),
+            error_category=classify_error(error),
+            failure_class=classify_failure(error),
+            http_status=evidence.get("http_status"),
+            content_type=str(evidence.get("content_type") or ""),
+            response_bytes=int(evidence.get("response_bytes") or 0),
+            error_type=type(error).__name__ if error else "",
+            error_message=str(error) if error else "",
+        )
+        with self.lock:
+            self.route_attempts.append(result)
+        return result
+
+    def record_final_route(self, source, route):
+        with self.lock:
+            self.final_routes[source] = {
+                "route_id": route.id,
+                "url_host": urlparse(route.url).netloc.lower(),
+                "kind": route.kind,
+                "parser": route.parser,
+                "used_fallback": route.priority > 1,
+                "coverage_reduced": route.coverage_reduced,
+            }
 
     def record_insecure_ssl_use(self, host):
         if host:
@@ -136,6 +233,10 @@ class RunContext:
     def snapshot_attempts(self):
         with self.lock:
             return [result.to_dict() for result in self.source_attempts]
+
+    def snapshot_route_attempts(self):
+        with self.lock:
+            return [result.to_dict() for result in self.route_attempts]
 
     def record_parser_warning(self, parser, value, error=None, source=""):
         warning = ParserWarning(
@@ -183,6 +284,8 @@ def classify_error(error):
             return ErrorCategory.UNEXPECTED
     if isinstance(error, SSLError):
         return ErrorCategory.SSL
+    if type(error).__module__.startswith("selenium."):
+        return ErrorCategory.BROWSER
     if isinstance(error, Timeout) or "timeout" in type(error).__name__.lower():
         return ErrorCategory.TIMEOUT
     if isinstance(error, HTTPError):
@@ -197,6 +300,145 @@ def classify_error(error):
     if isinstance(error, (ValueError, KeyError, TypeError)):
         return ErrorCategory.PARSE
     return ErrorCategory.UNEXPECTED
+
+
+def _http_status(error) -> int | None:
+    status = getattr(error, "http_status", None)
+    response = getattr(error, "response", None)
+    if status is None and response is not None:
+        status = getattr(response, "status_code", None)
+    try:
+        return int(status) if status is not None else None
+    except (TypeError, ValueError):
+        return None
+
+
+def extract_failure_evidence(error) -> dict[str, Any]:
+    if error is None:
+        return {}
+    response = getattr(error, "response", None)
+    headers = getattr(response, "headers", {}) if response is not None else {}
+    content = getattr(response, "content", b"") if response is not None else b""
+    url = str(
+        getattr(error, "url", "")
+        or getattr(getattr(error, "request", None), "url", "")
+        or getattr(getattr(response, "request", None), "url", "")
+        or getattr(response, "url", "")
+    )
+    response_bytes = getattr(error, "response_bytes", None)
+    if response_bytes is None:
+        try:
+            response_bytes = len(content)
+        except TypeError:
+            response_bytes = 0
+    return {
+        "route_id": str(getattr(error, "route_id", "") or ""),
+        "url_host": str(getattr(error, "url_host", "") or urlparse(url).netloc.lower()),
+        "http_status": _http_status(error),
+        "content_type": str(getattr(error, "content_type", "") or headers.get("Content-Type", "")),
+        "response_bytes": int(response_bytes or 0),
+        "selector": str(getattr(error, "selector", "") or ""),
+    }
+
+
+def classify_failure(error):
+    if error is None:
+        return ""
+    structured = getattr(error, "failure_class", "")
+    if structured:
+        try:
+            return FailureClass(structured)
+        except ValueError:
+            return FailureClass.UNKNOWN
+    if isinstance(error, ParserContractError):
+        return FailureClass.PARSER_REGRESSION
+    category = classify_error(error)
+    status = _http_status(error)
+    message = str(error).lower()
+    if category == ErrorCategory.SSL:
+        return FailureClass.TLS_CERTIFICATE
+    if category == ErrorCategory.BROWSER:
+        return FailureClass.BROWSER_RUNTIME
+    if category == ErrorCategory.PARSE:
+        return FailureClass.UNKNOWN
+    if category == ErrorCategory.HTTP:
+        if status in {401, 403, 407, 409, 423, 429, 451} or any(
+            marker in message for marker in ("forbidden", "too many requests", "captcha", "access denied")
+        ):
+            return FailureClass.ACCESS_BLOCKED
+        if status is not None and status >= 500:
+            return FailureClass.SOURCE_OUTAGE
+        return FailureClass.UNKNOWN
+    if category in {ErrorCategory.TIMEOUT, ErrorCategory.CONNECTION}:
+        return FailureClass.SOURCE_OUTAGE
+    return FailureClass.UNKNOWN
+
+
+def _build_source_diagnostics(context, selected_sources, attempts):
+    route_attempts = context.snapshot_route_attempts()
+    diagnostics = []
+    for source in selected_sources:
+        source_attempts = [item for item in attempts if item.get("source") == source]
+        source_routes = [item for item in route_attempts if item.get("source") == source]
+        final_attempt = source_attempts[-1] if source_attempts else {}
+        failed_attempts = [item for item in source_attempts if item.get("status") == AttemptStatus.FAILED]
+        failed_routes = [item for item in source_routes if item.get("status") == AttemptStatus.FAILED]
+        latest_failure = failed_attempts[-1] if failed_attempts else (failed_routes[-1] if failed_routes else {})
+        final_route = dict(context.final_routes.get(source, {}))
+        source_failed = source in context.failed_sources
+        failure_evidence = dict(latest_failure.get("failure_evidence") or {})
+        for key in ("url_host", "http_status", "content_type", "response_bytes"):
+            if key not in failure_evidence and latest_failure.get(key) not in (None, ""):
+                failure_evidence[key] = latest_failure[key]
+        diagnostics.append(
+            {
+                "source": source,
+                "status": "failed" if source_failed else "success",
+                "unstable": not source_failed and bool(failed_attempts),
+                "item_count": int(context.quality_summary.get("source_counts", {}).get(source, 0)),
+                "attempt_count": len(source_attempts),
+                "failure_class": final_attempt.get("failure_class", "") if source_failed else "",
+                "last_failure_class": latest_failure.get("failure_class", ""),
+                "error_category": final_attempt.get("error_category", "") if source_failed else "",
+                "failure_evidence": failure_evidence,
+                "elapsed_seconds": round(sum(float(item.get("elapsed_seconds") or 0) for item in source_attempts), 3),
+                "final_route": final_route,
+                "route_attempt_count": len(source_routes),
+                "route_failure_classes": sorted(
+                    {
+                        _failure_class_value(item.get("failure_class"))
+                        for item in failed_routes
+                        if item.get("failure_class")
+                    }
+                ),
+            }
+        )
+    return diagnostics, route_attempts
+
+
+def network_control_available(timeout=5) -> bool:
+    try:
+        request = Request("https://www.gov.tw/", headers={"User-Agent": "news-scraper-health-check"})
+        with urlopen(request, timeout=timeout) as response:  # nosec B310
+            return int(response.status) < 500
+    except Exception:
+        return False
+
+
+def _apply_runner_network_classification(source_diagnostics):
+    outage_hosts = {
+        str(item.get("failure_evidence", {}).get("url_host") or "")
+        for item in source_diagnostics
+        if item.get("status") == "failed" and item.get("failure_class") == FailureClass.SOURCE_OUTAGE
+    }
+    outage_hosts.discard("")
+    if len(outage_hosts) < 3 or network_control_available():
+        return
+    for item in source_diagnostics:
+        if item.get("status") == "failed" and item.get("failure_class") == FailureClass.SOURCE_OUTAGE:
+            item["failure_class"] = FailureClass.RUNNER_NETWORK
+            item["last_failure_class"] = FailureClass.RUNNER_NETWORK
+            item["failure_evidence"]["network_control_probe"] = "failed"
 
 
 def build_run_report(
@@ -217,6 +459,39 @@ def build_run_report(
         category = attempt["error_category"]
         if category:
             error_counts[category] = error_counts.get(category, 0) + 1
+    source_diagnostics, route_attempts = _build_source_diagnostics(context, selected_sources, attempts)
+    _apply_runner_network_classification(source_diagnostics)
+    failure_pairs = {
+        (str(item["source"]), _failure_class_value(item["failure_class"]))
+        for item in attempts
+        if item.get("status") == AttemptStatus.FAILED and item.get("failure_class")
+    }
+    for item in source_diagnostics:
+        if item.get("failure_class") == FailureClass.RUNNER_NETWORK:
+            failure_pairs.discard((str(item["source"]), FailureClass.SOURCE_OUTAGE.value))
+    failure_pairs.update(
+        (str(item["source"]), _failure_class_value(item["failure_class"]))
+        for item in source_diagnostics
+        if item.get("failure_class")
+    )
+    failure_pairs.update(
+        (str(item["source"]), _failure_class_value(item["failure_class"]))
+        for item in route_attempts
+        if item.get("status") == AttemptStatus.FAILED and item.get("failure_class")
+    )
+    failure_class_counts: dict[str, int] = {}
+    for _source, failure_class in failure_pairs:
+        failure_class_counts[failure_class] = failure_class_counts.get(failure_class, 0) + 1
+    source_health = {
+        "healthy_count": sum(
+            item["status"] == "success" and not item["unstable"] for item in source_diagnostics
+        ),
+        "unstable_count": sum(bool(item["unstable"]) for item in source_diagnostics),
+        "failed_count": sum(item["status"] == "failed" for item in source_diagnostics),
+        "fallback_source_count": sum(bool(item["final_route"].get("used_fallback")) for item in source_diagnostics),
+        "coverage_reduced_count": sum(bool(item["final_route"].get("coverage_reduced")) for item in source_diagnostics),
+        "ssl_fallback_host_count": len(context.insecure_ssl_hosts),
+    }
 
     quality_requires_attention = bool(context.quality_summary.get("alert_reasons"))
     if context.cancelled:
@@ -251,6 +526,7 @@ def build_run_report(
         "news_count": news_count,
         "failed_sources": list(context.failed_sources),
         "error_counts": error_counts,
+        "failure_class_counts": failure_class_counts,
         "insecure_ssl_hosts": sorted(context.insecure_ssl_hosts),
         "quality": context.quality_summary,
         "relevance_policy": relevance_policy,
@@ -264,6 +540,9 @@ def build_run_report(
         "alerts": list(context.alerts),
         "output_file": str(output_path) if output_path else "",
         "source_attempts": attempts,
+        "source_diagnostics": source_diagnostics,
+        "route_attempts": route_attempts,
+        "source_health": source_health,
     }
 
 
@@ -553,29 +832,75 @@ def build_ssl_allowlist_audit(reports, allowed_hosts, minimum_reports=8):
 def build_trend_summary(reports, allowed_ssl_hosts=None):
     source_stats: dict[str, dict[str, Any]] = {}
     for report in reports:
-        quality_source_counts = report.get("quality", {}).get("source_counts", {})
-        for attempt in report.get("source_attempts", []):
-            source = attempt.get("source")
+        diagnostics = report.get("source_diagnostics")
+        if not isinstance(diagnostics, list):
+            diagnostics = []
+            source_names = report.get("selected_sources") or [
+                item.get("source") for item in report.get("source_attempts", [])
+            ]
+            for source in dict.fromkeys(source_names):
+                attempts = [
+                    item for item in report.get("source_attempts", []) if item.get("source") == source
+                ]
+                final = attempts[-1] if attempts else {}
+                diagnostics.append(
+                    {
+                        "source": source,
+                        "status": "failed" if source in report.get("failed_sources", []) else "success",
+                        "item_count": report.get("quality", {}).get("source_counts", {}).get(
+                            source, final.get("item_count", 0)
+                        ),
+                        "elapsed_seconds": sum(float(item.get("elapsed_seconds") or 0) for item in attempts),
+                        "failure_class": final.get("failure_class", ""),
+                        "final_route": {},
+                    }
+                )
+        for diagnostic in diagnostics:
+            source = diagnostic.get("source")
             if not source:
                 continue
             stats = source_stats.setdefault(
                 source,
-                {"attempts": 0, "successes": 0, "failures": 0, "zero_item_successes": 0, "elapsed_seconds": 0.0},
+                {
+                    "runs": 0,
+                    "successes": 0,
+                    "failures": 0,
+                    "zero_item_successes": 0,
+                    "elapsed_seconds": 0.0,
+                    "fallback_uses": 0,
+                    "coverage_reduced_uses": 0,
+                    "last_failure_class": "",
+                    "last_status": "",
+                    "last_route": "",
+                },
             )
-            stats["attempts"] += 1
-            stats["elapsed_seconds"] += float(attempt.get("elapsed_seconds") or 0)
-            if attempt.get("status") == "success":
+            stats["runs"] += 1
+            stats["elapsed_seconds"] += float(diagnostic.get("elapsed_seconds") or 0)
+            stats["last_status"] = stats["last_status"] or str(diagnostic.get("status") or "")
+            final_route = diagnostic.get("final_route") or {}
+            stats["last_route"] = stats["last_route"] or str(final_route.get("route_id") or "")
+            if final_route.get("used_fallback"):
+                stats["fallback_uses"] += 1
+            if final_route.get("coverage_reduced"):
+                stats["coverage_reduced_uses"] += 1
+            if diagnostic.get("status") == "success":
                 stats["successes"] += 1
-                final_item_count = quality_source_counts.get(source, attempt.get("item_count"))
-                if final_item_count == 0:
+                if int(diagnostic.get("item_count") or 0) == 0:
                     stats["zero_item_successes"] += 1
             else:
                 stats["failures"] += 1
+                stats["last_failure_class"] = stats["last_failure_class"] or str(
+                    diagnostic.get("failure_class") or ""
+                )
 
     for stats in source_stats.values():
-        stats["average_elapsed_seconds"] = round(stats.pop("elapsed_seconds") / stats["attempts"], 3)
-        stats["success_rate"] = round(stats["successes"] / stats["attempts"], 4)
-    summary = {"report_count": len(reports), "sources": source_stats}
+        stats["average_elapsed_seconds"] = round(stats.pop("elapsed_seconds") / stats["runs"], 3)
+        stats["success_rate"] = round(stats["successes"] / stats["runs"], 4)
+    summary = {
+        "trend_schema_version": TREND_SCHEMA_VERSION,
+        "report_count": len(reports),
+        "sources": source_stats,
+    }
     if allowed_ssl_hosts is not None:
         summary["ssl_allowlist_audit"] = build_ssl_allowlist_audit(reports, allowed_ssl_hosts)
     return summary

@@ -38,7 +38,7 @@ macOS／Linux：
 
 如果希望 AI 能閱讀、修改或擴充程式，請改用下列原始碼入口：
 
-- [下載 v1.5.2 固定版本 AI 原始碼 ZIP](https://github.com/ECJura2000/taiwan-government-news-scraper/releases/download/v1.5.2/taiwan-government-news-v1.5.2-source.zip)
+- [下載 v1.6.0 固定版本 AI 原始碼 ZIP](https://github.com/ECJura2000/taiwan-government-news-scraper/releases/download/v1.6.0/taiwan-government-news-v1.6.0-source.zip)
 - [下載 main 最新原始碼 ZIP](https://github.com/ECJura2000/taiwan-government-news-scraper/archive/refs/heads/main.zip)
 - 使用 Git：`git clone https://github.com/ECJura2000/taiwan-government-news-scraper.git`
 
@@ -150,13 +150,13 @@ Windows 原始碼環境使用：
 Linux 可用下列方式核對雜湊：
 
 ```bash
-sha256sum taiwan-government-news-v1.5.2-linux.zip
+sha256sum taiwan-government-news-v1.6.0-linux.zip
 ```
 
 macOS 使用：
 
 ```bash
-shasum -a 256 taiwan-government-news-v1.5.2-macos-arm64.zip
+shasum -a 256 taiwan-government-news-v1.6.0-macos-arm64.zip
 ```
 
 Intel Mac 請將檔名改為 `macos-x64.zip`。Windows 可用 `Get-FileHash` 計算後，與 `SHA256SUMS.txt` 的對應紀錄比對。正式 Release 單一執行檔不得超過 65 MiB，全部資產（含 AI 原始碼 ZIP）不得超過 170 MiB；Actions 中間 artifacts 只保留 1 天。
@@ -345,6 +345,10 @@ python3 scripts/evaluate_ai_policy.py tests/fixtures/ai_policy_holdout_20260622.
 
 - `failed_sources`：重試後仍失敗的來源
 - `error_counts`：`timeout`、`ssl`、`http`、`connection`、`browser`、`parse`、`unexpected` 分類統計
+- `failure_class_counts`：`source_outage`、`runner_network`、`tls_certificate`、`access_blocked`、`parser_regression`、`browser_runtime`、`unknown` 營運分類統計
+- `source_diagnostics`：每個來源的最終分類、HTTP 狀態、主機、內容類型、回應大小與判斷依據
+- `route_attempts`：主入口與官方備援入口的嘗試順序、結果及是否降低涵蓋範圍
+- `source_health`：本次健康、不穩定、失敗及備援使用來源摘要
 - `insecure_ssl_hosts`：本次實際停用 SSL 驗證的白名單主機
 - `source_attempts`：各來源每次嘗試的耗時、結果與錯誤摘要
 - `scheduling_plan`：priority queue 的來源啟動順序、歷史失敗率、平均耗時與靜態難度
@@ -358,6 +362,8 @@ python3 scripts/evaluate_ai_policy.py tests/fixtures/ai_policy_holdout_20260622.
 程式依序嘗試 Requests 正常 SSL 驗證、安全 curl；兩者都失敗且主機位於白名單時，才會最後降級為 `verify=False`。不安全模式手動處理 redirect，目的 host 不在白名單時立即拒絕。這讓已修復憑證的網站可以自動恢復安全連線，並避免在安全 curl 可用時停用驗證。
 
 執行報告預設保留 180 天，可用 `--report-retention-days` 調整。`執行紀錄/trend_summary.json` 會彙整最近 52 次報告的來源成功率、平均耗時與零筆次數。
+
+GUI 的「來源健康」會直接讀取本機最近 52 份 JSON 報告，顯示最終成功率、最近耗時、連續零筆、失敗分類、入口與 SSL 降級，不會上傳遙測資料。「檢查更新」只在使用者點擊後連線 GitHub，且不會自動下載或覆寫程式。
 
 累積至少 8 次報告後，`trend_summary.json` 的 `ssl_allowlist_audit.removal_candidates` 才會列出近期未曾使用 SSL 降級的白名單主機。移除前仍應以實際來源 smoke test 驗證，避免因低頻來源尚未執行而誤刪。
 

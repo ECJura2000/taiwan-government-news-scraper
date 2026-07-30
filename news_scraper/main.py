@@ -107,6 +107,10 @@ def run_scraper(source_name, scraper_func, log_exception=True, attempt=1, contex
         try:
             items = scraper_func()
             elapsed = time.perf_counter() - started_at
+            if source_name not in context.final_routes:
+                from .scrapers.registry import SOURCE_SPECS
+
+                context.record_final_route(source_name, SOURCE_SPECS[source_name].routes[0])
             context.record_source_attempt(source_name, attempt, len(items), elapsed)
             logger.info("%s 完成，抓到 %s 筆，用時 %.2f 秒", source_name, len(items), elapsed)
             return source_name, items, None
