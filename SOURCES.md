@@ -6,7 +6,7 @@
 
 - 本專案不代表任何政府機關，也不修改原始新聞內容。
 - Excel 與執行報告屬於自動整理結果；正式內容、發布時間及後續修正均以原發布機關網站為準。
-- 來源網址可能因網站改版而異動。程式實際使用的最新網址以 [`news_scraper/config.py`](news_scraper/config.py) 與各 scraper 模組為準。
+- 來源網址可能因網站改版而異動。程式實際使用的最新網址以 [`news_scraper/config.py`](news_scraper/config.py)、[`news_scraper/source_catalog.py`](news_scraper/source_catalog.py) 與各 scraper 模組為準。
 - 新增或更換來源時，應優先採用官方 RSS、Atom、開放資料或公開 API；只有缺少結構化入口時才解析 HTML。
 - 使用、再利用或散布資料前，應另行確認各原發布網站的使用條款、著作權聲明與開放資料授權。
 
@@ -87,6 +87,19 @@
 | 工程會 | [www.pcc.gov.tw](https://www.pcc.gov.tw/content/News.aspx?n=C61062639C0CD29F&sms=21EF9CF82726C1BB) |
 | 中選會 | [web.cec.gov.tw](https://web.cec.gov.tw/central) |
 
+## 官方備援入口
+
+只有主入口失敗時才會依序使用備援，實際使用入口、失敗分類及是否降低涵蓋範圍都會寫入 JSON 報告。
+
+| 來源 | 官方備援 |
+| --- | --- |
+| 漁業署 | [新聞稿 RSS](https://www.fa.gov.tw/wm_DATA.php?data=news) |
+| 農業金融署 | [本署新聞 RSS](https://www.afna.gov.tw/wm_DATA.php?data=news) |
+| 工程會 | [新聞稿開放資料 XML](https://www.pcc.gov.tw/content/opendata?n=CF5DF99964D9DB8E&item=news) |
+| 環境部 | [環境部新聞專區](https://enews.moenv.gov.tw/)，一般 HTTP 遭限制時使用本機 Chrome |
+| 矯正署 | [本部所屬機關最新消息](https://www.mjac.moj.gov.tw/4786/654264/)，僅保留可判定發布日期的項目並標示涵蓋範圍降低 |
+| 社家署 | [衛福部新聞](https://www.mohw.gov.tw/lp-16-1-40.html)，只納入明示「資料來源＝社會及家庭署」的項目並標示涵蓋範圍降低 |
+
 ## 抓取方式
 
 | 類型 | 用途 | 主要實作 |
@@ -95,7 +108,7 @@
 | HTML 新聞列表 | 官方網站未提供穩定結構化來源時使用 | [`news_scraper/scrapers/`](news_scraper/scrapers/) |
 | JSON／公開 API | 讀取網站公開提供的結構化資料 | 各機關 scraper 模組 |
 | GraphQL | 國家太空中心公開網站資料 | [`tasa.py`](news_scraper/scrapers/ministry/development/tasa.py) |
-| Selenium | 國土管理署等 JavaScript 動態頁面 | [`nlma.py`](news_scraper/scrapers/ministry/interior/nlma.py) |
+| Selenium | 國土管理署及環境部新聞專區等 JavaScript／存取受限頁面 | [`nlma.py`](news_scraper/scrapers/ministry/interior/nlma.py)、[`moenv.py`](news_scraper/scrapers/ministry/environment/moenv.py) |
 
 ## 技術參考
 
@@ -104,7 +117,7 @@
 - [Beautiful Soup](https://www.crummy.com/software/BeautifulSoup/bs4/doc/) 與 [lxml](https://lxml.de/)：HTML／XML 解析。
 - [feedparser](https://feedparser.readthedocs.io/)：RSS／Atom 解析。
 - [Selenium](https://www.selenium.dev/documentation/)：JavaScript 動態頁面擷取。
-- [pandas](https://pandas.pydata.org/docs/) 與 [openpyxl](https://openpyxl.readthedocs.io/)：Excel 資料整理與匯出。
+- [openpyxl](https://openpyxl.readthedocs.io/)：Excel 資料整理與匯出。
 - [pytest](https://docs.pytest.org/)、[Ruff](https://docs.astral.sh/ruff/) 與 [Mypy](https://mypy.readthedocs.io/)：測試、程式碼檢查與型別檢查。
 - [GitHub Actions](https://docs.github.com/actions)：跨 Python 版本的持續整合驗證。
 
@@ -113,6 +126,7 @@
 新增、移除或修改資料來源時，請同步更新：
 
 1. [`news_scraper/config.py`](news_scraper/config.py) 的 `URLS` 與 `ORDERED_SOURCE_NAMES`。
-2. [`news_scraper/scrapers/registry.py`](news_scraper/scrapers/registry.py) 的 `SCRAPER_SPECS`。
-3. 本文件的官方資料來源表格。
-4. 對應解析器測試或 fixture。
+2. [`news_scraper/source_catalog.py`](news_scraper/source_catalog.py) 的官方備援入口。
+3. [`news_scraper/scrapers/registry.py`](news_scraper/scrapers/registry.py) 的 `SCRAPER_SPECS`。
+4. 本文件的官方資料來源表格。
+5. 對應解析器測試或 fixture。

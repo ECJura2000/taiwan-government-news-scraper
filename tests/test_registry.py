@@ -33,7 +33,16 @@ def test_registry_iteration_follows_source_order():
 def test_source_specs_are_the_validated_runtime_source_definition():
     assert list(SOURCE_SPECS) == ORDERED_SOURCE_NAMES
     assert SOURCE_SPECS["行政院"].url
+    assert SOURCE_SPECS["行政院"].routes[0].official is True
     assert SOURCE_SPECS["行政院"].difficulty == SCRAPE_DIFFICULTY_ORDER["行政院"]
+
+
+def test_high_risk_sources_have_ordered_official_fallback_routes():
+    for source in ("漁業署", "農業金融署", "工程會", "環境部", "矯正署", "社家署"):
+        routes = SOURCE_SPECS[source].routes
+        assert len(routes) >= 2
+        assert [route.priority for route in routes] == sorted(route.priority for route in routes)
+        assert all(route.official for route in routes)
 
 
 def test_affiliated_source_paths_reference_known_sources():

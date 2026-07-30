@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+## 1.6.0 - 2026-07-30
+
+- Added schema-v4 source diagnostics with operational failure classes, route evidence, final source health, and schema-v2 run trends based on final results rather than retry attempts.
+- Added ordered official fallback routes for Fisheries Agency, Agricultural Finance Agency, Public Construction Commission, Ministry of Environment, Corrections Agency, and Social and Family Affairs Administration.
+- Added a release source-health gate that blocks parser, browser, and unknown regressions while publishing evidence-backed external availability warnings.
+- Kept fixed yellow relevance highlighting while applying each dominant topic's editable identity color only to the topic cell with automatic WCAG-readable black or white text.
+- Added common and recent color palettes, contrast previews, reset-to-default behavior, and GUI settings schema 3.
+- Added an offline local source-health dashboard and a manual, non-blocking GitHub Release update check.
+
 ## 1.5.2 - 2026-07-29
 
 - Added a native topic color picker with a synchronized hex field, live color preview, and immediate invalid-color feedback.

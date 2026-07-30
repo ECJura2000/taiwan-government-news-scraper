@@ -12,7 +12,7 @@
 
 原始碼下載入口：
 
-- [v1.5.2 固定版本 AI 原始碼 ZIP](https://github.com/ECJura2000/taiwan-government-news-scraper/releases/download/v1.5.2/taiwan-government-news-v1.5.2-source.zip)
+- [v1.6.0 固定版本 AI 原始碼 ZIP](https://github.com/ECJura2000/taiwan-government-news-scraper/releases/download/v1.6.0/taiwan-government-news-v1.6.0-source.zip)
 - [main 最新版本 ZIP](https://github.com/ECJura2000/taiwan-government-news-scraper/archive/refs/heads/main.zip)
 - `git clone https://github.com/ECJura2000/taiwan-government-news-scraper.git`
 
@@ -46,7 +46,7 @@ py -3.12 -m venv .venv
 
 可以直接把下列要求交給 AI 工具：
 
-> 請在此專案根目錄執行每週新聞整理。優先使用專案內 `.venv` 的 Python，以 headless 模式執行並要求 JSON 摘要。完成後讀取最新 Excel 與最新 JSON 報告，明確列出 `status`、`failed_sources`、`anomalies`、`error_counts`、`quality.alert_reasons` 與 `relevance_policy.ruleset_hash`。不要只用結束碼判斷成功。
+> 請在此專案根目錄執行每週新聞整理。優先使用專案內 `.venv` 的 Python，以 headless 模式執行並要求 JSON 摘要。完成後讀取最新 Excel 與最新 JSON 報告，明確列出 `status`、`failed_sources`、`failure_class_counts`、`anomalies`、`error_counts`、`quality.alert_reasons` 與 `relevance_policy.ruleset_hash`。不要只用結束碼判斷成功。
 
 macOS／Linux 的標準指令：
 
@@ -74,6 +74,7 @@ Windows 的標準指令：
 - 結束碼為 0 不代表所有外部來源都成功；仍須檢查 JSON 的 `status` 與 `failed_sources`。
 - 少量正常去重或非新聞排除，且 `quality.alert_reasons` 為空時，不應誤判成程式失敗。
 - GUI、headless 與排程應使用同一份 `程式資料/relevance-profile.json`。
+- schema 4 報告的 `source_diagnostics` 與 `route_attempts` 可區分來源中斷、runner 網路、憑證、存取限制、解析回歸與瀏覽器環境問題。
 
 ## 自訂主題設定
 

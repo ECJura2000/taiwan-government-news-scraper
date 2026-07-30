@@ -11,7 +11,7 @@ on:
       tag:
         description: Existing release tag to verify
         required: true
-        default: v1.5.2
+        default: v1.6.0
         type: string
 
 permissions:
@@ -104,6 +104,8 @@ jobs:
           warnings = {
               "status": status,
               "failed_sources": summary.get("failed_sources", []),
+              "failure_class_counts": summary.get("failure_class_counts", {}),
+              "source_health": summary.get("source_health", {}),
               "anomalies": summary.get("anomalies", []),
               "alert_reasons": summary.get("quality", {}).get("alert_reasons", []),
           }

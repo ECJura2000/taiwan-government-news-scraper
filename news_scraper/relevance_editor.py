@@ -3,6 +3,7 @@ from pathlib import Path
 import re
 from typing import Any
 
+from .color_utils import normalize_hex_color, readable_text_color
 from .relevance import (
     ExclusionRule,
     KeywordRule,
@@ -24,8 +25,7 @@ _HEX_COLOR_PATTERN = re.compile(r"#[0-9A-Fa-f]{6}")
 
 
 def _normalize_display_color(value: str) -> str | None:
-    normalized = value.strip().upper()
-    return normalized if _HEX_COLOR_PATTERN.fullmatch(normalized) else None
+    return normalize_hex_color(value)
 
 
 def _topic_label(topic: TopicRule) -> str:
@@ -41,6 +41,8 @@ class RelevanceProfileEditor:
         profile_path: Path,
         available_sources: list[str],
         on_saved,
+        recent_colors=None,
+        on_recent_colors_changed=None,
     ):
         import tkinter as tk
         from tkinter import colorchooser, filedialog, messagebox, simpledialog, ttk
@@ -55,6 +57,12 @@ class RelevanceProfileEditor:
         self.profile_path = Path(profile_path)
         self.available_sources = list(available_sources)
         self.on_saved = on_saved
+        self.recent_colors = [
+            color
+            for value in (recent_colors or [])
+            if (color := _normalize_display_color(value))
+        ][:8]
+        self.on_recent_colors_changed = on_recent_colors_changed
         self.deleted_stack: list[tuple] = []
         self.imported_profile = False
         self.dragged_topic_id = ""
@@ -660,8 +668,8 @@ class RelevanceProfileEditor:
         ).pack(side="left", fill="x", expand=True)
         color_preview = self.tk.Canvas(
             color_row,
-            width=42,
-            height=26,
+            width=150,
+            height=32,
             highlightthickness=1,
             highlightbackground="#707070",
         )
@@ -669,9 +677,21 @@ class RelevanceProfileEditor:
 
         def refresh_color_preview(*_args):
             color = _normalize_display_color(color_var.get())
-            color_preview.configure(
-                background=color or str(dialog.cget("background")),
-            )
+            background = color or str(dialog.cget("background"))
+            color_preview.configure(background=background)
+            color_preview.delete("all")
+            if color:
+                text_color, ratio = readable_text_color(color)
+                color_preview.create_text(
+                    75,
+                    16,
+                    text="主題識別",
+                    fill=text_color,
+                    font="NewsScraperCJK",
+                )
+                contrast_var.set("文字 {}／對比度 {:.2f}:1".format(text_color, ratio))
+            else:
+                contrast_var.set("請輸入有效的 #RRGGBB 色碼")
 
         def choose_color():
             initial_color = _normalize_display_color(color_var.get()) or "#FFFF00"
@@ -688,10 +708,37 @@ class RelevanceProfileEditor:
             text="開啟調色盤",
             command=choose_color,
         ).pack(side="left")
+        self.ttk.Button(
+            color_row,
+            text="恢復預設色",
+            command=lambda: color_var.set("#FFFF00"),
+        ).pack(side="left", padx=(6, 0))
         color_var.trace_add("write", refresh_color_preview)
+        contrast_var = self.tk.StringVar()
+        self.ttk.Label(frame, textvariable=contrast_var).grid(
+            row=6,
+            column=0,
+            sticky="w",
+            pady=(0, 4),
+        )
+        palette = self.ttk.Frame(frame)
+        palette.grid(row=7, column=0, sticky="ew", pady=(0, 8))
+        palette_colors = list(
+            dict.fromkeys(
+                ["#FFFF00", "#FFF2CC", "#B7DEE8", "#C6EFCE", "#F4CCCC", "#D9D2E9"]
+                + self.recent_colors
+            )
+        )
+        for index, color in enumerate(palette_colors[:14]):
+            label = "{}{}".format("最近 " if color in self.recent_colors else "", color)
+            self.ttk.Button(
+                palette,
+                text=label,
+                command=lambda value=color: color_var.set(value),
+            ).grid(row=index // 4, column=index % 4, padx=(0, 5), pady=2, sticky="ew")
         refresh_color_preview()
         self.ttk.Checkbutton(frame, text="啟用主題", variable=enabled_var).grid(
-            row=6,
+            row=8,
             column=0,
             sticky="w",
         )
@@ -699,9 +746,9 @@ class RelevanceProfileEditor:
             frame,
             text="將主題名稱作為最高關聯性比對詞",
             variable=match_name_var,
-        ).grid(row=7, column=0, sticky="w", pady=(4, 8))
+        ).grid(row=9, column=0, sticky="w", pady=(4, 8))
         self.ttk.Label(frame, text="優先關聯機關（可複選）").grid(
-            row=8,
+            row=10,
             column=0,
             sticky="w",
         )
@@ -711,14 +758,14 @@ class RelevanceProfileEditor:
             exportselection=False,
             height=9,
         )
-        source_list.grid(row=9, column=0, sticky="nsew", pady=(3, 8))
+        source_list.grid(row=11, column=0, sticky="nsew", pady=(3, 8))
         for index, source in enumerate(self.available_sources):
             source_list.insert("end", source)
             if source in topic.priority_sources:
                 source_list.selection_set(index)
 
         actions = self.ttk.Frame(frame)
-        actions.grid(row=10, column=0, sticky="e")
+        actions.grid(row=12, column=0, sticky="e")
 
         def accept():
             display_color = _normalize_display_color(color_var.get())
@@ -732,6 +779,12 @@ class RelevanceProfileEditor:
             topic.name = name_var.get().strip()
             topic.description = description_var.get().strip()
             topic.display_color = display_color
+            self.recent_colors = [
+                display_color,
+                *[color for color in self.recent_colors if color != display_color],
+            ][:8]
+            if self.on_recent_colors_changed is not None:
+                self.on_recent_colors_changed(list(self.recent_colors))
             topic.enabled = bool(enabled_var.get())
             topic.match_name = bool(match_name_var.get())
             topic.priority_sources = [
@@ -749,8 +802,8 @@ class RelevanceProfileEditor:
             padx=6,
         )
         frame.columnconfigure(0, weight=1)
-        frame.rowconfigure(9, weight=1)
-        dialog.geometry("560x590")
+        frame.rowconfigure(11, weight=1)
+        dialog.geometry("680x720")
         self.active_topic_dialog = dialog
         try:
             dialog.wait_window()
@@ -1479,6 +1532,8 @@ def open_relevance_profile_editor(
     profile_path,
     available_sources,
     on_saved,
+    recent_colors=None,
+    on_recent_colors_changed=None,
 ):
     return RelevanceProfileEditor(
         parent,
@@ -1486,4 +1541,6 @@ def open_relevance_profile_editor(
         profile_path=Path(profile_path),
         available_sources=list(available_sources),
         on_saved=on_saved,
+        recent_colors=recent_colors,
+        on_recent_colors_changed=on_recent_colors_changed,
     )
