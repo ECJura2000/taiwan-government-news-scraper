@@ -1,5 +1,5 @@
 coverage[toml]>=7.15.2,<8
-hypothesis>=6.156.7,<7
+hypothesis>=6.164.0,<7
 mypy>=2.3.0,<3
 pytest>=9.1.1,<10
 pytest-cov>=6,<8
