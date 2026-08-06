@@ -3,6 +3,7 @@ name: Tauri v2 application
 on:
   pull_request:
     paths:
+      - ".github/workflows/tauri-v2.yml"
       - "Cargo.toml"
       - "Cargo.lock"
       - "src-tauri/**"
@@ -15,6 +16,7 @@ on:
   push:
     branches: [main]
     paths:
+      - ".github/workflows/tauri-v2.yml"
       - "Cargo.toml"
       - "Cargo.lock"
       - "src-tauri/**"
@@ -100,5 +102,5 @@ jobs:
         with:
           name: ${{ matrix.artifact }}
           path: |
-            src-tauri/target/release/bundle/**
+            target/release/bundle/**
           if-no-files-found: error
