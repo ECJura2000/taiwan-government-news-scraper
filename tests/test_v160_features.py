@@ -159,9 +159,9 @@ def test_manual_update_checker_compares_release_versions(monkeypatch):
         def read(self):
             return json.dumps(
                 {
-                    "tag_name": "v1.6.1",
+                    "tag_name": "v2.0.1",
                     "published_at": "2026-08-01T00:00:00Z",
-                    "html_url": "https://github.com/example/releases/v1.6.1",
+                    "html_url": "https://github.com/example/releases/v2.0.1",
                     "draft": False,
                     "prerelease": False,
                 }
@@ -176,7 +176,7 @@ def test_manual_update_checker_compares_release_versions(monkeypatch):
     result = check_latest_release()
 
     assert version_key("v1.6.0") == (1, 6, 0)
-    assert result.latest_version == "1.6.1"
+    assert result.latest_version == "2.0.1"
     assert result.update_available is True
     assert result.published_at == "2026-08-01"
     assert requested_urls == [

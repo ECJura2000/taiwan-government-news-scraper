@@ -17,4 +17,4 @@ the report/Excel parity suite pass.
 
 v2.0.0 must not be tagged until all existing source adapters, Excel output, JSON report fields,
 relevance policy migration, GUI parity, four-platform bundles, and Python/Rust dual-run tests
-have passed. v1.6.0 remains the rollback release during the migration.
+have passed. v1.6.0 remains the rollback release during the v2.0.0 migration.
