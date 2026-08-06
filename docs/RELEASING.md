@@ -1,63 +1,29 @@
-# 發行流程
+# Releasing v2.1.0
 
-`pyproject.toml` 的 `[project].version` 是唯一版本來源。正式 tag 使用 `vMAJOR.MINOR.PATCH`；GUI 等向下相容功能遞增 `MINOR`，錯誤修正遞增 `PATCH`。
-
-## 發行前檢查
+## Local gate
 
 ```bash
-python3 -m pip install --require-hashes -r requirements.lock.txt
-python3 -m pip install --require-hashes -r requirements-dev.lock.txt
-python3 -m pip install --require-hashes -r requirements-security.lock.txt
-python3 -m pip install --no-deps -e .
-python3 -m ruff check .
-python3 -m mypy
-python3 -m compileall -q news_scraper build_entry.py scripts
-python3 -m pytest -q
-python3 scripts/benchmark_excel_export.py --rows 10000 --max-seconds 30
-python3 -m bandit -q -ll -r news_scraper scripts -x tests
-python3 -m pip_audit -r requirements.lock.txt --require-hashes
-python3 scripts/check_workflows.py
+npm ci
+npm run check
+npm run build
+cargo fmt --all -- --check
+cargo test --workspace --all-targets
+cargo clippy --workspace --all-targets --all-features -- -D warnings
+cargo audit
+npm audit --audit-level=high
+cargo run --release --bin news-scraper -- collect --date 2026-08-06 --fail-on-source-error
+npm run tauri build
 ```
 
-版本、`CHANGELOG.md`、README 與可攜版說明必須在 PR 內一起更新。PR 會建置 Windows、Linux、macOS Apple Silicon 與 macOS Intel 四種短期 artifact，但不建立 Release。
+Inspect the JSON contract and Excel workbook. Confirm 72 selected sources, no failed source, no quality alert, schema version 4 and the expected relevance hash.
 
-## 一鍵正式發布
+## Publication gate
 
-1. 將 PR 合併至 `main`。
-2. 在 GitHub Actions 開啟 `Build and release portable apps`。
-3. 選擇 `main` 並按 `Run workflow`。
+1. Merge the validated commit to `main`.
+2. Create and push immutable tag `v2.1.0`; do not modify `v2.0.0`.
+3. The `Build and release Rust apps` workflow must pass the all-source gate and all four platform builds.
+4. Verify four ZIPs, SHA-256 manifest, size manifest and the non-draft GitHub Release.
+5. Confirm archives contain the Rust CLI and Tauri installer but no `.py`, Python runtime, PyInstaller, openpyxl or Selenium.
+6. Run `Release live smoke` for `v2.1.0` and verify all four published downloads.
 
-Workflow 會重新驗證原始碼，平行建置 Windows、Linux、macOS Apple Silicon 與 macOS Intel 單檔，執行 registry、runtime、headless、GUI 與離線 browser smoke test，再建立四個可攜 ZIP、固定 AI 原始碼 ZIP、SHA-256 清單及容量 manifest。版本 tag 或 Release 已存在時會失敗，絕不覆蓋既有資產。普通 `main` push 不發布，避免未經確認的版本與重複 Actions 用量。
-
-正式發布還會在 Ubuntu 執行全來源健康測試並重試一次。`parser_regression`、`browser_runtime`、`unknown`、缺少 schema 4 JSON 或未產生 Excel 會阻止發布；具明確證據的外部來源故障、runner 網路、TLS 或存取限制只列為警告。
-
-## Tag 備援
-
-只有手動 workflow 無法使用且版本從未發布時才推送 tag：
-
-```bash
-git tag -a v2.0.0 -m "Release v2.0.0"
-git push origin v2.0.0
-```
-
-Tag 必須與 `pyproject.toml` 完全一致。
-
-## Release 產物
-
-- `taiwan-government-news-v<版本>-linux.zip`
-- `taiwan-government-news-v<版本>-windows.zip`
-- `taiwan-government-news-v<版本>-macos-arm64.zip`
-- `taiwan-government-news-v<版本>-macos-x64.zip`
-- `taiwan-government-news-v<版本>-source.zip`
-- `taiwan-government-news-v<版本>-SHA256SUMS.txt`
-- `taiwan-government-news-v<版本>-SIZE-MANIFEST.txt`
-- `source-health-summary.json`
-- `source-health-summary.md`
-
-每個可攜 ZIP 內含 `各機關新聞/各機關新聞整理[.exe]`、使用說明、首次啟動圖解、內部 SHA-256、`程式資料/` 與 `新聞搜集區/`。固定 AI 原始碼 ZIP 包含 `AGENTS.md`、自動化指南、完整 tracked source 與四份含雜湊鎖檔。每平台容量與最大 30 項模組報告只保留在一天期的 Actions artifact。
-
-每個平台 ZIP 必須較 v1.5.0 基準縮小至少 15%，單一執行檔不得超過 65 MiB，全部 Release 資產（含 AI 原始碼 ZIP）不得超過 170 MiB。超過 100 KiB 的既有封裝項目若無說明成長超過 5%，建置會失敗。
-
-## 已知限制
-
-執行檔未進行 Windows Authenticode 或 Apple Developer ID 簽章，可能出現未知發行者警告。國土管理署仍需要系統 Chrome 或 Chromium。Windows、Linux、macOS Apple Silicon 與 macOS Intel 必須分別在原生 runner 建置，不能用單一作業系統交叉產生。
+A tag without a completed workflow, release assets and successful smoke is not a completed release.

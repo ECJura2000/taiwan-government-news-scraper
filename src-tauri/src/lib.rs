@@ -3,8 +3,10 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use tauri::{Emitter, State};
 
+pub mod browser;
 pub mod core;
 pub mod native;
+pub mod relevance;
 pub mod scraper;
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
@@ -14,6 +16,9 @@ pub struct RunOptions {
     pub sources: Vec<String>,
     pub output_dir: Option<String>,
     pub report_dir: Option<String>,
+    pub date: Option<String>,
+    pub start_date: Option<String>,
+    pub end_date: Option<String>,
     #[serde(default = "default_workers")]
     pub max_workers: u32,
     #[serde(default)]
@@ -28,7 +33,21 @@ fn default_workers() -> u32 {
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct RunSummary {
+    #[serde(default)]
+    pub report_schema_version: u32,
+    #[serde(default)]
+    pub engine: String,
     pub status: String,
+    #[serde(default)]
+    pub started_at: String,
+    #[serde(default)]
+    pub finished_at: String,
+    #[serde(default)]
+    pub duration_seconds: f64,
+    #[serde(default)]
+    pub selected_source_count: u64,
+    #[serde(default)]
+    pub selected_sources: Vec<String>,
     #[serde(default)]
     pub news_count: u64,
     #[serde(default)]
@@ -38,15 +57,37 @@ pub struct RunSummary {
     #[serde(default)]
     pub failure_class_counts: serde_json::Value,
     #[serde(default)]
+    pub error_counts: serde_json::Value,
+    #[serde(default)]
+    pub parser_warnings: serde_json::Value,
+    #[serde(default)]
+    pub scheduling_plan: serde_json::Value,
+    #[serde(default)]
+    pub alerts: serde_json::Value,
+    #[serde(default)]
+    pub source_attempts: serde_json::Value,
+    #[serde(default)]
+    pub source_diagnostics: serde_json::Value,
+    #[serde(default)]
+    pub route_attempts: serde_json::Value,
+    #[serde(default)]
+    pub insecure_ssl_hosts: Vec<String>,
+    #[serde(default)]
     pub source_health: serde_json::Value,
     #[serde(default)]
     pub quality: serde_json::Value,
     #[serde(default)]
     pub relevance_policy: serde_json::Value,
     #[serde(default)]
+    pub ai_policy: serde_json::Value,
+    #[serde(default)]
     pub output_file: String,
     #[serde(default)]
     pub report_file: String,
+    #[serde(default)]
+    pub week_start: String,
+    #[serde(default)]
+    pub week_end: String,
     #[serde(default)]
     pub error: Option<String>,
 }
@@ -99,7 +140,23 @@ mod commands {
                 message: Some("正在啟動 Rust native engine".into()),
             },
         );
-        let summary = super::native::run(&options, state.cancelled.clone()).await?;
+        let summary = match super::native::run(&options, state.cancelled.clone()).await {
+            Ok(summary) => summary,
+            Err(error) => {
+                let cancelled = error == "執行已取消";
+                let _ = app.emit(
+                    "scraper-progress",
+                    ProgressEvent {
+                        kind: if cancelled { "cancelled" } else { "failed" }.into(),
+                        source: None,
+                        completed: None,
+                        total: None,
+                        message: Some(error.clone()),
+                    },
+                );
+                return Err(error);
+            }
+        };
         let _ = app.emit(
             "scraper-progress",
             ProgressEvent {

@@ -1,47 +1,38 @@
 # AI Agent Execution Contract
 
-Use this file when an AI coding or automation agent opens the repository.
-
 ## Runtime
 
 - Work from the repository root.
-- Prefer `.venv/bin/python` on macOS/Linux.
-- Prefer `.venv\Scripts\python.exe` on Windows.
-- If `.venv` does not exist, create it with Python 3.12 and install `requirements.lock.txt` with `--require-hashes`.
-- Use headless mode for automation. Do not open the GUI unless the user asks for it.
+- Use the Rust CLI for headless work. Do not open the Tauri GUI unless requested.
+- Dynamic routes require a system Chrome or Chromium executable.
 
 ## Standard Run
 
-macOS/Linux:
-
 ```bash
-.venv/bin/python -m news_scraper --headless --json-summary
+cargo run --release --bin news-scraper -- collect
 ```
 
-Windows:
-
-```powershell
-.\.venv\Scripts\python.exe -m news_scraper --headless --json-summary
-```
+Use `--date YYYY-MM-DD` for a deterministic week and `--fail-on-source-error` only when any failed source must produce a nonzero exit code.
 
 ## Result Contract
 
-- Excel: newest `新聞搜集區/本週新聞整理*.xlsx`
-- Report: newest `新聞搜集區/執行紀錄/news_scraper_run_*.json`
-- Inspect `status`, `failed_sources`, `anomalies`, `error_counts`, `quality.alert_reasons`, and `relevance_policy.ruleset_hash`.
+- Excel: newest `新聞搜集區/本週新聞整理*.xlsx`.
+- Report: newest `新聞搜集區/執行紀錄/news_scraper_run_*.json`.
+- Inspect `status`, `failed_sources`, `anomalies`, `error_counts`, `quality.alert_reasons`, `source_health`, and `relevance_policy.ruleset_hash`.
 - Do not claim full success from exit code 0 alone.
 - Normal deduplication or non-news filtering is not a failure when `quality.alert_reasons` is empty.
-- Use `--fail-on-source-error` only when the caller requires a nonzero exit code for any failed source.
 
 ## Change Validation
 
-Run these checks after modifying code:
-
 ```bash
-.venv/bin/python -m ruff check .
-.venv/bin/python -m mypy
-.venv/bin/python -m pytest -q
-.venv/bin/python -m news_scraper --list-sources
+npm run check
+npm run build
+cargo fmt --all -- --check
+cargo test --workspace --all-targets
+cargo clippy --workspace --all-targets --all-features -- -D warnings
+cargo run --quiet --bin news-scraper -- list-sources
 ```
 
-Do not commit generated Excel files, JSON run reports, credentials, or `程式資料/relevance-profile.json`.
+The source count must remain 72. Do not commit generated Excel files, JSON run reports, credentials, browser profiles, `target/`, or `node_modules/`.
+
+Only `scripts/python_compat.py` may be a Python file. It is a command bridge to the Rust executable and must not contain scraper logic or import another project module.

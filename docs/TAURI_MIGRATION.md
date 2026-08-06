@@ -1,25 +1,7 @@
-# Rust/Tauri v2 migration
+# Rust-only v2.1.0 migration
 
-This branch is the native Rust migration line. The Python implementation remains available
-only as an explicit compatibility fallback while source-by-source parity is completed.
+The migration implementation is complete in source: CLI and Tauri share `RunOptions` and the same Rust application service; all 72 sources, browser routes, quality diagnostics, relevance, JSON schema v4 and Excel are native Rust.
 
-## Current status
+The only retained Python file is `scripts/python_compat.py`, a subprocess bridge to `news-scraper`. Legacy scraper packages, tests, dependency locks, build scripts and PyInstaller workflows were removed.
 
-- Tauri v2 + Svelte + TypeScript development and production builds work on macOS Apple Silicon.
-- The Rust core has tested contracts for news items, RSS/HTML parsing, HTTP error mapping,
-  deduplication, source scheduling, and retry classification.
-- The desktop command surface is `list_sources`, `run_scrape`, and `cancel_run`.
-- CLI and Tauri `run_scrape` now execute the Rust native engine. They do not spawn Python.
-- `scripts/python_compat.py` is the only supported explicit legacy bridge and is reachable from
-  the Rust CLI with `--python-compat`; it is not part of the normal execution path.
-- The first native engine milestone includes the 72-source catalog, concurrent HTTP fetching,
-  generic RSS/HTML parsing, current-week filtering, deduplication, JSON reports, and Excel output.
-- Source-specific parser behavior, schema-v4 observability, relevance-policy parity, browser
-  routes, and the full GUI parity suite remain migration work and are not yet release-ready.
-
-## Release gate
-
-The migration release must not be tagged until all existing source adapters, Excel output, JSON
-report fields, relevance policy migration, GUI parity, four-platform bundles, and Python/Rust
-dual-run tests have passed. The published v2.0.0 Python-backed release remains the rollback
-release during this migration.
+Fixture acceptance preserved titles, dates, departments, summaries, links, relevance output and all 15 workbook fields. Live acceptance reached all 72 sources. Publication is separately gated by the four-platform workflow, dependency audits, archive inspection and release smoke. v2.0.0 remains the rollback release.

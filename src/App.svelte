@@ -8,6 +8,9 @@
   let maxWorkers = 8;
   let outputDir = "";
   let reportDir = "";
+  let date = "";
+  let startDate = "";
+  let endDate = "";
   let dedupeAffiliated = false;
   let failOnSourceError = false;
   let running = false;
@@ -35,6 +38,9 @@
         sources: selectedSources.length === sources.length ? [] : selectedSources,
         output_dir: outputDir || undefined,
         report_dir: reportDir || undefined,
+        date: date || undefined,
+        start_date: startDate || undefined,
+        end_date: endDate || undefined,
         max_workers: maxWorkers,
         dedupe_affiliated: dedupeAffiliated,
         fail_on_source_error: failOnSourceError,
@@ -49,6 +55,7 @@
 
   async function cancelScraper() {
     try {
+      progress = { kind: "cancelling", message: "正在安全停止；不會寫出未完成的報告" };
       await invoke("cancel_run");
     } catch (cause) {
       error = String(cause);
@@ -61,7 +68,7 @@
       : [...selectedSources, source];
   }
 
-  $: statusLabel = summary?.status ?? (running ? "執行中" : "尚未執行");
+  $: statusLabel = summary?.status ?? (progress?.kind === "cancelled" ? "已取消" : running ? "執行中" : "尚未執行");
 
   loadSources();
   listen<ProgressEvent>("scraper-progress", (event) => {
@@ -129,6 +136,20 @@
         <span>JSON 報告資料夾（可選）</span>
         <input bind:value={reportDir} placeholder="使用 Excel 資料夾下的執行紀錄" />
       </label>
+      <label class="field">
+        <span>指定日期（可選）</span>
+        <input type="date" bind:value={date} disabled={Boolean(startDate || endDate)} />
+      </label>
+      <div class="date-range">
+        <label class="field">
+          <span>起始日期</span>
+          <input type="date" bind:value={startDate} disabled={Boolean(date)} />
+        </label>
+        <label class="field">
+          <span>結束日期</span>
+          <input type="date" bind:value={endDate} disabled={Boolean(date)} />
+        </label>
+      </div>
       <label class="check-row"><input type="checkbox" bind:checked={dedupeAffiliated} /> 合併部會與所屬機關重複新聞</label>
       <label class="check-row"><input type="checkbox" bind:checked={failOnSourceError} /> 任一來源失敗時回傳失敗碼</label>
       <div class="action-row">

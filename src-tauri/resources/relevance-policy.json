@@ -1,0 +1,18 @@
+{
+  "version": "2.1.0",
+  "initiatives": [
+    {"name":"全民智慧生活圈","lead_agency":"國科會","lead_source":"國科會","exact_phrases":["全民智慧生活圈"],"strong_keywords":["智慧生活圈"],"context_keywords":["智慧交通","智慧醫療","AI醫療","智慧健康","AI健康","智慧建築","智慧電網","智慧照護","AI照護","智慧防災","韌性防災","防災救難","災防"]},
+    {"name":"百工百業智慧應用","lead_agency":"經濟部","lead_source":"經濟部","exact_phrases":["百工百業智慧應用"],"strong_keywords":["產業AI化","產業AI轉型"],"context_keywords":["百工百業","中小微型企業","中小企業","智慧製造","智慧製程","產業轉型","產業升級"]},
+    {"name":"AI數位產業登峰","lead_agency":"數發部","lead_source":"數位發展部","exact_phrases":["AI數位產業登峰"],"strong_keywords":["AI數位產業","利基型AI平台","利基型AI平臺","AI服務輸出"],"context_keywords":["Team Taiwan","AI服務","AI軟體","AI模型","資服業","軟體服務","開源","國際輸出"]},
+    {"name":"矽光子技術全球領先","lead_agency":"經濟部","lead_source":"經濟部","exact_phrases":["矽光子技術全球領先"],"strong_keywords":["矽光子","矽光子共同封裝"],"context_keywords":["CPO","共同封裝","光電整合","高速傳輸","低功耗傳輸"]},
+    {"name":"全球量子能力登頂","lead_agency":"國科會","lead_source":"國科會","exact_phrases":["全球量子能力登頂"],"strong_keywords":["量子位元","量子晶片","量子運算","量子科技","後量子密碼"],"context_keywords":["量子","量子研發實驗室","量子產業鏈"]},
+    {"name":"全球AI機器人供應鏈樞紐","lead_agency":"國科會","lead_source":"國科會","exact_phrases":["全球AI機器人供應鏈樞紐"],"strong_keywords":["AI機器人","人形機器人","智慧機器人","機器人供應鏈"],"context_keywords":["機器人研發","機器人產業","機器人零組件","自主機器人","服務型機器人","機器人樞紐"]},
+    {"name":"主權AI及算力建設","lead_agency":"國科會","lead_source":"國科會","exact_phrases":["主權AI及算力建設"],"strong_keywords":["主權AI","AI算力","算力建設","國家算力","AI超級電腦"],"context_keywords":["GPU","先進運算系統","雲端開發環境","訓練語料庫","語料庫"]},
+    {"name":"智慧政府與資料治理","lead_agency":"數發部","lead_source":"數位發展部","exact_phrases":["智慧政府與資料治理"],"strong_keywords":["智慧政府","資料治理","數據治理","政府AI治理"],"context_keywords":["AI治理","跨域資料整合","資料匯流","政府資料","資料標準","開放資料"]},
+    {"name":"AI人才生態系引領國際","lead_agency":"國發會","lead_source":"國發會","exact_phrases":["AI人才生態系引領國際"],"strong_keywords":["AI人才生態系","AI人才","人工智慧人才","AI教育","AI素養","AI公務人才","AI共通核心能力"],"context_keywords":["跨域學習","產業實作人才","海外專業人才","人才培育"]},
+    {"name":"千億資金驅動創新","lead_agency":"國發會","lead_source":"國發會","exact_phrases":["千億資金驅動創新"],"strong_keywords":["AI創新基金","AI投資","創新資金","資金點火"],"context_keywords":["千億資金","國發基金","創業投資","民間投資","創新投資"]}
+  ],
+  "general_keywords": ["AI","人工智慧","生成式AI","生成式人工智慧","大語言模型","大型語言模型","LLM"],
+  "negative_keywords": ["徵才","招募","職缺","採購","招標","決標","轉知"],
+  "thresholds": {"high": 80, "possible": 40, "negative_penalty": 50}
+}

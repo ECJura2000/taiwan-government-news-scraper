@@ -36,6 +36,7 @@ button:disabled { cursor: not-allowed; opacity: .45; }
 .source-list label.selected { color: #234ebc; background: #f0f4ff; border-color: #cbd7fa; }
 .field { display: block; margin-bottom: 16px; color: #64718a; font-size: 13px; font-weight: 700; }
 .field input { width: 100%; margin-top: 7px; border: 1px solid #dbe3ef; border-radius: 9px; padding: 10px 12px; color: #24324b; background: #fbfcfe; }
+.date-range { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
 .check-row { display: flex; gap: 8px; align-items: center; margin: 14px 0; color: #59677f; font-size: 13px; }
 .action-row { margin-top: 24px; }
 .progress-box, .notice { display: flex; justify-content: space-between; gap: 12px; margin-top: 16px; padding: 12px 14px; border-radius: 10px; background: #f0f4fb; color: #53627b; font-size: 13px; }

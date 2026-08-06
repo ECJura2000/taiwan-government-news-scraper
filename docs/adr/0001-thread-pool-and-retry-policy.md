@@ -1,20 +1,11 @@
-# ADR 0001: Thread Pool And Selective Retry
+# ADR 0001: bounded async scheduling and route fallback
 
 ## Status
 
-Accepted
+Superseded by the Rust v2.1.0 implementation.
 
 ## Decision
 
-Use a thread pool because the 72 source scrapers are primarily blocking network I/O and
-many existing parsers use synchronous libraries. Use a heap to start risky/slow sources
-first, but keep final Excel ordering deterministic.
+Use Tokio and bounded unordered buffering for source concurrency. Each source executes its declarative official routes in priority order or aggregates routes when the catalog requires it. Final Excel ordering is deterministic.
 
-Only download/network failures are retried. Parse, validation, and storage failures are
-recorded immediately because repeating the same input will not repair them.
-
-## Consequences
-
-The design reuses existing scrapers and reduces wall-clock time without requiring every
-parser to become asynchronous. Worker counts must be benchmarked to avoid excessive
-connections and diminishing returns.
+Network, browser and parser outcomes are retained as route attempts. A successful fallback completes the source but remains visible as unstable. Cancellation uses a shared atomic flag and does not write partial artifacts.
