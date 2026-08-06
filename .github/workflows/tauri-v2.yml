@@ -96,7 +96,11 @@ jobs:
       - uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # master
         with:
           toolchain: stable
+      - name: Build Windows NSIS bundle
+        if: runner.os == 'Windows'
+        run: npm run tauri build -- --bundles nsis
       - name: Build Tauri bundle
+        if: runner.os != 'Windows'
         run: npm run tauri build
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
