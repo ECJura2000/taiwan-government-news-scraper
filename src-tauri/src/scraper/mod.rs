@@ -1,3 +1,4 @@
+pub mod catalog;
 pub mod html;
 pub mod http;
 pub mod quality;

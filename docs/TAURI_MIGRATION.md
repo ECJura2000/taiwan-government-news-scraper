@@ -1,8 +1,7 @@
 # Rust/Tauri v2 migration
 
-This branch introduces the v2 desktop shell and the first native Rust scraper primitives.
-The Python implementation remains the migration reference until all source adapters and
-the report/Excel parity suite pass.
+This branch is the native Rust migration line. The Python implementation remains available
+only as an explicit compatibility fallback while source-by-source parity is completed.
 
 ## Current status
 
@@ -10,11 +9,17 @@ the report/Excel parity suite pass.
 - The Rust core has tested contracts for news items, RSS/HTML parsing, HTTP error mapping,
   deduplication, source scheduling, and retry classification.
 - The desktop command surface is `list_sources`, `run_scrape`, and `cancel_run`.
-- The current `run_scrape` command uses the Python implementation as a temporary compatibility
-  engine. It is not a v2 release gate and must be replaced by native Rust before release.
+- CLI and Tauri `run_scrape` now execute the Rust native engine. They do not spawn Python.
+- `scripts/python_compat.py` is the only supported explicit legacy bridge and is reachable from
+  the Rust CLI with `--python-compat`; it is not part of the normal execution path.
+- The first native engine milestone includes the 72-source catalog, concurrent HTTP fetching,
+  generic RSS/HTML parsing, current-week filtering, deduplication, JSON reports, and Excel output.
+- Source-specific parser behavior, schema-v4 observability, relevance-policy parity, browser
+  routes, and the full GUI parity suite remain migration work and are not yet release-ready.
 
 ## Release gate
 
-v2.0.0 must not be tagged until all existing source adapters, Excel output, JSON report fields,
-relevance policy migration, GUI parity, four-platform bundles, and Python/Rust dual-run tests
-have passed. v1.6.0 remains the rollback release during the v2.0.0 migration.
+The migration release must not be tagged until all existing source adapters, Excel output, JSON
+report fields, relevance policy migration, GUI parity, four-platform bundles, and Python/Rust
+dual-run tests have passed. The published v2.0.0 Python-backed release remains the rollback
+release during this migration.
