@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 2.0.0 - 2026-08-06
+
+- Added the Rust/Tauri v2 application foundation and cross-platform Tauri build workflow.
+- Added the initial Rust scraper core, source contracts, quality reporting, scheduler, and Svelte application shell.
+- Kept the Python application and its headless automation contract available during the migration.
+
 ## 1.6.0 - 2026-07-30
 
 - Added schema-v4 source diagnostics with operational failure classes, route evidence, final source health, and schema-v2 run trends based on final results rather than retry attempts.
