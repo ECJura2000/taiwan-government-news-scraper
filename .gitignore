@@ -8,21 +8,37 @@ __pycache__/
 coverage*.json
 htmlcov/
 
+# Rust and Tauri build output
+/target/
+src-tauri/gen/
+
+# Existing Python environment/build exclusions
 .venv/
 venv/
 news_scraper/venv/
 
+# Frontend dependencies and build output
+/node_modules/
+/dist/
+
+# Local Python/test/build artifacts
+coverage-*.json
 build/
-dist/
+news_scraper.egg-info/
 release-assets/
+新聞搜集區/
+
 *.spec
 !news-scraper.spec
 *.zip
 *.tar.gz
 *.dmg
 *.exe
-*.egg-info/
 
 新聞搜集區/*.xlsx
 新聞搜集區/執行紀錄/
 程式資料/
+
+# Keep the desktop icon set only; mobile-only generated assets are not part of v2.0.0.
+src-tauri/icons/ios/
+src-tauri/icons/android/
