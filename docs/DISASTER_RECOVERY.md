@@ -4,4 +4,4 @@
 2. Re-clone the repository and verify the desired signed tag or commit.
 3. Run `cargo test --workspace --all-targets`, frontend checks and `news-scraper list-sources`.
 4. Build the release CLI and run a deterministic single-source smoke before all sources.
-5. The signed v2.1.0, v2.1.1 and v2.1.2 candidates remain unpublished after their respective release gates stopped publication. Use the unchanged v2.0.0 GitHub Release as rollback until v2.1.3 passes all source and artifact gates; do not overwrite any tag or release.
+5. The signed v2.1.0, v2.1.1 and v2.1.2 candidates remain unpublished after their respective release gates stopped publication. v2.1.3 remains immutable, and the unchanged v2.0.0 GitHub Release remains the rollback build; do not overwrite any tag or release while publishing v2.1.4.

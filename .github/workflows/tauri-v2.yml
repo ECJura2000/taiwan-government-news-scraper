@@ -99,6 +99,22 @@ jobs:
       - name: Build Windows NSIS bundle
         if: runner.os == 'Windows'
         run: npm run tauri build -- --bundles nsis
+      - name: Smoke Windows portable GUI
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $gui = Resolve-Path "target/release/taiwan-government-news.exe"
+          $process = Start-Process -FilePath $gui -PassThru
+          try {
+            Start-Sleep -Seconds 8
+            if ($process.HasExited) {
+              throw "Portable Tauri GUI exited during startup with code $($process.ExitCode)"
+            }
+          } finally {
+            if (-not $process.HasExited) {
+              Stop-Process -Id $process.Id -Force
+            }
+          }
       - name: Build Tauri bundle
         if: runner.os != 'Windows'
         run: npm run tauri build

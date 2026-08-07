@@ -6,7 +6,7 @@ on:
       tag:
         description: Existing Rust release tag to verify
         required: true
-        default: v2.1.3
+        default: v2.1.4
         type: string
 
 permissions:
@@ -50,6 +50,35 @@ jobs:
           test -n "$cli"
           if [[ "${{ runner.os }}" != "Windows" ]]; then chmod +x "$cli"; fi
           echo "CLI_PATH=$cli" >> "$GITHUB_ENV"
+          if [[ "${{ runner.os }}" == "Windows" ]]; then
+            gui="$(find extracted -type f -name 'TaiwanGovernmentNews-GUI.exe' -print -quit)"
+            launcher="$(find extracted -type f -name 'START-GUI.cmd' -print -quit)"
+            test -n "$gui"
+            test -n "$launcher"
+            echo "GUI_PATH=$gui" >> "$GITHUB_ENV"
+            echo "GUI_LAUNCHER_PATH=$launcher" >> "$GITHUB_ENV"
+          fi
+      - name: Run Windows portable GUI smoke
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          if (-not (Test-Path $env:GUI_PATH)) {
+            throw "Portable GUI is missing from the extracted Windows archive"
+          }
+          if (-not (Test-Path $env:GUI_LAUNCHER_PATH)) {
+            throw "START-GUI.cmd is missing from the extracted Windows archive"
+          }
+          $process = Start-Process -FilePath $env:GUI_PATH -PassThru
+          try {
+            Start-Sleep -Seconds 8
+            if ($process.HasExited) {
+              throw "Extracted portable GUI exited during startup with code $($process.ExitCode)"
+            }
+          } finally {
+            if (-not $process.HasExited) {
+              Stop-Process -Id $process.Id -Force
+            }
+          }
       - name: Run Rust CLI smoke
         shell: bash
         run: |
