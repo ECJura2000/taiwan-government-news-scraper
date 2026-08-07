@@ -3,11 +3,11 @@
 [![Rust quality](https://github.com/ECJura2000/taiwan-government-news-scraper/actions/workflows/test.yml/badge.svg)](https://github.com/ECJura2000/taiwan-government-news-scraper/actions/workflows/test.yml)
 [![Tauri v2](https://github.com/ECJura2000/taiwan-government-news-scraper/actions/workflows/tauri-v2.yml/badge.svg)](https://github.com/ECJura2000/taiwan-government-news-scraper/actions/workflows/tauri-v2.yml)
 
-v2.1.0 是完整 Rust 版：72 個政府來源、CLI、Tauri GUI、RSS／HTML／JSON、Chrome CDP、品質檢查、相關性規則、JSON schema v4 與 Excel 都由同一個 Rust application service 執行。v2.0.0 保留在 GitHub Releases 作為 rollback。
+v2.1.1 是完整 Rust 版：72 個政府來源、CLI、Tauri GUI、RSS／HTML／JSON、Chrome CDP、品質檢查、相關性規則、JSON schema v4 與 Excel 都由同一個 Rust application service 執行。v2.0.0 保留在 GitHub Releases 作為 rollback；v2.1.0 簽章候選版因 live-source gate 未通過而未發布。
 
 ## 下載
 
-從 [GitHub Releases](https://github.com/ECJura2000/taiwan-government-news-scraper/releases) 下載對應平台的 `v2.1.0` ZIP，並先用 `SHA256SUMS.txt` 驗證。每個 ZIP 內含：
+從 [GitHub Releases](https://github.com/ECJura2000/taiwan-government-news-scraper/releases) 下載對應平台的 `v2.1.1` ZIP，並先用 `SHA256SUMS.txt` 驗證。每個 ZIP 內含：
 
 - `news-scraper`／`news-scraper.exe`：headless CLI。
 - `installers/`：Tauri GUI 安裝檔。

@@ -2,11 +2,19 @@
 
 ## Unreleased
 
+## 2.1.1 - 2026-08-07
+
+- Serialized Chrome CDP routes and extended the startup deadline so low-resource GitHub runners do not starve concurrent browser processes.
+- Added an official browser fallback for the Ministry of Culture when its OpenData route rejects runner HTTP traffic.
+- Preserved the signed but unpublished `v2.1.0` release candidate after its live-source gate failed; the corrected immutable release is `v2.1.1`.
+
+## 2.1.0 - 2026-08-07
+
 - Replaced the Python/Tauri command path with a shared native Rust application service for CLI and GUI execution.
 - Added native Rust RSS, Atom, HTML adapter, Chrome CDP, relevance, JSON schema-v4 diagnostics, and parity-oriented Excel output foundations.
 - Retained `scripts/python_compat.py` only as a command bridge to the Rust executable and removed the legacy scraper, dependency locks, tests and packaging workflows.
 - Completed all 72 Rust source routes, Chrome CDP handling, schema-v4 diagnostics, relevance parity, Excel parity, cancellation and Rust-only release gates.
-- Marked the native application as v2.1.0 while preserving the published v2.0.0 release as the rollback build.
+- Marked the native application as v2.1.0 while preserving the published v2.0.0 release as the rollback build. The signed tag did not publish because the live-source gate correctly rejected runner-specific CDP and access failures.
 
 ## 2.0.0 - 2026-08-06
 
