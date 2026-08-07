@@ -1,5 +1,5 @@
 {
-  "version": "2.1.0",
+  "version": "2.1.1",
   "initiatives": [
     {"name":"全民智慧生活圈","lead_agency":"國科會","lead_source":"國科會","exact_phrases":["全民智慧生活圈"],"strong_keywords":["智慧生活圈"],"context_keywords":["智慧交通","智慧醫療","AI醫療","智慧健康","AI健康","智慧建築","智慧電網","智慧照護","AI照護","智慧防災","韌性防災","防災救難","災防"]},
     {"name":"百工百業智慧應用","lead_agency":"經濟部","lead_source":"經濟部","exact_phrases":["百工百業智慧應用"],"strong_keywords":["產業AI化","產業AI轉型"],"context_keywords":["百工百業","中小微型企業","中小企業","智慧製造","智慧製程","產業轉型","產業升級"]},

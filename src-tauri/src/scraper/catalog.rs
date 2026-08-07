@@ -128,6 +128,10 @@ mod tests {
         let environment = routes_for(find_source("環境部").unwrap());
         assert!(environment.iter().any(|route| route.kind == "browser"));
 
+        let culture = routes_for(find_source("文化部").unwrap());
+        assert_eq!(culture[0].kind, "html");
+        assert_eq!(culture[1].kind, "browser");
+
         let correction = routes_for(find_source("矯正署").unwrap());
         assert!(correction.iter().any(|route| route.coverage_reduced));
     }

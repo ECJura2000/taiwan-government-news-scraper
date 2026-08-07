@@ -49,7 +49,7 @@
   {"name":"勞動力發展署","urls":["https://www.wda.gov.tw/OpenData.aspx?SN=8C4FEB29449A1601"]},
   {"name":"職業安全衛生署","urls":["https://www.osha.gov.tw/48110/48417/48419/RssList"]},
   {"name":"勞動基金運用局","urls":["https://www.blf.gov.tw/49200/49245/49247/"]},
-  {"name":"文化部","urls":["https://www.moc.gov.tw/OpenData.aspx?SN=C4E4E3A8E687AD91"]},
+  {"name":"文化部","urls":["https://www.moc.gov.tw/OpenData.aspx?SN=C4E4E3A8E687AD91"],"routes":[{"id":"primary-html","url":"https://www.moc.gov.tw/OpenData.aspx?SN=C4E4E3A8E687AD91","kind":"html","parser":"standard","priority":1},{"id":"official-browser","url":"https://www.moc.gov.tw/OpenData.aspx?SN=C4E4E3A8E687AD91","kind":"browser","parser":"standard","priority":2}]},
   {"name":"故宮","urls":["https://www.npm.gov.tw/News-List.aspx?sno=01000001&l=1&q=&s_date=&e_date=&type=03000096"]},
   {"name":"數位發展部","urls":["https://moda.gov.tw/press/press-releases/372"]},
   {"name":"數位產業署","urls":["https://moda.gov.tw/ADI/news/latest-news/766"]},

@@ -1,4 +1,4 @@
-各機關新聞整理 v2.1.0（Rust）
+各機關新聞整理 v2.1.1（Rust）
 
 1. 先以 GitHub Release 的 SHA256SUMS.txt 驗證本 ZIP。
 2. GUI 安裝檔位於 installers/。

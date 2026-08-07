@@ -7,6 +7,7 @@ use std::process::Stdio;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Duration;
 use tokio::process::{Child, Command};
+use tokio::sync::Semaphore;
 use tokio_tungstenite::{connect_async, tungstenite::Message};
 
 #[derive(Debug, Deserialize)]
@@ -18,6 +19,7 @@ struct DevToolsTarget {
 }
 
 static PROFILE_SEQUENCE: AtomicU64 = AtomicU64::new(1);
+static BROWSER_SEMAPHORE: Semaphore = Semaphore::const_new(1);
 
 /// Fetch a rendered page through the system Chrome/Chromium DevTools Protocol.
 ///
@@ -31,6 +33,13 @@ pub async fn fetch_rendered_html_after(
     url: &str,
     page_script: Option<&str>,
 ) -> Result<String, String> {
+    // GitHub-hosted Linux runners only provide two CPU cores. Starting several
+    // Chrome instances at once can starve all of them before their CDP endpoint
+    // is ready, so browser routes share one process slot per application.
+    let _browser_permit = BROWSER_SEMAPHORE
+        .acquire()
+        .await
+        .map_err(|_| "Chrome CDP 執行序列已關閉".to_owned())?;
     let (mut child, profile_dir, endpoint) = launch_browser().await?;
     let result = fetch_from_target(&endpoint, url, page_script).await;
     let _ = child.kill().await;
@@ -91,7 +100,8 @@ async fn launch_browser() -> Result<(Child, PathBuf, String), String> {
         .timeout(Duration::from_secs(2))
         .build()
         .map_err(|error| format!("CDP HTTP client 建立失敗：{error}"))?;
-    for _ in 0..40 {
+    // Allow low-resource CI runners up to 30 seconds to publish the endpoint.
+    for _ in 0..120 {
         let active_port_file = profile_dir.join("DevToolsActivePort");
         if let Ok(contents) = tokio::fs::read_to_string(active_port_file).await {
             if let Some(port) = contents
