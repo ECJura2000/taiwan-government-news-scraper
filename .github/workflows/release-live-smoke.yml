@@ -102,7 +102,7 @@ jobs:
           "$CLI_PATH" collect --sources 財政部 --output-dir live-output --report-dir live-reports --fail-on-source-error | tee live-summary.jsonl
           report="$(find live-reports -name 'news_scraper_run_*.json' -type f | sort | tail -n 1)"
           jq -e '.report_schema_version == 4 and .selected_source_count == 1 and (.failed_sources | length == 0)' "$report"
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: always()
         with:
           name: release-live-smoke-${{ inputs.tag }}-${{ matrix.platform }}
