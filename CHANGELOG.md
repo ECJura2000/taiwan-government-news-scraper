@@ -2,11 +2,17 @@
 
 ## Unreleased
 
+## 2.1.3 - 2026-08-07
+
+- Isolated portable bundle artifacts from source-health evidence so the publisher receives only the four platform ZIP files.
+- Restricted GitHub Release uploads to explicit ZIP and TXT files instead of a directory-inclusive wildcard.
+- Preserved the signed but unpublished `v2.1.0`, `v2.1.1` and `v2.1.2` candidate tags; the corrected immutable release is `v2.1.3`.
+
 ## 2.1.2 - 2026-08-07
 
 - Completed every targeted source retry even when an external endpoint remains unavailable, and retained a machine-readable evidence file for each retry.
 - Kept parser, browser/CDP, schema and quality regressions as hard release blockers while treating only classified external network, TLS and source-outage results as availability warnings.
-- Preserved the signed but unpublished `v2.1.0` and `v2.1.1` candidate tags; the corrected immutable release is `v2.1.2`.
+- Passed all source and four-platform gates, but remained unpublished because the release upload glob also selected the source-health report directory.
 
 ## 2.1.1 - 2026-08-07
 
