@@ -106,9 +106,19 @@ jobs:
           $gui = Resolve-Path "target/release/taiwan-government-news.exe"
           $process = Start-Process -FilePath $gui -PassThru
           try {
-            Start-Sleep -Seconds 8
-            if ($process.HasExited) {
-              throw "Portable Tauri GUI exited during startup with code $($process.ExitCode)"
+            $deadline = (Get-Date).AddSeconds(20)
+            do {
+              Start-Sleep -Seconds 1
+              $process.Refresh()
+              if ($process.HasExited) {
+                throw "Portable Tauri GUI exited during startup with code $($process.ExitCode)"
+              }
+              if ($process.MainWindowTitle -like "*介面就緒*") {
+                break
+              }
+            } while ((Get-Date) -lt $deadline)
+            if ($process.MainWindowTitle -notlike "*介面就緒*") {
+              throw "Portable Tauri GUI process stayed alive but the Svelte interface did not render"
             }
           } finally {
             if (-not $process.HasExited) {

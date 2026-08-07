@@ -1,4 +1,4 @@
-# Rust-only v2.1.4 migration
+# Rust-only v2.1.5 migration
 
 The migration implementation is complete in source: CLI and Tauri share `RunOptions` and the same Rust application service; all 72 sources, browser routes, quality diagnostics, relevance, JSON schema v4 and Excel are native Rust.
 

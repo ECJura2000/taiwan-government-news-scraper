@@ -6,7 +6,7 @@ on:
       tag:
         description: Existing Rust release tag to verify
         required: true
-        default: v2.1.4
+        default: v2.1.5
         type: string
 
 permissions:
@@ -70,9 +70,19 @@ jobs:
           }
           $process = Start-Process -FilePath $env:GUI_PATH -PassThru
           try {
-            Start-Sleep -Seconds 8
-            if ($process.HasExited) {
-              throw "Extracted portable GUI exited during startup with code $($process.ExitCode)"
+            $deadline = (Get-Date).AddSeconds(20)
+            do {
+              Start-Sleep -Seconds 1
+              $process.Refresh()
+              if ($process.HasExited) {
+                throw "Extracted portable GUI exited during startup with code $($process.ExitCode)"
+              }
+              if ($process.MainWindowTitle -like "*介面就緒*") {
+                break
+              }
+            } while ((Get-Date) -lt $deadline)
+            if ($process.MainWindowTitle -notlike "*介面就緒*") {
+              throw "Extracted GUI process stayed alive but the Svelte interface did not render"
             }
           } finally {
             if (-not $process.HasExited) {

@@ -1,4 +1,4 @@
-各機關新聞整理 v2.1.4（Rust）
+各機關新聞整理 v2.1.5（Rust）
 
 1. 先以 GitHub Release 的 SHA256SUMS.txt 驗證本 ZIP。
 2. Windows：完整解壓後雙擊 START-GUI.cmd，或直接執行 TaiwanGovernmentNews-GUI.exe。

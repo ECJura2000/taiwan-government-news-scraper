@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 2.1.5 - 2026-08-07
+
+- Replaced the removed Svelte component constructor API with Svelte 5 `mount()`, fixing the blank Tauri window.
+- Added an explicit loading fallback and a rendered-interface ready marker so startup failures are visible to users and detectable in Windows CI.
+- Upgraded Windows build and published-archive smoke tests to fail when the process stays alive without rendering the interface.
+
 ## 2.1.4 - 2026-08-07
 
 - Added the Tauri GUI executable and `START-GUI.cmd` to the Windows portable ZIP so extracting the archive provides a directly launchable desktop application.
