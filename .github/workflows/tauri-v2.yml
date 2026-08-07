@@ -96,6 +96,9 @@ jobs:
       - uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # master
         with:
           toolchain: stable
+      - name: Build Rust CLI
+        if: runner.os == 'Windows'
+        run: cargo build --release --bin news-scraper
       - name: Build Windows NSIS bundle
         if: runner.os == 'Windows'
         run: npm run tauri build -- --bundles nsis
@@ -104,12 +107,20 @@ jobs:
         shell: pwsh
         run: |
           $gui = Resolve-Path "target/release/taiwan-government-news.exe"
+          $stdoutFile = Join-Path $env:RUNNER_TEMP "taiwan-government-news-gui.stdout.log"
+          $stderrFile = Join-Path $env:RUNNER_TEMP "taiwan-government-news-gui.stderr.log"
           $readyFile = Join-Path $env:RUNNER_TEMP "taiwan-government-news-gui-ready.txt"
           Remove-Item $readyFile -Force -ErrorAction SilentlyContinue
+          Remove-Item $stdoutFile -Force -ErrorAction SilentlyContinue
+          Remove-Item $stderrFile -Force -ErrorAction SilentlyContinue
           $env:NEWS_SCRAPER_UI_READY_FILE = $readyFile
-          $process = Start-Process -FilePath $gui -PassThru
+          $process = Start-Process `
+            -FilePath $gui `
+            -RedirectStandardOutput $stdoutFile `
+            -RedirectStandardError $stderrFile `
+            -PassThru
           try {
-            $deadline = (Get-Date).AddSeconds(20)
+            $deadline = (Get-Date).AddSeconds(60)
             do {
               Start-Sleep -Seconds 1
               $process.Refresh()
@@ -124,6 +135,16 @@ jobs:
               throw "Portable Tauri GUI process stayed alive but the Svelte interface did not render"
             }
           } finally {
+            if (Test-Path $stdoutFile) {
+              Write-Host "::group::GUI stdout"
+              Get-Content $stdoutFile -Raw
+              Write-Host "::endgroup::"
+            }
+            if (Test-Path $stderrFile) {
+              Write-Host "::group::GUI stderr"
+              Get-Content $stderrFile -Raw
+              Write-Host "::endgroup::"
+            }
             if (-not $process.HasExited) {
               Stop-Process -Id $process.Id -Force
             }
