@@ -44,11 +44,24 @@ jobs:
           jq -r '.failed_sources[]' "$report" | while IFS= read -r source; do
             safe_name="$(printf '%s' "$source" | sha256sum | cut -c1-12)"
             mkdir -p "source-smoke/retries/$safe_name/output" "source-smoke/retries/$safe_name/reports"
+            set +e
             cargo run --release --bin news-scraper -- collect \
               --sources "$source" \
               --output-dir "source-smoke/retries/$safe_name/output" \
               --report-dir "source-smoke/retries/$safe_name/reports" \
               --fail-on-source-error | tee "source-smoke/retries/$safe_name/summary.jsonl"
+            retry_exit="${PIPESTATUS[0]}"
+            set -e
+            retry_report="$(find "source-smoke/retries/$safe_name/reports" -name 'news_scraper_run_*.json' -type f | sort | tail -n 1)"
+            test -n "$retry_report"
+            jq -e '.selected_source_count == 1 and (.quality.alert_reasons | length == 0)' "$retry_report"
+            jq -e '[.source_diagnostics[] | select(.status == "failed") | .failure_class] | all(. == "source_outage" or . == "runner_network" or . == "tls_certificate")' "$retry_report"
+            jq -n \
+              --arg source "$source" \
+              --argjson exit_code "$retry_exit" \
+              --slurpfile report "$retry_report" \
+              '{source: $source, exit_code: $exit_code, retry_status: $report[0].status, failed_sources: $report[0].failed_sources, failure_class_counts: $report[0].failure_class_counts}' \
+              > "source-smoke/retries/$safe_name/retry-evidence.json"
           done
       - name: Upload source-health evidence
         if: always()

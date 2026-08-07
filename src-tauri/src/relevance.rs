@@ -537,7 +537,7 @@ mod tests {
         let summary = default_summary();
         assert_eq!(summary["topic_count"], 10);
         assert_eq!(summary["keyword_count"], 107);
-        assert_eq!(summary["template_version"], "2.1.1");
+        assert_eq!(summary["template_version"], "2.1.2");
         assert_eq!(summary["ruleset_hash"], "e75be08ee1c5dab8");
     }
 

@@ -3,7 +3,7 @@ name: Build and release Rust apps
 on:
   workflow_dispatch:
   push:
-    tags: ["v2.1.1"]
+    tags: ["v2.1.2"]
 
 permissions:
   contents: read
@@ -21,9 +21,9 @@ jobs:
         if: github.event_name == 'workflow_dispatch' && github.ref != 'refs/heads/main'
         run: exit 1
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - name: Require the v2.1.1 workspace version
+      - name: Require the v2.1.2 workspace version
         shell: bash
-        run: test "$(sed -n 's/^version = "\([^"]*\)"/\1/p' Cargo.toml)" = "2.1.1"
+        run: test "$(sed -n 's/^version = "\([^"]*\)"/\1/p' Cargo.toml)" = "2.1.2"
 
   source-health:
     name: Gate all 72 live sources
@@ -43,7 +43,7 @@ jobs:
         shell: bash
         run: |
           version="$(sed -n 's/^version = "\([^"]*\)"/\1/p' Cargo.toml)"
-          test "$version" = "2.1.1"
+          test "$version" = "2.1.2"
           if [[ "$GITHUB_REF" == refs/tags/* ]]; then test "$GITHUB_REF_NAME" = "v$version"; fi
           mkdir -p source-health/output source-health/reports
           cargo run --release --bin news-scraper -- collect \
@@ -58,11 +58,24 @@ jobs:
           jq -r '.failed_sources[]' "$report" | while IFS= read -r source; do
             safe_name="$(printf '%s' "$source" | sha256sum | cut -c1-12)"
             mkdir -p "source-health/retries/$safe_name/output" "source-health/retries/$safe_name/reports"
+            set +e
             cargo run --release --bin news-scraper -- collect \
               --sources "$source" \
               --output-dir "source-health/retries/$safe_name/output" \
               --report-dir "source-health/retries/$safe_name/reports" \
               --fail-on-source-error | tee "source-health/retries/$safe_name/summary.jsonl"
+            retry_exit="${PIPESTATUS[0]}"
+            set -e
+            retry_report="$(find "source-health/retries/$safe_name/reports" -name 'news_scraper_run_*.json' -type f | sort | tail -n 1)"
+            test -n "$retry_report"
+            jq -e '.selected_source_count == 1 and (.quality.alert_reasons | length == 0)' "$retry_report"
+            jq -e '[.source_diagnostics[] | select(.status == "failed") | .failure_class] | all(. == "source_outage" or . == "runner_network" or . == "tls_certificate")' "$retry_report"
+            jq -n \
+              --arg source "$source" \
+              --argjson exit_code "$retry_exit" \
+              --slurpfile report "$retry_report" \
+              '{source: $source, exit_code: $exit_code, retry_status: $report[0].status, failed_sources: $report[0].failed_sources, failure_class_counts: $report[0].failure_class_counts}' \
+              > "source-health/retries/$safe_name/retry-evidence.json"
           done
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: always()
@@ -125,7 +138,7 @@ jobs:
       - name: Stage portable archive
         shell: bash
         run: |
-          tag="v2.1.1"
+          tag="v2.1.2"
           root="taiwan-government-news-${tag}-${{ matrix.platform }}"
           mkdir -p "release-assets/$root/installers"
           cp "target/release/${{ matrix.cli }}" "release-assets/$root/"
@@ -145,15 +158,15 @@ jobs:
       - name: Create ZIP on Windows
         if: runner.os == 'Windows'
         shell: pwsh
-        run: Compress-Archive -Path "release-assets/taiwan-government-news-v2.1.1-${{ matrix.platform }}" -DestinationPath "release-assets/taiwan-government-news-v2.1.1-${{ matrix.platform }}.zip"
+        run: Compress-Archive -Path "release-assets/taiwan-government-news-v2.1.2-${{ matrix.platform }}" -DestinationPath "release-assets/taiwan-government-news-v2.1.2-${{ matrix.platform }}.zip"
       - name: Create ZIP on Linux
         if: runner.os == 'Linux'
         shell: bash
-        run: cd release-assets && zip -qr "taiwan-government-news-v2.1.1-${{ matrix.platform }}.zip" "taiwan-government-news-v2.1.1-${{ matrix.platform }}"
+        run: cd release-assets && zip -qr "taiwan-government-news-v2.1.2-${{ matrix.platform }}.zip" "taiwan-government-news-v2.1.2-${{ matrix.platform }}"
       - name: Create ZIP on macOS
         if: runner.os == 'macOS'
         shell: bash
-        run: cd release-assets && ditto -c -k --sequesterRsrc --keepParent "taiwan-government-news-v2.1.1-${{ matrix.platform }}" "taiwan-government-news-v2.1.1-${{ matrix.platform }}.zip"
+        run: cd release-assets && ditto -c -k --sequesterRsrc --keepParent "taiwan-government-news-v2.1.2-${{ matrix.platform }}" "taiwan-government-news-v2.1.2-${{ matrix.platform }}.zip"
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: release-${{ matrix.platform }}
@@ -163,7 +176,7 @@ jobs:
           retention-days: 1
 
   release:
-    name: Publish v2.1.1
+    name: Publish v2.1.2
     needs: [source-health, build]
     runs-on: ubuntu-22.04
     permissions:
@@ -179,7 +192,7 @@ jobs:
         shell: bash
         run: |
           for platform in linux windows macos-arm64 macos-x64; do
-            archive="release-assets/taiwan-government-news-v2.1.1-${platform}.zip"
+            archive="release-assets/taiwan-government-news-v2.1.2-${platform}.zip"
             test -s "$archive"
             if unzip -l "$archive" | grep -Eiq '(\.pyc?$|python|pyinstaller|openpyxl|selenium)'; then
               echo "$archive contains forbidden Python content" >&2
@@ -187,18 +200,18 @@ jobs:
             fi
           done
           cd release-assets
-          sha256sum *.zip > taiwan-government-news-v2.1.1-SHA256SUMS.txt
+          sha256sum *.zip > taiwan-government-news-v2.1.2-SHA256SUMS.txt
           for file in *.zip; do
             printf '%s bytes  %s\n' "$(stat -c %s "$file")" "$file"
-          done > taiwan-government-news-v2.1.1-SIZE-MANIFEST.txt
-      - name: Refuse to overwrite v2.0.0 or an existing v2.1.1 release
+          done > taiwan-government-news-v2.1.2-SIZE-MANIFEST.txt
+      - name: Refuse to overwrite v2.0.0 or an existing v2.1.2 release
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
           gh release view v2.0.0 --repo "$GITHUB_REPOSITORY" >/dev/null
-          if gh release view v2.1.1 --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            echo "v2.1.1 already exists; refusing to overwrite it" >&2
+          if gh release view v2.1.2 --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "v2.1.2 already exists; refusing to overwrite it" >&2
             exit 1
           fi
       - name: Publish immutable Rust release
@@ -206,14 +219,14 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
-          if [[ "$GITHUB_REF" == refs/tags/v2.1.1 ]]; then
+          if [[ "$GITHUB_REF" == refs/tags/v2.1.2 ]]; then
             tag_args=(--verify-tag)
           else
             tag_args=(--target "$GITHUB_SHA")
           fi
-          gh release create v2.1.1 release-assets/* \
+          gh release create v2.1.2 release-assets/* \
             --repo "$GITHUB_REPOSITORY" \
             "${tag_args[@]}" \
             --generate-notes \
-            --title "各機關新聞整理 v2.1.1" \
-            --notes "完整 Rust 取代版。CLI、Tauri、72 個來源、JSON schema v4、Excel 與 CDP 均由 Rust 執行；v2.1.1 修正低資源 runner 的 CDP 啟動與文化部 403 fallback，v2.0.0 保留作為 rollback。"
+            --title "各機關新聞整理 v2.1.2" \
+            --notes "完整 Rust 取代版。CLI、Tauri、72 個來源、JSON schema v4、Excel 與 CDP 均由 Rust 執行；v2.1.2 保留所有來源的重試證據，並依既有政策將純外部連線問題列為 availability warning，parser、CDP 與資料品質回歸仍會阻擋發布；v2.0.0 保留作為 rollback。"

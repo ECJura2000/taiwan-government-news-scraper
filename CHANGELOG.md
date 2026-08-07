@@ -2,11 +2,17 @@
 
 ## Unreleased
 
+## 2.1.2 - 2026-08-07
+
+- Completed every targeted source retry even when an external endpoint remains unavailable, and retained a machine-readable evidence file for each retry.
+- Kept parser, browser/CDP, schema and quality regressions as hard release blockers while treating only classified external network, TLS and source-outage results as availability warnings.
+- Preserved the signed but unpublished `v2.1.0` and `v2.1.1` candidate tags; the corrected immutable release is `v2.1.2`.
+
 ## 2.1.1 - 2026-08-07
 
 - Serialized Chrome CDP routes and extended the startup deadline so low-resource GitHub runners do not starve concurrent browser processes.
 - Added an official browser fallback for the Ministry of Culture when its OpenData route rejects runner HTTP traffic.
-- Preserved the signed but unpublished `v2.1.0` release candidate after its live-source gate failed; the corrected immutable release is `v2.1.1`.
+- Verified that the browser fixes pass on GitHub runners. This signed candidate remained unpublished because the retry loop stopped after the first persistent external network failure.
 
 ## 2.1.0 - 2026-08-07
 
