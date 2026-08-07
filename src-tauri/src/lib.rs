@@ -109,6 +109,22 @@ mod commands {
     use super::*;
 
     #[tauri::command]
+    pub fn mark_frontend_ready() -> Result<(), String> {
+        let Some(path) = std::env::var_os("NEWS_SCRAPER_UI_READY_FILE") else {
+            return Ok(());
+        };
+        use std::io::Write;
+        let mut marker = std::fs::OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .open(path)
+            .map_err(|error| format!("無法建立介面就緒標記：{error}"))?;
+        marker
+            .write_all(b"ready\n")
+            .map_err(|error| format!("無法寫入介面就緒標記：{error}"))
+    }
+
+    #[tauri::command]
     pub fn list_sources() -> Vec<String> {
         super::list_sources_for_cli()
     }
@@ -177,6 +193,7 @@ pub fn run() {
             cancelled: Arc::new(AtomicBool::new(false)),
         })
         .invoke_handler(tauri::generate_handler![
+            commands::mark_frontend_ready,
             commands::list_sources,
             commands::run_scrape,
             commands::cancel_run

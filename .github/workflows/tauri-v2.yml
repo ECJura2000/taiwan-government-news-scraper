@@ -104,6 +104,9 @@ jobs:
         shell: pwsh
         run: |
           $gui = Resolve-Path "target/release/taiwan-government-news.exe"
+          $readyFile = Join-Path $env:RUNNER_TEMP "taiwan-government-news-gui-ready.txt"
+          Remove-Item $readyFile -Force -ErrorAction SilentlyContinue
+          $env:NEWS_SCRAPER_UI_READY_FILE = $readyFile
           $process = Start-Process -FilePath $gui -PassThru
           try {
             $deadline = (Get-Date).AddSeconds(20)
@@ -113,17 +116,18 @@ jobs:
               if ($process.HasExited) {
                 throw "Portable Tauri GUI exited during startup with code $($process.ExitCode)"
               }
-              if ($process.MainWindowTitle -like "*介面就緒*") {
+              if ((Test-Path $readyFile) -and ((Get-Content $readyFile -Raw).Trim() -eq "ready")) {
                 break
               }
             } while ((Get-Date) -lt $deadline)
-            if ($process.MainWindowTitle -notlike "*介面就緒*") {
+            if (-not (Test-Path $readyFile) -or ((Get-Content $readyFile -Raw).Trim() -ne "ready")) {
               throw "Portable Tauri GUI process stayed alive but the Svelte interface did not render"
             }
           } finally {
             if (-not $process.HasExited) {
               Stop-Process -Id $process.Id -Force
             }
+            Remove-Item $readyFile -Force -ErrorAction SilentlyContinue
           }
       - name: Build Tauri bundle
         if: runner.os != 'Windows'
