@@ -3,7 +3,7 @@ name: Build and release Rust apps
 on:
   workflow_dispatch:
   push:
-    tags: ["v2.1.4"]
+    tags: ["v2.1.5"]
 
 permissions:
   contents: read
@@ -21,9 +21,9 @@ jobs:
         if: github.event_name == 'workflow_dispatch' && github.ref != 'refs/heads/main'
         run: exit 1
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - name: Require the v2.1.4 workspace version
+      - name: Require the v2.1.5 workspace version
         shell: bash
-        run: test "$(sed -n 's/^version = "\([^"]*\)"/\1/p' Cargo.toml)" = "2.1.4"
+        run: test "$(sed -n 's/^version = "\([^"]*\)"/\1/p' Cargo.toml)" = "2.1.5"
 
   source-health:
     name: Gate all 72 live sources
@@ -43,7 +43,7 @@ jobs:
         shell: bash
         run: |
           version="$(sed -n 's/^version = "\([^"]*\)"/\1/p' Cargo.toml)"
-          test "$version" = "2.1.4"
+          test "$version" = "2.1.5"
           if [[ "$GITHUB_REF" == refs/tags/* ]]; then test "$GITHUB_REF_NAME" = "v$version"; fi
           mkdir -p source-health/output source-health/reports
           cargo run --release --bin news-scraper -- collect \
@@ -143,21 +143,35 @@ jobs:
         shell: pwsh
         run: |
           $gui = Resolve-Path "target/release/taiwan-government-news.exe"
+          $readyFile = Join-Path $env:RUNNER_TEMP "taiwan-government-news-gui-ready.txt"
+          Remove-Item $readyFile -Force -ErrorAction SilentlyContinue
+          $env:NEWS_SCRAPER_UI_READY_FILE = $readyFile
           $process = Start-Process -FilePath $gui -PassThru
           try {
-            Start-Sleep -Seconds 8
-            if ($process.HasExited) {
-              throw "Portable Tauri GUI exited during startup with code $($process.ExitCode)"
+            $deadline = (Get-Date).AddSeconds(20)
+            do {
+              Start-Sleep -Seconds 1
+              $process.Refresh()
+              if ($process.HasExited) {
+                throw "Portable Tauri GUI exited during startup with code $($process.ExitCode)"
+              }
+              if ((Test-Path $readyFile) -and ((Get-Content $readyFile -Raw).Trim() -eq "ready")) {
+                break
+              }
+            } while ((Get-Date) -lt $deadline)
+            if (-not (Test-Path $readyFile) -or ((Get-Content $readyFile -Raw).Trim() -ne "ready")) {
+              throw "Portable Tauri GUI process stayed alive but the Svelte interface did not render"
             }
           } finally {
             if (-not $process.HasExited) {
               Stop-Process -Id $process.Id -Force
             }
+            Remove-Item $readyFile -Force -ErrorAction SilentlyContinue
           }
       - name: Stage portable archive
         shell: bash
         run: |
-          tag="v2.1.4"
+          tag="v2.1.5"
           root="taiwan-government-news-${tag}-${{ matrix.platform }}"
           mkdir -p "release-assets/$root/installers"
           cp "target/release/${{ matrix.cli }}" "release-assets/$root/"
@@ -181,15 +195,15 @@ jobs:
       - name: Create ZIP on Windows
         if: runner.os == 'Windows'
         shell: pwsh
-        run: Compress-Archive -Path "release-assets/taiwan-government-news-v2.1.4-${{ matrix.platform }}" -DestinationPath "release-assets/taiwan-government-news-v2.1.4-${{ matrix.platform }}.zip"
+        run: Compress-Archive -Path "release-assets/taiwan-government-news-v2.1.5-${{ matrix.platform }}" -DestinationPath "release-assets/taiwan-government-news-v2.1.5-${{ matrix.platform }}.zip"
       - name: Create ZIP on Linux
         if: runner.os == 'Linux'
         shell: bash
-        run: cd release-assets && zip -qr "taiwan-government-news-v2.1.4-${{ matrix.platform }}.zip" "taiwan-government-news-v2.1.4-${{ matrix.platform }}"
+        run: cd release-assets && zip -qr "taiwan-government-news-v2.1.5-${{ matrix.platform }}.zip" "taiwan-government-news-v2.1.5-${{ matrix.platform }}"
       - name: Create ZIP on macOS
         if: runner.os == 'macOS'
         shell: bash
-        run: cd release-assets && ditto -c -k --sequesterRsrc --keepParent "taiwan-government-news-v2.1.4-${{ matrix.platform }}" "taiwan-government-news-v2.1.4-${{ matrix.platform }}.zip"
+        run: cd release-assets && ditto -c -k --sequesterRsrc --keepParent "taiwan-government-news-v2.1.5-${{ matrix.platform }}" "taiwan-government-news-v2.1.5-${{ matrix.platform }}.zip"
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: release-bundle-${{ matrix.platform }}
@@ -199,7 +213,7 @@ jobs:
           retention-days: 1
 
   release:
-    name: Publish v2.1.4
+    name: Publish v2.1.5
     needs: [source-health, build]
     runs-on: ubuntu-22.04
     permissions:
@@ -215,7 +229,7 @@ jobs:
         shell: bash
         run: |
           for platform in linux windows macos-arm64 macos-x64; do
-            archive="release-assets/taiwan-government-news-v2.1.4-${platform}.zip"
+            archive="release-assets/taiwan-government-news-v2.1.5-${platform}.zip"
             test -s "$archive"
             if unzip -l "$archive" | grep -Eiq '(\.pyc?$|python|pyinstaller|openpyxl|selenium)'; then
               echo "$archive contains forbidden Python content" >&2
@@ -227,18 +241,18 @@ jobs:
             fi
           done
           cd release-assets
-          sha256sum *.zip > taiwan-government-news-v2.1.4-SHA256SUMS.txt
+          sha256sum *.zip > taiwan-government-news-v2.1.5-SHA256SUMS.txt
           for file in *.zip; do
             printf '%s bytes  %s\n' "$(stat -c %s "$file")" "$file"
-          done > taiwan-government-news-v2.1.4-SIZE-MANIFEST.txt
-      - name: Refuse to overwrite v2.0.0 or an existing v2.1.4 release
+          done > taiwan-government-news-v2.1.5-SIZE-MANIFEST.txt
+      - name: Refuse to overwrite v2.0.0 or an existing v2.1.5 release
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
           gh release view v2.0.0 --repo "$GITHUB_REPOSITORY" >/dev/null
-          if gh release view v2.1.4 --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            echo "v2.1.4 already exists; refusing to overwrite it" >&2
+          if gh release view v2.1.5 --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "v2.1.5 already exists; refusing to overwrite it" >&2
             exit 1
           fi
       - name: Publish immutable Rust release
@@ -246,14 +260,14 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
-          if [[ "$GITHUB_REF" == refs/tags/v2.1.4 ]]; then
+          if [[ "$GITHUB_REF" == refs/tags/v2.1.5 ]]; then
             tag_args=(--verify-tag)
           else
             tag_args=(--target "$GITHUB_SHA")
           fi
-          gh release create v2.1.4 release-assets/*.zip release-assets/*.txt \
+          gh release create v2.1.5 release-assets/*.zip release-assets/*.txt \
             --repo "$GITHUB_REPOSITORY" \
             "${tag_args[@]}" \
             --generate-notes \
-            --title "各機關新聞整理 v2.1.4" \
-            --notes "完整 Rust 取代版。Windows ZIP 新增可直接啟動的 Tauri GUI 與 START-GUI.cmd，並以 Windows runner 驗證解壓後 GUI 能正常保持執行；CLI、NSIS 安裝檔、72 個來源、JSON schema v4、Excel 與 CDP 均保留，v2.0.0 繼續作為 rollback。"
+            --title "各機關新聞整理 v2.1.5" \
+            --notes "完整 Rust 取代版。修正 Svelte 5 GUI 掛載方式造成的空白畫面；Windows smoke 現在必須確認介面已實際完成渲染，而不只檢查程序仍在執行。Windows ZIP 仍包含 portable GUI、START-GUI.cmd、CLI 與 NSIS 安裝檔。"
