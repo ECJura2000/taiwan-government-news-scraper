@@ -1,64 +1,60 @@
-name: Source smoke
+name: Rust source smoke
 
 on:
   workflow_dispatch:
   schedule:
-    - cron: "23 20 * * *"
+    - cron: "20 22 * * 1"
+
+permissions:
+  contents: read
 
 jobs:
-  smoke:
-    runs-on: ubuntu-latest
+  all-sources:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+      - name: Install Linux Tauri and browser dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+      - uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # master
         with:
-          python-version: "3.13"
-          cache: pip
-      - run: |
-          python -m pip install --require-hashes -r requirements.lock.txt
-          python -m pip install --no-deps -e .
-      - name: Run rotating source smoke
-        run: python scripts/smoke_sources.py --evidence-dir source-smoke-evidence
-
-      - name: Write source smoke summary
+          toolchain: stable
+      - name: Run all official sources through the Rust engine
+        shell: bash
+        run: |
+          mkdir -p source-smoke/output source-smoke/reports
+          cargo run --release --bin news-scraper -- collect \
+            --output-dir source-smoke/output \
+            --report-dir source-smoke/reports \
+            --max-workers 8 | tee source-smoke/summary.jsonl
+      - name: Validate smoke artifacts and report status
         if: always()
         shell: bash
         run: |
-          if [[ ! -f source-smoke-evidence/source-smoke-report.json ]]; then
-            echo "Source smoke evidence was not produced." >> "$GITHUB_STEP_SUMMARY"
-            exit 0
-          fi
-          python - <<'PY' >> "$GITHUB_STEP_SUMMARY"
-          import json
-          from pathlib import Path
-
-          report = json.loads(Path("source-smoke-evidence/source-smoke-report.json").read_text(encoding="utf-8"))
-          print("# Source smoke")
-          print()
-          print("- Status: `{}`".format(report["status"]))
-          print("- Unstable: {}".format("、".join(report["unstable_sources"]) or "none"))
-          print("- Failed: {}".format("、".join(report["failed_sources"]) or "none"))
-          print()
-          print("| Source | Attempt | Result | Status | Failure classes | Error counts |")
-          print("| --- | ---: | --- | --- | --- | --- |")
-          for attempt in report["attempts"]:
-              summary = attempt.get("summary") or {}
-              run_report = attempt.get("report") or {}
-              print("| {} | {} | {} | {} | `{}` | `{}` |".format(
-                  attempt["source"],
-                  attempt["attempt"],
-                  "pass" if attempt["success"] else "fail",
-                  summary.get("status", ""),
-                  json.dumps(run_report.get("failure_class_counts", {}), ensure_ascii=False, separators=(",", ":")),
-                  json.dumps(run_report.get("error_counts", {}), ensure_ascii=False, separators=(",", ":")),
-              ))
-          PY
-
-      - name: Upload source smoke evidence
+          report="$(find source-smoke/reports -name 'news_scraper_run_*.json' -type f | sort | tail -n 1)"
+          test -n "$report"
+          jq -e '.report_schema_version == 4 and (.news_count | type == "number") and .news_count > 0' "$report"
+          jq '{status, news_count, failed_sources, source_health, quality: {alert_reasons: .quality.alert_reasons}}' "$report" | tee source-smoke/source-health-summary.json
+          test "$(jq '.selected_source_count' "$report")" = 72
+          test "$(jq '.quality.alert_reasons | length' "$report")" = 0
+          jq -e '[.source_diagnostics[] | select(.status == "failed") | .failure_class] | all(. == "source_outage" or . == "runner_network" or . == "tls_certificate")' "$report"
+          mkdir -p source-smoke/retries
+          jq -r '.failed_sources[]' "$report" | while IFS= read -r source; do
+            safe_name="$(printf '%s' "$source" | sha256sum | cut -c1-12)"
+            mkdir -p "source-smoke/retries/$safe_name/output" "source-smoke/retries/$safe_name/reports"
+            cargo run --release --bin news-scraper -- collect \
+              --sources "$source" \
+              --output-dir "source-smoke/retries/$safe_name/output" \
+              --report-dir "source-smoke/retries/$safe_name/reports" \
+              --fail-on-source-error | tee "source-smoke/retries/$safe_name/summary.jsonl"
+          done
+      - name: Upload source-health evidence
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: source-smoke-evidence
-          path: source-smoke-evidence/
+          name: rust-source-smoke
+          path: source-smoke/
           if-no-files-found: warn
           retention-days: 7

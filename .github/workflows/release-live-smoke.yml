@@ -1,17 +1,12 @@
 name: Release live smoke
 
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
-  PYTHONUTF8: "1"
-  PYTHONIOENCODING: "utf-8"
-
 on:
   workflow_dispatch:
     inputs:
       tag:
-        description: Existing release tag to verify
+        description: Existing Rust release tag to verify
         required: true
-        default: v1.6.0
+        default: v2.1.0
         type: string
 
 permissions:
@@ -19,29 +14,24 @@ permissions:
 
 jobs:
   live-smoke:
-    name: Live smoke ${{ matrix.label }}
     strategy:
       fail-fast: false
       matrix:
         include:
-          - os: ubuntu-latest
-            label: Linux
+          - os: ubuntu-22.04
             platform: linux
-            executable: 各機關新聞整理
+            cli: news-scraper
           - os: windows-latest
-            label: Windows
             platform: windows
-            executable: 各機關新聞整理.exe
+            cli: news-scraper.exe
           - os: macos-15
-            label: macOS Apple Silicon
             platform: macos-arm64
-            executable: 各機關新聞整理
+            cli: news-scraper
           - os: macos-15-intel
-            label: macOS Intel
             platform: macos-x64
-            executable: 各機關新聞整理
+            cli: news-scraper
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 20
+    timeout-minutes: 90
     steps:
       - name: Download and verify published archive
         shell: bash
@@ -49,81 +39,33 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ inputs.tag }}
         run: |
-          set -euo pipefail
-          rm -rf release-download extracted live-output
-          mkdir release-download
           archive="taiwan-government-news-${RELEASE_TAG}-${{ matrix.platform }}.zip"
           checksums="taiwan-government-news-${RELEASE_TAG}-SHA256SUMS.txt"
-          gh release download "$RELEASE_TAG" \
-            --repo "$GITHUB_REPOSITORY" \
-            --dir release-download \
-            --pattern "$archive" \
-            --pattern "$checksums"
-          cd release-download
-          grep "  ${archive}$" "$checksums" | sha256sum -c -
-          cd ..
-          python - "$archive" <<'PY'
-          import sys
-          from pathlib import Path
-          from zipfile import ZipFile
-
-          archive = Path("release-download") / sys.argv[1]
-          with ZipFile(archive) as release_zip:
-              release_zip.extractall("extracted")
-          PY
-          if [[ "${{ matrix.platform }}" != "windows" ]]; then
-            chmod +x "extracted/各機關新聞/${{ matrix.executable }}"
-          fi
-
-      - name: Run the published executable against all live sources
+          mkdir -p release-download extracted
+          gh release download "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --dir release-download --pattern "$archive" --pattern "$checksums"
+          (cd release-download && grep "  ${archive}$" "$checksums" | sha256sum -c -)
+          unzip -q "release-download/$archive" -d extracted
+          if unzip -l "release-download/$archive" | grep -Eiq '(\.pyc?$|python|pyinstaller|openpyxl|selenium)'; then exit 1; fi
+          cli="$(find extracted -type f -name '${{ matrix.cli }}' -print -quit)"
+          test -n "$cli"
+          if [[ "${{ runner.os }}" != "Windows" ]]; then chmod +x "$cli"; fi
+          echo "CLI_PATH=$cli" >> "$GITHUB_ENV"
+      - name: Run Rust CLI smoke
         shell: bash
         run: |
-          set -euo pipefail
-          executable="extracted/各機關新聞/${{ matrix.executable }}"
-          "$executable" --check-runtime
-          "$executable" --headless \
-            --output-dir "$PWD/live-output" \
-            --max-workers 8 \
-            --json-summary > live-output.log 2>&1
-          tail -n 1 live-output.log > live-summary.json
-          python - <<'PY'
-          import json
-          from pathlib import Path
-
-          summary = json.loads(Path("live-summary.json").read_text(encoding="utf-8"))
-          status = summary.get("status")
-          if status not in {"success", "attention", "partial_failure"}:
-              raise SystemExit("published executable did not complete: status={!r}".format(status))
-          if not isinstance(summary.get("news_count"), int) or summary["news_count"] <= 0:
-              raise SystemExit("published executable produced no news")
-
-          output_file = Path(summary["output_file"])
-          report_file = Path(summary["report_file"])
-          if not output_file.is_file() or not report_file.is_file():
-              raise SystemExit("live smoke did not produce both Excel and JSON artifacts")
-          warnings = {
-              "status": status,
-              "failed_sources": summary.get("failed_sources", []),
-              "failure_class_counts": summary.get("failure_class_counts", {}),
-              "source_health": summary.get("source_health", {}),
-              "anomalies": summary.get("anomalies", []),
-              "alert_reasons": summary.get("quality", {}).get("alert_reasons", []),
-          }
-          if any((warnings["failed_sources"], warnings["anomalies"], warnings["alert_reasons"])):
-              print("::warning::Live source warnings: {}".format(
-                  json.dumps(warnings, ensure_ascii=False, separators=(",", ":"))
-              ))
-          print(json.dumps(summary, ensure_ascii=False, separators=(",", ":")))
-          PY
-
-      - name: Upload live smoke evidence
+          "$CLI_PATH" --version
+          test "$("$CLI_PATH" list-sources | wc -l | tr -d ' ')" = 72
+          mkdir -p live-output live-reports
+          "$CLI_PATH" collect --sources 財政部 --output-dir live-output --report-dir live-reports --fail-on-source-error | tee live-summary.jsonl
+          report="$(find live-reports -name 'news_scraper_run_*.json' -type f | sort | tail -n 1)"
+          jq -e '.report_schema_version == 4 and .selected_source_count == 1 and (.failed_sources | length == 0)' "$report"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: release-live-smoke-${{ inputs.tag }}-${{ matrix.platform }}
           path: |
-            live-output.log
-            live-summary.json
+            live-summary.jsonl
             live-output/
+            live-reports/
           if-no-files-found: warn
-          retention-days: 1
+          retention-days: 7

@@ -1,8 +1,11 @@
+pub mod adapters;
+pub mod catalog;
 pub mod html;
 pub mod http;
 pub mod quality;
 pub mod rss;
 pub mod scheduler;
+pub mod special;
 
 use crate::core::FailureClass;
 use thiserror::Error;
@@ -40,6 +43,18 @@ impl ScraperError {
 
     pub const fn retryable(&self) -> bool {
         self.failure_class().retryable()
+    }
+
+    pub const fn error_category(&self) -> &'static str {
+        match self {
+            Self::SourceOutage(_) => "connection",
+            Self::RunnerNetwork(_) => "connection",
+            Self::TlsCertificate(_) => "ssl",
+            Self::AccessBlocked(_) => "http",
+            Self::ParserRegression(_) => "parse",
+            Self::BrowserRuntime(_) => "browser",
+            Self::Unknown(_) => "unexpected",
+        }
     }
 }
 

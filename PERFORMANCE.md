@@ -1,33 +1,11 @@
-# 效能與容量基準
+# Performance
 
-2026-06-13 執行：
+The Rust service uses bounded asynchronous source concurrency (`--max-workers`, default 8). Output ordering remains deterministic after concurrent collection. Deduplication and quality validation are linear in record count; final workbook ordering is O(n log n).
 
-```bash
-python3 scripts/benchmark_capacity.py --sizes 1000 10000 100000 --workers 1 4 16 30
-```
+The 2026-08-03 through 2026-08-09 live acceptance run covered all 72 sources and completed in about 75 seconds on macOS with 298 valid records before the final RSS-link correction. Performance conclusions should always record hardware, date range, source health and network conditions.
 
-Excel 匯出另有純 openpyxl 的 10,000 筆門檻：
+Use a release build for measurements:
 
 ```bash
-python3 scripts/benchmark_excel_export.py --rows 10000 --max-seconds 30
+/usr/bin/time -p cargo run --release --bin news-scraper -- collect --date 2026-08-06 --max-workers 8
 ```
-
-## 品質檢查與去重
-
-| 筆數 | 最佳 | 平均 | P95 | 峰值記憶體 |
-| ---: | ---: | ---: | ---: | ---: |
-| 1,000 | 52.962 ms | 58.219 ms | 72.358 ms | 0.505 MB |
-| 10,000 | 535.608 ms | 561.222 ms | 597.016 ms | 4.951 MB |
-| 100,000 | 5,336.486 ms | 5,401.808 ms | 5,500.318 ms | 43.308 MB |
-
-## 合成 I/O 併發
-
-| Workers | 最佳 | 平均 | P95 |
-| ---: | ---: | ---: | ---: |
-| 1 | 160.615 ms | 161.064 ms | 161.392 ms |
-| 4 | 39.792 ms | 40.257 ms | 40.567 ms |
-| 16 | 10.734 ms | 10.848 ms | 10.936 ms |
-| 30 | 7.627 ms | 7.703 ms | 7.778 ms |
-
-合成 I/O 顯示提高 worker 可降低等待時間，但真實網站仍受連線限制、伺服器負載
-與防護機制影響。正式執行預設值應以來源健康與失敗率共同判斷。

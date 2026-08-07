@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Replaced the Python/Tauri command path with a shared native Rust application service for CLI and GUI execution.
+- Added native Rust RSS, Atom, HTML adapter, Chrome CDP, relevance, JSON schema-v4 diagnostics, and parity-oriented Excel output foundations.
+- Retained `scripts/python_compat.py` only as a command bridge to the Rust executable and removed the legacy scraper, dependency locks, tests and packaging workflows.
+- Completed all 72 Rust source routes, Chrome CDP handling, schema-v4 diagnostics, relevance parity, Excel parity, cancellation and Rust-only release gates.
+- Marked the native application as v2.1.0 while preserving the published v2.0.0 release as the rollback build.
+
 ## 2.0.0 - 2026-08-06
 
 - Added the Rust/Tauri v2 application foundation and cross-platform Tauri build workflow.

@@ -1,20 +1,7 @@
-# Rust/Tauri v2 migration
+# Rust-only v2.1.0 migration
 
-This branch introduces the v2 desktop shell and the first native Rust scraper primitives.
-The Python implementation remains the migration reference until all source adapters and
-the report/Excel parity suite pass.
+The migration implementation is complete in source: CLI and Tauri share `RunOptions` and the same Rust application service; all 72 sources, browser routes, quality diagnostics, relevance, JSON schema v4 and Excel are native Rust.
 
-## Current status
+The only retained Python file is `scripts/python_compat.py`, a subprocess bridge to `news-scraper`. Legacy scraper packages, tests, dependency locks, build scripts and PyInstaller workflows were removed.
 
-- Tauri v2 + Svelte + TypeScript development and production builds work on macOS Apple Silicon.
-- The Rust core has tested contracts for news items, RSS/HTML parsing, HTTP error mapping,
-  deduplication, source scheduling, and retry classification.
-- The desktop command surface is `list_sources`, `run_scrape`, and `cancel_run`.
-- The current `run_scrape` command uses the Python implementation as a temporary compatibility
-  engine. It is not a v2 release gate and must be replaced by native Rust before release.
-
-## Release gate
-
-v2.0.0 must not be tagged until all existing source adapters, Excel output, JSON report fields,
-relevance policy migration, GUI parity, four-platform bundles, and Python/Rust dual-run tests
-have passed. v1.6.0 remains the rollback release during the v2.0.0 migration.
+Fixture acceptance preserved titles, dates, departments, summaries, links, relevance output and all 15 workbook fields. Live acceptance reached all 72 sources. Publication is separately gated by the four-platform workflow, dependency audits, archive inspection and release smoke. v2.0.0 remains the rollback release.
