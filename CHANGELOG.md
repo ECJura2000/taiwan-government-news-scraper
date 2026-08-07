@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 2.1.4 - 2026-08-07
+
+- Added the Tauri GUI executable and `START-GUI.cmd` to the Windows portable ZIP so extracting the archive provides a directly launchable desktop application.
+- Added Windows process-level smoke tests for both the build output and the GUI extracted from the published Release archive.
+- Kept the Rust CLI and NSIS installer in the same Windows download, with an installer fallback for WebView2 or local security-policy restrictions.
+
 ## 2.1.3 - 2026-08-07
 
 - Isolated portable bundle artifacts from source-health evidence so the publisher receives only the four platform ZIP files.

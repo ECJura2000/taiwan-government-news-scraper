@@ -1,4 +1,4 @@
-# Releasing v2.1.3
+# Releasing v2.1.4
 
 ## Local gate
 
@@ -20,10 +20,10 @@ Inspect the JSON contract and Excel workbook. Confirm 72 selected sources, no fa
 ## Publication gate
 
 1. Merge the validated commit to `main`.
-2. Create and push immutable tag `v2.1.3`; do not modify `v2.0.0` or the failed, unpublished `v2.1.0`, `v2.1.1` and `v2.1.2` candidate tags.
+2. Create and push immutable tag `v2.1.4`; do not modify `v2.0.0`, the failed unpublished `v2.1.0`, `v2.1.1`, `v2.1.2` candidates, or the published `v2.1.3` release.
 3. The `Build and release Rust apps` workflow must pass the all-source gate and all four platform builds.
 4. Verify four ZIPs, SHA-256 manifest, size manifest and the non-draft GitHub Release.
 5. Confirm archives contain the Rust CLI and Tauri installer but no `.py`, Python runtime, PyInstaller, openpyxl or Selenium.
-6. Run `Release live smoke` for `v2.1.3` and verify all four published downloads.
+6. Run `Release live smoke` for `v2.1.4` and verify all four published downloads, including the extracted Windows portable GUI process smoke.
 
 A tag without a completed workflow, release assets and successful smoke is not a completed release.
