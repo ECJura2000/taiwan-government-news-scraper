@@ -39,6 +39,9 @@ jobs:
       - uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # master
         with:
           toolchain: stable
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
+        with:
+          key: release-source-health-${{ runner.os }}
       - name: Verify version and run live gate
         shell: bash
         run: |
@@ -120,9 +123,13 @@ jobs:
         with:
           node-version: 22
           cache: npm
+          cache-dependency-path: package-lock.json
       - uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # master
         with:
           toolchain: stable
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
+        with:
+          key: release-build-${{ runner.os }}-${{ matrix.platform }}
       - run: npm ci
       - name: Build Rust CLI and Tauri GUI
         shell: bash
@@ -241,9 +248,9 @@ jobs:
             fi
           done
           cd release-assets
-          sha256sum *.zip > taiwan-government-news-v2.1.5-SHA256SUMS.txt
-          for file in *.zip; do
-            printf '%s bytes  %s\n' "$(stat -c %s "$file")" "$file"
+          sha256sum -- *.zip > taiwan-government-news-v2.1.5-SHA256SUMS.txt
+          for file in ./*.zip; do
+            printf '%s bytes  %s\n' "$(stat -c %s "$file")" "${file#./}"
           done > taiwan-government-news-v2.1.5-SIZE-MANIFEST.txt
       - name: Refuse to overwrite v2.0.0 or an existing v2.1.5 release
         env:
