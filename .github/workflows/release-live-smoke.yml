@@ -62,7 +62,7 @@ jobs:
           if [[ "${{ runner.os }}" != "Windows" ]]; then chmod +x "$cli"; fi
           echo "CLI_PATH=$cli" >> "$GITHUB_ENV"
           if [[ "${{ runner.os }}" == "Windows" ]]; then
-            gui="$(find extracted -type f -name '各機關新聞整理.exe' -print -quit)"
+            gui="$(find extracted -type f -name '*.exe' ! -path '*/cli/*' ! -name 'news-scraper.exe' -print -quit)"
             test -n "$gui"
             echo "GUI_PATH=$gui" >> "$GITHUB_ENV"
           fi
