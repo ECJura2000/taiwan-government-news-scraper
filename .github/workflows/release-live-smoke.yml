@@ -56,7 +56,7 @@ jobs:
           (cd release-download && grep "  ${archive}$" "$checksums" | sha256sum -c -)
           unzip -q "release-download/$archive" -d extracted
           listing="$(unzip -Z1 "release-download/$archive")"
-          if grep -Eiq '(\.pyc?$|python|pyinstaller|openpyxl|selenium|START-GUI|TaiwanGovernmentNews-GUI)' <<< "$listing"; then exit 1; fi
+          if grep -Ei '(\.pyc?$|python|pyinstaller|openpyxl|selenium|START-GUI|TaiwanGovernmentNews-GUI)' <<< "$listing" >/dev/null; then exit 1; fi
           cli="$(find extracted -type f -name '${{ matrix.cli }}' -print -quit)"
           test -n "$cli"
           if [[ "${{ runner.os }}" != "Windows" ]]; then chmod +x "$cli"; fi
