@@ -213,7 +213,7 @@ jobs:
             codesign --verify --deep --strict --verbose=2 "release-assets/$root/installers/$(basename "$app_bundle")"
             test -n "$(find "release-assets/$root/installers" -type f -print -quit)"
           fi
-          if find "release-assets/$root" -type f | grep -Eiq '(\.pyc?$|python|pyinstaller|openpyxl|selenium)'; then
+          if find "release-assets/$root" -type f | grep -Ei '(\.pyc?$|python|pyinstaller|openpyxl|selenium)' >/dev/null; then
             echo "Archive contains a forbidden Python runtime or package" >&2
             exit 1
           fi
@@ -259,14 +259,14 @@ jobs:
             archive="release-assets/taiwan-government-news-v2.1.7-${platform}.zip"
             test -s "$archive"
             listing="$(unzip -Z1 "$archive")"
-            if grep -Eiq '(\.pyc?$|python|pyinstaller|openpyxl|selenium)' <<< "$listing"; then
+            if grep -Ei '(\.pyc?$|python|pyinstaller|openpyxl|selenium)' <<< "$listing" >/dev/null; then
               echo "$archive contains forbidden Python content" >&2
               exit 1
             fi
             if [[ "$platform" == macos-* ]]; then
-              grep -Fq '.app/' <<< "$listing"
-              grep -Fq '.app/Contents/MacOS/' <<< "$listing"
-              grep -Fq '.app/Contents/Info.plist' <<< "$listing"
+              grep -F '.app/' <<< "$listing" >/dev/null
+              grep -F '.app/Contents/MacOS/' <<< "$listing" >/dev/null
+              grep -F '.app/Contents/Info.plist' <<< "$listing" >/dev/null
             fi
           done
           archive="release-assets/taiwan-government-news-v2.1.7-windows-portable.zip"
@@ -274,13 +274,13 @@ jobs:
           test -s "$archive"
           test -s "$installer"
           listing="$(unzip -Z1 "$archive")"
-          if grep -Eiq '(\.pyc?$|python|pyinstaller|openpyxl|selenium|START-GUI|TaiwanGovernmentNews-GUI)' <<< "$listing"; then
+          if grep -Ei '(\.pyc?$|python|pyinstaller|openpyxl|selenium|START-GUI|TaiwanGovernmentNews-GUI)' <<< "$listing" >/dev/null; then
             echo "$archive contains forbidden legacy Windows launcher content" >&2
             exit 1
           fi
-          grep -Fq '各機關新聞整理.exe' <<< "$listing"
-          grep -Fq 'cli/news-scraper.exe' <<< "$listing"
-          grep -Fq 'README.txt' <<< "$listing"
+          grep -F '各機關新聞整理.exe' <<< "$listing" >/dev/null
+          grep -F 'cli/news-scraper.exe' <<< "$listing" >/dev/null
+          grep -F 'README.txt' <<< "$listing" >/dev/null
           cd release-assets
           sha256sum -- *.zip *.exe > taiwan-government-news-v2.1.7-SHA256SUMS.txt
           for file in ./*.zip ./*.exe; do
