@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+## 2.1.6 - 2026-08-10
+
+- Added Rust and npm cache coverage across quality, source-smoke, Tauri smoke, and release workflows.
+- Split regular PR/main Tauri checks from release packaging: PR/main now runs frontend, Rust quality, and Linux Tauri smoke, while the release workflow remains the full four-platform package gate.
+- Replaced macOS DMG release artifacts with ad-hoc-signed `.app` bundles inside the platform ZIPs and added `codesign --verify` release checks to block invalid macOS app bundles.
+- Updated branch protection to require the new optimized `Build Linux Tauri smoke` check instead of the old four-platform PR packaging matrix.
+
 ## 2.1.5 - 2026-08-07
 
 - Replaced the removed Svelte component constructor API with Svelte 5 `mount()`, fixing the blank Tauri window.
