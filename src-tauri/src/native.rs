@@ -16,6 +16,8 @@ use std::time::Instant;
 
 const DEFAULT_OUTPUT_DIR: &str = "新聞搜集區";
 
+pub type ProgressCallback = Arc<dyn Fn(crate::ProgressEvent) + Send + Sync + 'static>;
+
 #[derive(Debug, Clone, Copy)]
 pub struct DateRange {
     pub start: NaiveDate,
@@ -35,6 +37,14 @@ pub async fn run(
     options: &crate::RunOptions,
     cancelled: Arc<AtomicBool>,
 ) -> Result<crate::RunSummary, String> {
+    run_with_progress(options, cancelled, None).await
+}
+
+pub async fn run_with_progress(
+    options: &crate::RunOptions,
+    cancelled: Arc<AtomicBool>,
+    progress: Option<ProgressCallback>,
+) -> Result<crate::RunSummary, String> {
     let started_at = Utc::now();
     let selected: Vec<String> = if options.sources.is_empty() {
         all_sources()
@@ -45,12 +55,14 @@ pub async fn run(
         options.sources.clone()
     };
     let max_workers = options.max_workers.max(1) as usize;
+    let total = selected.len() as u32;
     let date_range = resolve_date_range(options)?;
     let client = HttpClient::new().map_err(|error| error.to_string())?;
     let mut jobs = stream::iter(selected.iter().cloned())
         .map(|source| {
             let client = client.clone();
             let cancelled = cancelled.clone();
+            let progress = progress.clone();
             async move {
                 if cancelled.load(Ordering::SeqCst) {
                     return SourceResult {
@@ -61,16 +73,44 @@ pub async fn run(
                         final_route: None,
                     };
                 }
+                if let Some(progress) = &progress {
+                    progress(crate::ProgressEvent {
+                        kind: "source_started".into(),
+                        source: Some(source.clone()),
+                        completed: None,
+                        total: Some(total),
+                        message: Some(format!("正在處理：{source}")),
+                    });
+                }
                 fetch_source(&client, &source, date_range).await
             }
         })
         .buffer_unordered(max_workers);
     let mut results = Vec::with_capacity(selected.len());
+    let mut completed = 0_u32;
     loop {
         tokio::select! {
             result = jobs.next() => {
                 match result {
-                    Some(result) => results.push(result),
+                    Some(result) => {
+                        completed += 1;
+                        if let Some(progress) = &progress {
+                            let source = result.source.clone();
+                            let failed = result.error.is_some();
+                            progress(crate::ProgressEvent {
+                                kind: if failed { "source_failed" } else { "source_finished" }.into(),
+                                source: Some(source.clone()),
+                                completed: Some(completed),
+                                total: Some(total),
+                                message: Some(if failed {
+                                    format!("來源失敗：{source}")
+                                } else {
+                                    format!("完成來源：{source}")
+                                }),
+                            });
+                        }
+                        results.push(result);
+                    },
                     None => break,
                 }
             }
@@ -85,6 +125,15 @@ pub async fn run(
 
     if cancelled.load(Ordering::SeqCst) {
         return Err("執行已取消".into());
+    }
+    if let Some(progress) = &progress {
+        progress(crate::ProgressEvent {
+            kind: "writing_outputs".into(),
+            source: None,
+            completed: Some(completed),
+            total: Some(total),
+            message: Some("正在產生 Excel 與 JSON 報告".into()),
+        });
     }
     let mut items = Vec::new();
     let mut failed_sources = Vec::new();
@@ -958,12 +1007,11 @@ fn write_outputs(
     date_range: DateRange,
 ) -> Result<(PathBuf, PathBuf), String> {
     let output_dir = PathBuf::from(options.output_dir.as_deref().unwrap_or(DEFAULT_OUTPUT_DIR));
-    let report_dir = PathBuf::from(
-        options
-            .report_dir
-            .as_deref()
-            .unwrap_or("新聞搜集區/執行紀錄"),
-    );
+    let report_dir = options
+        .report_dir
+        .as_deref()
+        .map(PathBuf::from)
+        .unwrap_or_else(|| output_dir.join("執行紀錄"));
     std::fs::create_dir_all(&output_dir).map_err(|error| error.to_string())?;
     std::fs::create_dir_all(&report_dir).map_err(|error| error.to_string())?;
     let stamp = Local::now().format("%Y%m%d_%H%M%S_%6f").to_string();
@@ -1241,5 +1289,26 @@ mod tests {
         assert_eq!(error, "執行已取消");
         assert!(!output_dir.exists());
         assert!(!report_dir.exists());
+    }
+
+    #[test]
+    fn report_dir_defaults_under_selected_output_dir() {
+        let sandbox = tempfile::tempdir().unwrap();
+        let output_dir = sandbox.path().join("selected-output");
+        let mut options = options();
+        options.output_dir = Some(output_dir.to_string_lossy().into_owned());
+
+        let (_workbook_path, report_path) = write_outputs(
+            &options,
+            &[],
+            0,
+            DateRange {
+                start: NaiveDate::from_ymd_opt(2026, 8, 3).unwrap(),
+                end: NaiveDate::from_ymd_opt(2026, 8, 9).unwrap(),
+            },
+        )
+        .unwrap();
+
+        assert!(report_path.starts_with(output_dir.join("執行紀錄")));
     }
 }

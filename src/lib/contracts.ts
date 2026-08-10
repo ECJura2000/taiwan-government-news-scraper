@@ -63,7 +63,7 @@ export interface RunOptions {
 }
 
 export interface ProgressEvent {
-  kind: "started" | "source_started" | "source_finished" | "retry" | "cancelling" | "cancelled" | "completed" | "failed";
+  kind: "started" | "source_started" | "source_finished" | "source_failed" | "retry" | "writing_outputs" | "cancelling" | "cancelled" | "completed" | "failed";
   source?: string;
   completed?: number;
   total?: number;

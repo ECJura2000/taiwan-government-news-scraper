@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+## 2.1.7 - 2026-08-10
+
+- Made the Windows release installer-first and simplified the portable ZIP to a single top-level GUI entry, with the CLI moved under `cli/`.
+- Added GUI folder picker buttons for Excel and JSON output locations, plus result buttons that reveal the generated Excel/JSON files.
+- Added source-load and run-progress percentages in the Tauri GUI; Rust now emits per-source start/finish/failure progress events.
+- Changed the default JSON report folder to follow a selected Excel output folder under `執行紀錄/` unless a report folder is explicitly selected.
+
 ## 2.1.6 - 2026-08-10
 
 - Added Rust and npm cache coverage across quality, source-smoke, Tauri smoke, and release workflows.

@@ -1,6 +1,9 @@
 <script lang="ts">
   import { invoke } from "@tauri-apps/api/core";
   import { listen, type UnlistenFn } from "@tauri-apps/api/event";
+  import { open as openDialog } from "@tauri-apps/plugin-dialog";
+  import { revealItemInDir } from "@tauri-apps/plugin-opener";
+  import { onDestroy, onMount } from "svelte";
   import type { ProgressEvent, RunOptions, RunSummary } from "./lib/contracts";
 
   let sources: string[] = [];
@@ -14,17 +17,29 @@
   let dedupeAffiliated = false;
   let failOnSourceError = false;
   let running = false;
+  let loadingSources = true;
+  let sourceLoadPercent = 0;
   let progress: ProgressEvent | null = null;
   let summary: RunSummary | null = null;
   let error = "";
   let unlisten: UnlistenFn | undefined;
+  let startedAt = 0;
+  let elapsedSeconds = 0;
+  let timer: ReturnType<typeof setInterval> | undefined;
+  let lastCompleted = 0;
+  let jsonFollowsExcel = true;
 
   async function loadSources() {
+    loadingSources = true;
+    sourceLoadPercent = 10;
     try {
       sources = await invoke<string[]>("list_sources");
+      sourceLoadPercent = 100;
       selectedSources = [...sources];
     } catch (cause) {
       error = String(cause);
+    } finally {
+      loadingSources = false;
     }
   }
 
@@ -32,12 +47,18 @@
     running = true;
     summary = null;
     error = "";
+    lastCompleted = 0;
+    elapsedSeconds = 0;
+    startedAt = Date.now();
     progress = { kind: "started", total: selectedSources.length };
+    timer = setInterval(() => {
+      elapsedSeconds = Math.floor((Date.now() - startedAt) / 1000);
+    }, 1000);
     try {
       const options: RunOptions = {
         sources: selectedSources.length === sources.length ? [] : selectedSources,
         output_dir: outputDir || undefined,
-        report_dir: reportDir || undefined,
+        report_dir: jsonFollowsExcel ? undefined : reportDir || undefined,
         date: date || undefined,
         start_date: startDate || undefined,
         end_date: endDate || undefined,
@@ -50,6 +71,10 @@
       error = String(cause);
     } finally {
       running = false;
+      if (timer) {
+        clearInterval(timer);
+        timer = undefined;
+      }
     }
   }
 
@@ -68,18 +93,62 @@
       : [...selectedSources, source];
   }
 
-  $: statusLabel = summary?.status ?? (progress?.kind === "cancelled" ? "已取消" : running ? "執行中" : "尚未執行");
+  function normalizeDialogPath(path: string | string[] | null): string {
+    if (Array.isArray(path)) return path[0] ?? "";
+    return path ?? "";
+  }
 
-  loadSources();
-  listen<ProgressEvent>("scraper-progress", (event) => {
-    progress = event.payload;
-  }).then((cleanup) => (unlisten = cleanup));
+  async function chooseOutputDir() {
+    const path = normalizeDialogPath(await openDialog({ directory: true, multiple: false }));
+    if (path) outputDir = path;
+  }
 
-  // Svelte calls this cleanup when the component is destroyed.
-  const cleanup = () => unlisten?.();
+  async function chooseReportDir() {
+    const path = normalizeDialogPath(await openDialog({ directory: true, multiple: false }));
+    if (path) {
+      reportDir = path;
+      jsonFollowsExcel = false;
+    }
+  }
+
+  function useDefaultOutputDir() {
+    outputDir = "";
+  }
+
+  function followExcelDir() {
+    reportDir = "";
+    jsonFollowsExcel = true;
+  }
+
+  async function revealPath(path: string) {
+    try {
+      await revealItemInDir(path);
+    } catch (cause) {
+      error = String(cause);
+    }
+  }
+
+  $: statusLabel = summary?.status ?? (progress?.kind === "cancelled" ? "已取消" : running ? "執行中" : loadingSources ? "載入中" : "尚未執行");
+  $: progressTotal = progress?.total ?? selectedSources.length;
+  $: progressCompleted = progress?.completed ?? lastCompleted;
+  $: if (progress?.completed !== undefined) lastCompleted = progress.completed;
+  $: runPercent = progressTotal ? Math.min(100, Math.round((progressCompleted / progressTotal) * 100)) : 0;
+  $: activeSource = progress?.source ?? "";
+  $: progressMessage = progress?.message ?? progress?.kind ?? "尚未開始";
+  $: reportPlaceholder = jsonFollowsExcel ? "跟隨 Excel 資料夾下的執行紀錄" : "使用指定 JSON 資料夾";
+
+  onMount(() => {
+    loadSources();
+    listen<ProgressEvent>("scraper-progress", (event) => {
+      progress = event.payload;
+    }).then((cleanup) => (unlisten = cleanup));
+  });
+
+  onDestroy(() => {
+    unlisten?.();
+    if (timer) clearInterval(timer);
+  });
 </script>
-
-<svelte:window onbeforeunload={cleanup} />
 
 <main class="shell">
   <header class="topbar">
@@ -96,13 +165,20 @@
       <div class="card-heading">
         <div>
           <h2>來源</h2>
-          <p>{selectedSources.length} / {sources.length} 個來源已選取</p>
+          {#if loadingSources}
+            <p>載入來源 {sourceLoadPercent}%</p>
+          {:else}
+            <p>{selectedSources.length} / {sources.length} 個來源已選取</p>
+          {/if}
         </div>
         <div class="button-row">
           <button class="quiet" onclick={() => (selectedSources = [...sources])}>全選</button>
           <button class="quiet" onclick={() => (selectedSources = [])}>清除</button>
         </div>
       </div>
+      {#if loadingSources}
+        <div class="progress-track load-track"><div style={`width: ${sourceLoadPercent}%`}></div></div>
+      {/if}
       <div class="source-list">
         {#each sources as source}
           <label class:selected={selectedSources.includes(source)}>
@@ -130,11 +206,19 @@
       </label>
       <label class="field">
         <span>Excel 輸出資料夾（可選）</span>
-        <input bind:value={outputDir} placeholder="使用預設資料夾" />
+        <div class="input-row">
+          <input bind:value={outputDir} placeholder="使用預設資料夾" readonly />
+          <button type="button" class="quiet" onclick={chooseOutputDir}>選擇資料夾</button>
+          <button type="button" class="quiet" onclick={useDefaultOutputDir}>使用預設</button>
+        </div>
       </label>
       <label class="field">
         <span>JSON 報告資料夾（可選）</span>
-        <input bind:value={reportDir} placeholder="使用 Excel 資料夾下的執行紀錄" />
+        <div class="input-row">
+          <input bind:value={reportDir} placeholder={reportPlaceholder} readonly />
+          <button type="button" class="quiet" onclick={chooseReportDir}>選擇資料夾</button>
+          <button type="button" class="quiet" onclick={followExcelDir}>跟隨 Excel</button>
+        </div>
       </label>
       <label class="field">
         <span>指定日期（可選）</span>
@@ -161,10 +245,16 @@
       </div>
       {#if progress}
         <div class="progress-box">
-          <strong>{progress.message ?? progress.kind}</strong>
-          {#if progress.total}
-            <span>{progress.completed ?? 0} / {progress.total}</span>
-          {/if}
+          <div class="progress-heading">
+            <strong>{progressMessage}</strong>
+            <span>{runPercent}%</span>
+          </div>
+          <div class="progress-track"><div style={`width: ${runPercent}%`}></div></div>
+          <div class="progress-meta">
+            <span>{progressCompleted} / {progressTotal} 個來源</span>
+            {#if activeSource}<span>目前：{activeSource}</span>{/if}
+            {#if running}<span>耗時：{elapsedSeconds} 秒</span>{/if}
+          </div>
         </div>
       {/if}
     </article>
@@ -192,6 +282,14 @@
       <div class="paths">
         <div><span>Excel</span><code>{summary.output_file || "未產生"}</code></div>
         <div><span>報告</span><code>{summary.report_file || "未產生"}</code></div>
+      </div>
+      <div class="button-row result-actions">
+        {#if summary.output_file}
+          <button class="quiet" onclick={() => revealPath(summary?.output_file ?? "")}>開啟 Excel 所在資料夾</button>
+        {/if}
+        {#if summary.report_file}
+          <button class="quiet" onclick={() => revealPath(summary?.report_file ?? "")}>開啟 JSON 所在資料夾</button>
+        {/if}
       </div>
     </section>
   {/if}
