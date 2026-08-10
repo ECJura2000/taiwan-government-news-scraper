@@ -142,6 +142,10 @@ mod commands {
         options: RunOptions,
     ) -> Result<RunSummary, String> {
         state.cancelled.store(false, Ordering::SeqCst);
+        let progress_app = app.clone();
+        let progress = Arc::new(move |event: ProgressEvent| {
+            let _ = progress_app.emit("scraper-progress", event);
+        });
         let _ = app.emit(
             "scraper-progress",
             ProgressEvent {
@@ -156,7 +160,13 @@ mod commands {
                 message: Some("正在啟動 Rust native engine".into()),
             },
         );
-        let summary = match super::native::run(&options, state.cancelled.clone()).await {
+        let summary = match super::native::run_with_progress(
+            &options,
+            state.cancelled.clone(),
+            Some(progress),
+        )
+        .await
+        {
             Ok(summary) => summary,
             Err(error) => {
                 let cancelled = error == "執行已取消";
@@ -189,6 +199,8 @@ mod commands {
 
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_opener::init())
         .manage(AppState {
             cancelled: Arc::new(AtomicBool::new(false)),
         })

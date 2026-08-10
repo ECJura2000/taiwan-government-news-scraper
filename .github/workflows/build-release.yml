@@ -3,7 +3,7 @@ name: Build and release Rust apps
 on:
   workflow_dispatch:
   push:
-    tags: ["v2.1.6"]
+    tags: ["v2.1.7"]
 
 permissions:
   contents: read
@@ -21,9 +21,9 @@ jobs:
         if: github.event_name == 'workflow_dispatch' && github.ref != 'refs/heads/main'
         run: exit 1
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - name: Require the v2.1.6 workspace version
+      - name: Require the v2.1.7 workspace version
         shell: bash
-        run: test "$(sed -n 's/^version = "\([^"]*\)"/\1/p' Cargo.toml)" = "2.1.6"
+        run: test "$(sed -n 's/^version = "\([^"]*\)"/\1/p' Cargo.toml)" = "2.1.7"
 
   source-health:
     name: Gate all 72 live sources
@@ -46,7 +46,7 @@ jobs:
         shell: bash
         run: |
           version="$(sed -n 's/^version = "\([^"]*\)"/\1/p' Cargo.toml)"
-          test "$version" = "2.1.6"
+          test "$version" = "2.1.7"
           if [[ "$GITHUB_REF" == refs/tags/* ]]; then test "$GITHUB_REF_NAME" = "v$version"; fi
           mkdir -p source-health/output source-health/reports
           cargo run --release --bin news-scraper -- collect \
@@ -184,26 +184,35 @@ jobs:
       - name: Stage portable archive
         shell: bash
         run: |
-          tag="v2.1.6"
-          root="taiwan-government-news-${tag}-${{ matrix.platform }}"
-          mkdir -p "release-assets/$root/installers"
-          cp "target/release/${{ matrix.cli }}" "release-assets/$root/"
-          cp docs/PORTABLE_README.txt "release-assets/$root/README.txt"
+          tag="v2.1.7"
+          if [[ "${{ runner.os }}" == "Windows" ]]; then
+            root="taiwan-government-news-${tag}-windows-portable"
+            mkdir -p "release-assets/$root/cli"
+            cp target/release/taiwan-government-news.exe "release-assets/$root/各機關新聞整理.exe"
+            cp target/release/news-scraper.exe "release-assets/$root/cli/news-scraper.exe"
+            cp docs/PORTABLE_README.txt "release-assets/$root/README.txt"
+            installer="$(find target/release/bundle/nsis -type f -name '*.exe' -print -quit)"
+            test -n "$installer"
+            cp "$installer" "release-assets/TaiwanGovernmentNews-Setup-v2.1.7.exe"
+            test -s "release-assets/$root/各機關新聞整理.exe"
+            test -s "release-assets/$root/cli/news-scraper.exe"
+            test -s "release-assets/TaiwanGovernmentNews-Setup-v2.1.7.exe"
+          else
+            root="taiwan-government-news-${tag}-${{ matrix.platform }}"
+            mkdir -p "release-assets/$root/installers"
+            cp "target/release/${{ matrix.cli }}" "release-assets/$root/"
+            cp docs/PORTABLE_README.txt "release-assets/$root/README.txt"
+          fi
           if [[ "${{ runner.os }}" == "Linux" ]]; then
             find target/release/bundle -type f \( -name '*.AppImage' -o -name '*.deb' \) -exec cp {} "release-assets/$root/installers/" \;
-          elif [[ "${{ runner.os }}" == "Windows" ]]; then
-            cp target/release/taiwan-government-news.exe "release-assets/$root/TaiwanGovernmentNews-GUI.exe"
-            cp packaging/windows/START-GUI.cmd "release-assets/$root/START-GUI.cmd"
-            find target/release/bundle/nsis -type f -name '*.exe' -exec cp {} "release-assets/$root/installers/" \;
-            test -s "release-assets/$root/TaiwanGovernmentNews-GUI.exe"
-            test -s "release-assets/$root/START-GUI.cmd"
-          else
+            test -n "$(find "release-assets/$root/installers" -type f -print -quit)"
+          elif [[ "${{ runner.os }}" == "macOS" ]]; then
             app_bundle="$(find target/release/bundle/macos -maxdepth 1 -type d -name '*.app' -print -quit)"
             test -n "$app_bundle"
             ditto "$app_bundle" "release-assets/$root/installers/$(basename "$app_bundle")"
             codesign --verify --deep --strict --verbose=2 "release-assets/$root/installers/$(basename "$app_bundle")"
+            test -n "$(find "release-assets/$root/installers" -type f -print -quit)"
           fi
-          test -n "$(find "release-assets/$root/installers" -type f -print -quit)"
           if find "release-assets/$root" -type f | grep -Eiq '(\.pyc?$|python|pyinstaller|openpyxl|selenium)'; then
             echo "Archive contains a forbidden Python runtime or package" >&2
             exit 1
@@ -211,25 +220,27 @@ jobs:
       - name: Create ZIP on Windows
         if: runner.os == 'Windows'
         shell: pwsh
-        run: Compress-Archive -Path "release-assets/taiwan-government-news-v2.1.6-${{ matrix.platform }}" -DestinationPath "release-assets/taiwan-government-news-v2.1.6-${{ matrix.platform }}.zip"
+        run: Compress-Archive -Path "release-assets/taiwan-government-news-v2.1.7-windows-portable" -DestinationPath "release-assets/taiwan-government-news-v2.1.7-windows-portable.zip"
       - name: Create ZIP on Linux
         if: runner.os == 'Linux'
         shell: bash
-        run: cd release-assets && zip -qr "taiwan-government-news-v2.1.6-${{ matrix.platform }}.zip" "taiwan-government-news-v2.1.6-${{ matrix.platform }}"
+        run: cd release-assets && zip -qr "taiwan-government-news-v2.1.7-${{ matrix.platform }}.zip" "taiwan-government-news-v2.1.7-${{ matrix.platform }}"
       - name: Create ZIP on macOS
         if: runner.os == 'macOS'
         shell: bash
-        run: cd release-assets && ditto -c -k --sequesterRsrc --keepParent "taiwan-government-news-v2.1.6-${{ matrix.platform }}" "taiwan-government-news-v2.1.6-${{ matrix.platform }}.zip"
+        run: cd release-assets && ditto -c -k --sequesterRsrc --keepParent "taiwan-government-news-v2.1.7-${{ matrix.platform }}" "taiwan-government-news-v2.1.7-${{ matrix.platform }}.zip"
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: release-bundle-${{ matrix.platform }}
-          path: release-assets/*.zip
+          path: |
+            release-assets/*.zip
+            release-assets/*.exe
           if-no-files-found: error
           compression-level: 0
           retention-days: 1
 
   release:
-    name: Publish v2.1.6
+    name: Publish v2.1.7
     needs: [source-health, build]
     runs-on: ubuntu-22.04
     permissions:
@@ -244,16 +255,12 @@ jobs:
       - name: Verify assets and build manifests
         shell: bash
         run: |
-          for platform in linux windows macos-arm64 macos-x64; do
-            archive="release-assets/taiwan-government-news-v2.1.6-${platform}.zip"
+          for platform in linux macos-arm64 macos-x64; do
+            archive="release-assets/taiwan-government-news-v2.1.7-${platform}.zip"
             test -s "$archive"
             if unzip -l "$archive" | grep -Eiq '(\.pyc?$|python|pyinstaller|openpyxl|selenium)'; then
               echo "$archive contains forbidden Python content" >&2
               exit 1
-            fi
-            if [[ "$platform" == "windows" ]]; then
-              unzip -Z1 "$archive" | grep -Eq '/TaiwanGovernmentNews-GUI\.exe$'
-              unzip -Z1 "$archive" | grep -Eq '/START-GUI\.cmd$'
             fi
             if [[ "$platform" == macos-* ]]; then
               unzip -Z1 "$archive" | grep -Fq '.app/'
@@ -261,19 +268,30 @@ jobs:
               unzip -Z1 "$archive" | grep -Fq '.app/Contents/Info.plist'
             fi
           done
+          archive="release-assets/taiwan-government-news-v2.1.7-windows-portable.zip"
+          installer="release-assets/TaiwanGovernmentNews-Setup-v2.1.7.exe"
+          test -s "$archive"
+          test -s "$installer"
+          if unzip -l "$archive" | grep -Eiq '(\.pyc?$|python|pyinstaller|openpyxl|selenium|START-GUI|TaiwanGovernmentNews-GUI)'; then
+            echo "$archive contains forbidden legacy Windows launcher content" >&2
+            exit 1
+          fi
+          unzip -Z1 "$archive" | grep -Fq '各機關新聞整理.exe'
+          unzip -Z1 "$archive" | grep -Fq 'cli/news-scraper.exe'
+          unzip -Z1 "$archive" | grep -Fq 'README.txt'
           cd release-assets
-          sha256sum -- *.zip > taiwan-government-news-v2.1.6-SHA256SUMS.txt
-          for file in ./*.zip; do
+          sha256sum -- *.zip *.exe > taiwan-government-news-v2.1.7-SHA256SUMS.txt
+          for file in ./*.zip ./*.exe; do
             printf '%s bytes  %s\n' "$(stat -c %s "$file")" "${file#./}"
-          done > taiwan-government-news-v2.1.6-SIZE-MANIFEST.txt
-      - name: Refuse to overwrite v2.0.0 or an existing v2.1.6 release
+          done > taiwan-government-news-v2.1.7-SIZE-MANIFEST.txt
+      - name: Refuse to overwrite v2.0.0 or an existing v2.1.7 release
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
           gh release view v2.0.0 --repo "$GITHUB_REPOSITORY" >/dev/null
-          if gh release view v2.1.6 --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            echo "v2.1.6 already exists; refusing to overwrite it" >&2
+          if gh release view v2.1.7 --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "v2.1.7 already exists; refusing to overwrite it" >&2
             exit 1
           fi
       - name: Publish immutable Rust release
@@ -281,14 +299,14 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
-          if [[ "$GITHUB_REF" == refs/tags/v2.1.6 ]]; then
+          if [[ "$GITHUB_REF" == refs/tags/v2.1.7 ]]; then
             tag_args=(--verify-tag)
           else
             tag_args=(--target "$GITHUB_SHA")
           fi
-          gh release create v2.1.6 release-assets/*.zip release-assets/*.txt \
+          gh release create v2.1.7 release-assets/*.zip release-assets/*.exe release-assets/*.txt \
             --repo "$GITHUB_REPOSITORY" \
             "${tag_args[@]}" \
             --generate-notes \
-            --title "各機關新聞整理 v2.1.6" \
-            --notes "完整 Rust 取代版的 CI 與封裝維護版。PR/main 檢查已改為快取加速的 Rust quality、Svelte/TypeScript 與 Linux Tauri smoke；完整 Linux、Windows、macOS Apple Silicon、macOS Intel 打包仍保留在 release workflow。macOS ZIP 內改附 ad-hoc-signed .app bundle 並由 codesign 驗證，避免再次發布先前會被判定損毀的 DMG。Windows ZIP 仍包含 portable GUI、START-GUI.cmd、CLI 與 NSIS 安裝檔。"
+            --title "各機關新聞整理 v2.1.7" \
+            --notes "完整 Rust 取代版的 Windows/GUI 使用性修正版。Windows 一般使用者請優先下載 TaiwanGovernmentNews-Setup-v2.1.7.exe；portable ZIP 改為頂層 各機關新聞整理.exe 並把 CLI 移到 cli/news-scraper.exe，不再要求 START-GUI.cmd 或外露 CMD。GUI 新增 Excel/JSON 資料夾選擇、來源載入百分比、執行百分比與完成後開啟輸出位置。CLI、JSON schema v4、Excel 格式與 72 個來源 catalog 維持相容。"

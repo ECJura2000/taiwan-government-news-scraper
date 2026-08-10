@@ -6,7 +6,7 @@ on:
       tag:
         description: Existing Rust release tag to verify
         required: true
-        default: v2.1.6
+        default: v2.1.7
         type: string
 
 permissions:
@@ -39,24 +39,31 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ inputs.tag }}
         run: |
-          archive="taiwan-government-news-${RELEASE_TAG}-${{ matrix.platform }}.zip"
+          if [[ "${{ runner.os }}" == "Windows" ]]; then
+            archive="taiwan-government-news-${RELEASE_TAG}-windows-portable.zip"
+            installer="TaiwanGovernmentNews-Setup-${RELEASE_TAG}.exe"
+          else
+            archive="taiwan-government-news-${RELEASE_TAG}-${{ matrix.platform }}.zip"
+          fi
           checksums="taiwan-government-news-${RELEASE_TAG}-SHA256SUMS.txt"
           mkdir -p release-download extracted
-          gh release download "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --dir release-download --pattern "$archive" --pattern "$checksums"
+          if [[ "${{ runner.os }}" == "Windows" ]]; then
+            gh release download "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --dir release-download --pattern "$archive" --pattern "$installer" --pattern "$checksums"
+            (cd release-download && grep "  ${installer}$" "$checksums" | sha256sum -c -)
+          else
+            gh release download "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --dir release-download --pattern "$archive" --pattern "$checksums"
+          fi
           (cd release-download && grep "  ${archive}$" "$checksums" | sha256sum -c -)
           unzip -q "release-download/$archive" -d extracted
-          if unzip -l "release-download/$archive" | grep -Eiq '(\.pyc?$|python|pyinstaller|openpyxl|selenium)'; then exit 1; fi
+          if unzip -l "release-download/$archive" | grep -Eiq '(\.pyc?$|python|pyinstaller|openpyxl|selenium|START-GUI|TaiwanGovernmentNews-GUI)'; then exit 1; fi
           cli="$(find extracted -type f -name '${{ matrix.cli }}' -print -quit)"
           test -n "$cli"
           if [[ "${{ runner.os }}" != "Windows" ]]; then chmod +x "$cli"; fi
           echo "CLI_PATH=$cli" >> "$GITHUB_ENV"
           if [[ "${{ runner.os }}" == "Windows" ]]; then
-            gui="$(find extracted -type f -name 'TaiwanGovernmentNews-GUI.exe' -print -quit)"
-            launcher="$(find extracted -type f -name 'START-GUI.cmd' -print -quit)"
+            gui="$(find extracted -type f -name '各機關新聞整理.exe' -print -quit)"
             test -n "$gui"
-            test -n "$launcher"
             echo "GUI_PATH=$gui" >> "$GITHUB_ENV"
-            echo "GUI_LAUNCHER_PATH=$launcher" >> "$GITHUB_ENV"
           fi
       - name: Run Windows portable GUI smoke
         if: runner.os == 'Windows'
@@ -64,9 +71,6 @@ jobs:
         run: |
           if (-not (Test-Path $env:GUI_PATH)) {
             throw "Portable GUI is missing from the extracted Windows archive"
-          }
-          if (-not (Test-Path $env:GUI_LAUNCHER_PATH)) {
-            throw "START-GUI.cmd is missing from the extracted Windows archive"
           }
           $readyFile = Join-Path $env:RUNNER_TEMP "taiwan-government-news-release-gui-ready.txt"
           Remove-Item $readyFile -Force -ErrorAction SilentlyContinue
