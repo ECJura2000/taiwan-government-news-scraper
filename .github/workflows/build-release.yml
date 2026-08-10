@@ -258,27 +258,29 @@ jobs:
           for platform in linux macos-arm64 macos-x64; do
             archive="release-assets/taiwan-government-news-v2.1.7-${platform}.zip"
             test -s "$archive"
-            if unzip -l "$archive" | grep -Eiq '(\.pyc?$|python|pyinstaller|openpyxl|selenium)'; then
+            listing="$(unzip -Z1 "$archive")"
+            if grep -Eiq '(\.pyc?$|python|pyinstaller|openpyxl|selenium)' <<< "$listing"; then
               echo "$archive contains forbidden Python content" >&2
               exit 1
             fi
             if [[ "$platform" == macos-* ]]; then
-              unzip -Z1 "$archive" | grep -Fq '.app/'
-              unzip -Z1 "$archive" | grep -Fq '.app/Contents/MacOS/'
-              unzip -Z1 "$archive" | grep -Fq '.app/Contents/Info.plist'
+              grep -Fq '.app/' <<< "$listing"
+              grep -Fq '.app/Contents/MacOS/' <<< "$listing"
+              grep -Fq '.app/Contents/Info.plist' <<< "$listing"
             fi
           done
           archive="release-assets/taiwan-government-news-v2.1.7-windows-portable.zip"
           installer="release-assets/TaiwanGovernmentNews-Setup-v2.1.7.exe"
           test -s "$archive"
           test -s "$installer"
-          if unzip -l "$archive" | grep -Eiq '(\.pyc?$|python|pyinstaller|openpyxl|selenium|START-GUI|TaiwanGovernmentNews-GUI)'; then
+          listing="$(unzip -Z1 "$archive")"
+          if grep -Eiq '(\.pyc?$|python|pyinstaller|openpyxl|selenium|START-GUI|TaiwanGovernmentNews-GUI)' <<< "$listing"; then
             echo "$archive contains forbidden legacy Windows launcher content" >&2
             exit 1
           fi
-          unzip -Z1 "$archive" | grep -Fq '各機關新聞整理.exe'
-          unzip -Z1 "$archive" | grep -Fq 'cli/news-scraper.exe'
-          unzip -Z1 "$archive" | grep -Fq 'README.txt'
+          grep -Fq '各機關新聞整理.exe' <<< "$listing"
+          grep -Fq 'cli/news-scraper.exe' <<< "$listing"
+          grep -Fq 'README.txt' <<< "$listing"
           cd release-assets
           sha256sum -- *.zip *.exe > taiwan-government-news-v2.1.7-SHA256SUMS.txt
           for file in ./*.zip ./*.exe; do
