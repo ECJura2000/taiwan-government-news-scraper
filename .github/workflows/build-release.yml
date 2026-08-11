@@ -285,14 +285,23 @@ jobs:
           installer="release-assets/TaiwanGovernmentNews-Setup-v2.1.9.exe"
           test -s "$archive"
           test -s "$installer"
-          listing="$(unzip -Z1 "$archive")"
-          if grep -Ei '(\.pyc?$|python|pyinstaller|openpyxl|selenium|START-GUI|TaiwanGovernmentNews-GUI)' <<< "$listing" >/dev/null; then
-            echo "$archive contains forbidden legacy Windows launcher content" >&2
-            exit 1
-          fi
-          grep -F '各機關新聞整理.exe' <<< "$listing" >/dev/null
-          grep -F 'cli/news-scraper.exe' <<< "$listing" >/dev/null
-          grep -F 'README.txt' <<< "$listing" >/dev/null
+          python3 - "$archive" <<'PY'
+          import re
+          import sys
+          import zipfile
+
+          archive = sys.argv[1]
+          forbidden = re.compile(r"(\.pyc?$|python|pyinstaller|openpyxl|selenium|START-GUI|TaiwanGovernmentNews-GUI)", re.I)
+          with zipfile.ZipFile(archive) as zf:
+              names = zf.namelist()
+          bad = [name for name in names if forbidden.search(name)]
+          if bad:
+              raise SystemExit(f"{archive} contains forbidden legacy Windows launcher content: {bad[:5]}")
+          required = ["各機關新聞整理.exe", "cli/news-scraper.exe", "README.txt"]
+          missing = [needle for needle in required if not any(needle in name for name in names)]
+          if missing:
+              raise SystemExit(f"{archive} is missing required entries: {missing}; entries={names}")
+          PY
           cd release-assets
           sha256sum -- *.zip *.exe > taiwan-government-news-v2.1.9-SHA256SUMS.txt
           for file in ./*.zip ./*.exe; do
