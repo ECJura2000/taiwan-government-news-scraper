@@ -28,11 +28,13 @@
   let timer: ReturnType<typeof setInterval> | undefined;
   let lastCompleted = 0;
   let jsonFollowsExcel = true;
+  let defaultOutputDir = "";
 
   async function loadSources() {
     loadingSources = true;
     sourceLoadPercent = 10;
     try {
+      defaultOutputDir = await invoke<string>("default_output_dir");
       sources = await invoke<string[]>("list_sources");
       sourceLoadPercent = 100;
       selectedSources = [...sources];
@@ -50,7 +52,7 @@
     lastCompleted = 0;
     elapsedSeconds = 0;
     startedAt = Date.now();
-    progress = { kind: "started", total: selectedSources.length };
+    progress = { kind: "started", completed: 0, total: selectedSources.length, message: "正在準備執行環境" };
     timer = setInterval(() => {
       elapsedSeconds = Math.floor((Date.now() - startedAt) / 1000);
     }, 1000);
@@ -132,10 +134,28 @@
   $: progressTotal = progress?.total ?? selectedSources.length;
   $: progressCompleted = progress?.completed ?? lastCompleted;
   $: if (progress?.completed !== undefined) lastCompleted = progress.completed;
-  $: runPercent = progressTotal ? Math.min(100, Math.round((progressCompleted / progressTotal) * 100)) : 0;
+  $: runPercent = (() => {
+    if (!progress) return 0;
+    if (progress.kind === "completed") return 100;
+    if (progress.kind === "writing_outputs") return 95;
+    if (progress.kind === "started" || progress.kind === "source_started") {
+      return progressCompleted > 0 && progressTotal
+        ? Math.max(5, Math.round(5 + (progressCompleted / progressTotal) * 90))
+        : 5;
+    }
+    if (!progressTotal) return running ? 5 : 0;
+    return Math.min(95, Math.max(5, Math.round(5 + (progressCompleted / progressTotal) * 90)));
+  })();
   $: activeSource = progress?.source ?? "";
   $: progressMessage = progress?.message ?? progress?.kind ?? "尚未開始";
-  $: reportPlaceholder = jsonFollowsExcel ? "跟隨 Excel 資料夾下的執行紀錄" : "使用指定 JSON 資料夾";
+  $: outputPlaceholder = defaultOutputDir ? `預設：${defaultOutputDir}` : "使用預設資料夾";
+  $: effectiveOutputDir = outputDir || defaultOutputDir;
+  $: reportPlaceholder =
+    jsonFollowsExcel && effectiveOutputDir
+      ? `預設：${effectiveOutputDir}/執行紀錄`
+      : jsonFollowsExcel
+        ? "跟隨 Excel 資料夾下的執行紀錄"
+        : "使用指定 JSON 資料夾";
 
   onMount(() => {
     loadSources();
@@ -207,7 +227,7 @@
       <label class="field">
         <span>Excel 輸出資料夾（可選）</span>
         <div class="input-row">
-          <input bind:value={outputDir} placeholder="使用預設資料夾" readonly />
+          <input bind:value={outputDir} placeholder={outputPlaceholder} readonly />
           <button type="button" class="quiet" onclick={chooseOutputDir}>選擇資料夾</button>
           <button type="button" class="quiet" onclick={useDefaultOutputDir}>使用預設</button>
         </div>

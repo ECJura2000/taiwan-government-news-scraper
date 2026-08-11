@@ -1,7 +1,8 @@
 use serde::{Deserialize, Serialize};
+use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
-use tauri::{Emitter, State};
+use tauri::{Emitter, Manager, State};
 
 pub mod browser;
 pub mod core;
@@ -130,6 +131,11 @@ mod commands {
     }
 
     #[tauri::command]
+    pub fn default_output_dir(app: tauri::AppHandle) -> Result<String, String> {
+        Ok(default_gui_output_dir(&app)?.to_string_lossy().into_owned())
+    }
+
+    #[tauri::command]
     pub async fn cancel_run(state: State<'_, AppState>) -> Result<(), String> {
         state.cancelled.store(true, Ordering::SeqCst);
         Ok(())
@@ -142,6 +148,7 @@ mod commands {
         options: RunOptions,
     ) -> Result<RunSummary, String> {
         state.cancelled.store(false, Ordering::SeqCst);
+        let options = apply_gui_default_paths(&app, options)?;
         let progress_app = app.clone();
         let progress = Arc::new(move |event: ProgressEvent| {
             let _ = progress_app.emit("scraper-progress", event);
@@ -195,6 +202,41 @@ mod commands {
         );
         Ok(summary)
     }
+
+    fn apply_gui_default_paths(
+        app: &tauri::AppHandle,
+        mut options: RunOptions,
+    ) -> Result<RunOptions, String> {
+        if options
+            .output_dir
+            .as_deref()
+            .map(str::trim)
+            .unwrap_or_default()
+            .is_empty()
+        {
+            options.output_dir = Some(default_gui_output_dir(app)?.to_string_lossy().into_owned());
+        }
+        if options
+            .report_dir
+            .as_deref()
+            .map(str::trim)
+            .unwrap_or_default()
+            .is_empty()
+        {
+            options.report_dir = None;
+        }
+        Ok(options)
+    }
+
+    fn default_gui_output_dir(app: &tauri::AppHandle) -> Result<PathBuf, String> {
+        let base = app
+            .path()
+            .download_dir()
+            .or_else(|_| app.path().document_dir())
+            .or_else(|_| app.path().app_data_dir())
+            .map_err(|error| format!("無法取得可寫入的預設輸出資料夾：{error}"))?;
+        Ok(base.join("新聞搜集區"))
+    }
 }
 
 pub fn run() {
@@ -207,6 +249,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             commands::mark_frontend_ready,
             commands::list_sources,
+            commands::default_output_dir,
             commands::run_scrape,
             commands::cancel_run
         ])

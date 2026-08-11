@@ -601,9 +601,26 @@ const EXCEL_HEADERS: [&str; 15] = [
 ];
 
 const EXCEL_CELL_CHAR_LIMIT: usize = 32_767;
+const EXCEL_LATIN_FONT: &str = "Times New Roman";
+const EXCEL_CJK_FONT: &str = "標楷體";
 
 fn bounded_excel_text(value: &str) -> String {
     value.chars().take(EXCEL_CELL_CHAR_LIMIT).collect()
+}
+
+fn contains_cjk(value: &str) -> bool {
+    value.chars().any(|ch| {
+        matches!(
+            ch as u32,
+            0x3400..=0x4DBF
+                | 0x4E00..=0x9FFF
+                | 0xF900..=0xFAFF
+                | 0x20000..=0x2A6DF
+                | 0x2A700..=0x2B73F
+                | 0x2B740..=0x2B81F
+                | 0x2B820..=0x2CEAF
+        )
+    })
 }
 
 fn excel_row(item: &NewsItem) -> (Vec<String>, u32, String) {
@@ -718,13 +735,22 @@ fn roc_date(value: &str) -> Option<String> {
     ))
 }
 
+struct ExcelFormats {
+    header: Format,
+    body: Format,
+    latin_body: Format,
+    high: Format,
+    latin_high: Format,
+    possible: Format,
+    latin_possible: Format,
+}
+
 fn write_table_sheet(
     workbook: &mut Workbook,
     name: &str,
     headers: &[&str],
     rows: &[Vec<String>],
-    header_format: &Format,
-    body_format: &Format,
+    formats: &ExcelFormats,
 ) -> Result<(), String> {
     let worksheet = workbook
         .add_worksheet()
@@ -732,14 +758,19 @@ fn write_table_sheet(
         .map_err(|error| error.to_string())?;
     for (column, title) in headers.iter().enumerate() {
         worksheet
-            .write_string_with_format(0, column as u16, *title, header_format)
+            .write_string_with_format(0, column as u16, *title, &formats.header)
             .map_err(|error| error.to_string())?;
     }
     for (row, values) in rows.iter().enumerate() {
         for (column, value) in values.iter().enumerate() {
             let value = bounded_excel_text(value);
+            let cell_format = if contains_cjk(&value) {
+                &formats.body
+            } else {
+                &formats.latin_body
+            };
             worksheet
-                .write_string_with_format((row + 1) as u32, column as u16, &value, body_format)
+                .write_string_with_format((row + 1) as u32, column as u16, &value, cell_format)
                 .map_err(|error| error.to_string())?;
         }
     }
@@ -902,10 +933,7 @@ fn write_news_sheet(
     workbook: &mut Workbook,
     name: &str,
     rows: &[(Vec<String>, u32, String)],
-    header_format: &Format,
-    body_format: &Format,
-    high_format: &Format,
-    possible_format: &Format,
+    formats: &ExcelFormats,
 ) -> Result<(), String> {
     let worksheet = workbook
         .add_worksheet()
@@ -913,25 +941,39 @@ fn write_news_sheet(
         .map_err(|error| error.to_string())?;
     for (column, title) in EXCEL_HEADERS.iter().enumerate() {
         worksheet
-            .write_string_with_format(0, column as u16, *title, header_format)
+            .write_string_with_format(0, column as u16, *title, &formats.header)
             .map_err(|error| error.to_string())?;
     }
     let mut date_cells: BTreeMap<(String, String), Vec<String>> = BTreeMap::new();
     for (row, (values, score, relevance)) in rows.iter().enumerate() {
         let row = (row + 1) as u32;
-        let row_format = if relevance == "高度相關" {
-            high_format
-        } else if relevance == "可能相關" {
-            possible_format
-        } else {
-            body_format
-        };
         for (column, value) in values.iter().enumerate() {
             let bounded_value = bounded_excel_text(value);
-            let cell_format = if column == 7 && !value.is_empty() {
-                high_format
+            let base_format = if contains_cjk(&bounded_value) {
+                &formats.body
             } else {
-                row_format
+                &formats.latin_body
+            };
+            let highlight_format = if contains_cjk(&bounded_value) {
+                &formats.high
+            } else {
+                &formats.latin_high
+            };
+            let possible_relevance_format = if contains_cjk(&bounded_value) {
+                &formats.possible
+            } else {
+                &formats.latin_possible
+            };
+            let cell_format = if column == 7 && !value.is_empty() {
+                highlight_format
+            } else if column == 10 {
+                &formats.latin_body
+            } else if relevance == "高度相關" {
+                highlight_format
+            } else if relevance == "可能相關" {
+                possible_relevance_format
+            } else {
+                base_format
             };
             if column == 4 && extract_http_url(value).is_some() {
                 let url = extract_http_url(value).expect("URL checked");
@@ -1012,8 +1054,14 @@ fn write_outputs(
         .as_deref()
         .map(PathBuf::from)
         .unwrap_or_else(|| output_dir.join("執行紀錄"));
-    std::fs::create_dir_all(&output_dir).map_err(|error| error.to_string())?;
-    std::fs::create_dir_all(&report_dir).map_err(|error| error.to_string())?;
+    std::fs::create_dir_all(&output_dir).map_err(|error| {
+        format!(
+            "無法建立 Excel 輸出資料夾 {}：{error}",
+            output_dir.display()
+        )
+    })?;
+    std::fs::create_dir_all(&report_dir)
+        .map_err(|error| format!("無法建立 JSON 報告資料夾 {}：{error}", report_dir.display()))?;
     let stamp = Local::now().format("%Y%m%d_%H%M%S_%6f").to_string();
     let workbook_path = output_dir.join(format!(
         "本週新聞整理（{}至{}）.xlsx",
@@ -1043,48 +1091,51 @@ fn write_outputs(
             .then_with(|| right.1.cmp(&left.1))
             .then_with(|| left.0[7].cmp(&right.0[7]))
     });
-    let header_format = Format::new()
-        .set_bold()
-        .set_font_name("標楷體")
-        .set_font_size(11)
-        .set_align(FormatAlign::Center)
-        .set_align(FormatAlign::VerticalCenter)
-        .set_text_wrap();
-    let body_format = Format::new()
-        .set_font_name("Times New Roman")
-        .set_font_size(11)
-        .set_align(FormatAlign::Top)
-        .set_text_wrap();
-    let high_format = Format::new()
-        .set_font_name("Times New Roman")
-        .set_font_size(11)
-        .set_align(FormatAlign::Top)
-        .set_text_wrap()
-        .set_background_color(Color::Yellow);
-    let possible_format = Format::new()
-        .set_font_name("Times New Roman")
-        .set_font_size(11)
-        .set_align(FormatAlign::Top)
-        .set_text_wrap()
-        .set_background_color(Color::RGB(0xFFF2CC));
-    write_news_sheet(
-        &mut workbook,
-        "全部新聞",
-        &rows,
-        &header_format,
-        &body_format,
-        &high_format,
-        &possible_format,
-    )?;
-    write_news_sheet(
-        &mut workbook,
-        "已初步篩選工作表",
-        &selected_rows,
-        &header_format,
-        &body_format,
-        &high_format,
-        &possible_format,
-    )?;
+    let formats = ExcelFormats {
+        header: Format::new()
+            .set_bold()
+            .set_font_name(EXCEL_CJK_FONT)
+            .set_font_size(11)
+            .set_align(FormatAlign::Center)
+            .set_align(FormatAlign::VerticalCenter)
+            .set_text_wrap(),
+        body: Format::new()
+            .set_font_name(EXCEL_CJK_FONT)
+            .set_font_size(11)
+            .set_align(FormatAlign::Top)
+            .set_text_wrap(),
+        latin_body: Format::new()
+            .set_font_name(EXCEL_LATIN_FONT)
+            .set_font_size(11)
+            .set_align(FormatAlign::Top)
+            .set_text_wrap(),
+        high: Format::new()
+            .set_font_name(EXCEL_CJK_FONT)
+            .set_font_size(11)
+            .set_align(FormatAlign::Top)
+            .set_text_wrap()
+            .set_background_color(Color::Yellow),
+        latin_high: Format::new()
+            .set_font_name(EXCEL_LATIN_FONT)
+            .set_font_size(11)
+            .set_align(FormatAlign::Top)
+            .set_text_wrap()
+            .set_background_color(Color::Yellow),
+        possible: Format::new()
+            .set_font_name(EXCEL_CJK_FONT)
+            .set_font_size(11)
+            .set_align(FormatAlign::Top)
+            .set_text_wrap()
+            .set_background_color(Color::RGB(0xFFF2CC)),
+        latin_possible: Format::new()
+            .set_font_name(EXCEL_LATIN_FONT)
+            .set_font_size(11)
+            .set_align(FormatAlign::Top)
+            .set_text_wrap()
+            .set_background_color(Color::RGB(0xFFF2CC)),
+    };
+    write_news_sheet(&mut workbook, "全部新聞", &rows, &formats)?;
+    write_news_sheet(&mut workbook, "已初步篩選工作表", &selected_rows, &formats)?;
     let policy_document = crate::relevance::policy_document();
     let reference_rows = policy_reference_rows(&policy_document);
     write_table_sheet(
@@ -1104,8 +1155,7 @@ fn write_outputs(
             "全域排除詞",
         ],
         &reference_rows,
-        &header_format,
-        &body_format,
+        &formats,
     )?;
     let rule_rows = policy_rule_rows(&policy_document);
     write_table_sheet(
@@ -1121,8 +1171,7 @@ fn write_outputs(
             "規則ID",
         ],
         &rule_rows,
-        &header_format,
-        &body_format,
+        &formats,
     )?;
     let policy_summary = crate::relevance::default_summary();
     let version_rows = policy_version_rows(&policy_summary);
@@ -1131,8 +1180,7 @@ fn write_outputs(
         "規則版本",
         &["項目", "內容"],
         &version_rows,
-        &header_format,
-        &body_format,
+        &formats,
     )?;
     for (source, sheet_name) in [
         ("財政部", "財政部"),
@@ -1146,15 +1194,7 @@ fn write_outputs(
             .filter(|row| row.0[0] == source)
             .cloned()
             .collect();
-        write_news_sheet(
-            &mut workbook,
-            sheet_name,
-            &source_rows,
-            &header_format,
-            &body_format,
-            &high_format,
-            &possible_format,
-        )?;
+        write_news_sheet(&mut workbook, sheet_name, &source_rows, &formats)?;
     }
     workbook
         .save(&workbook_path)

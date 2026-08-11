@@ -6,7 +6,7 @@ on:
       tag:
         description: Existing Rust release tag to verify
         required: true
-        default: v2.1.7
+        default: v2.1.9
         type: string
 
 permissions:
@@ -65,6 +65,11 @@ jobs:
             gui="$(find extracted -type f -name '*.exe' ! -path '*/cli/*' ! -name 'news-scraper.exe' -print -quit)"
             test -n "$gui"
             echo "GUI_PATH=$gui" >> "$GITHUB_ENV"
+          elif [[ "${{ runner.os }}" == "macOS" ]]; then
+            app_bundle="$(find extracted -maxdepth 2 -type d -name '*.app' -print -quit)"
+            test -n "$app_bundle"
+            test -x "$(find "$app_bundle/Contents/MacOS" -maxdepth 1 -type f -name 'taiwan-government-news' -print -quit)"
+            test -s "$(find extracted -maxdepth 2 -type f -name '*.command' -print -quit)"
           fi
       - name: Run Windows portable GUI smoke
         if: runner.os == 'Windows'
