@@ -8,7 +8,7 @@
    Windows：cli\news-scraper.exe collect
    Linux/macOS：./news-scraper collect
 6. 列出來源：news-scraper list-sources
-7. 動態來源需要系統 Chrome 或 Chromium。
+7. 動態來源需要系統 Chrome、Chromium 或 Microsoft Edge；Windows 標準安裝位置會自動偵測，非標準安裝可設定 NEWS_SCRAPER_CHROME_BIN。
 8. Excel 預設輸出到 新聞搜集區/；GUI 可用按鈕選資料夾。若只選 Excel 資料夾，JSON 位於該資料夾下的 執行紀錄/。
 
 本封裝不含 Python runtime、PyInstaller、openpyxl 或 Selenium。

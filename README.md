@@ -16,7 +16,7 @@ v2.1.9 是完整 Rust 版：72 個政府來源、CLI、Tauri GUI、RSS／HTML／
 
 Windows 安裝檔會建立正常桌面應用入口，不需要開 CMD。macOS ZIP 的 `.app` bundle 經 `codesign --verify` 驗證；若 macOS 顯示「已損毀」或無法開啟，請先執行 ZIP 內的 `解除封鎖並開啟.command`，或在 Finder 對 `各機關新聞整理.app` 按右鍵後選「打開」。
 
-封裝不含 Python runtime、PyInstaller、openpyxl 或 Selenium。動態來源使用 Rust CDP 呼叫系統 Chrome／Chromium。
+封裝不含 Python runtime、PyInstaller、openpyxl 或 Selenium。動態來源使用 Rust CDP 呼叫系統 Chrome／Chromium／Microsoft Edge；Windows 標準安裝位置會自動偵測。
 
 GUI 與 Excel 採用同一套字體策略：中文內容使用標楷體，英文、數字、日期與規則 ID 使用 Times New Roman。GUI 執行百分比以準備階段 5%、來源完成比例 90%、寫出 Excel/JSON 95%、完成 100% 顯示；單一來源內部下載不顯示假百分比。
 
@@ -54,7 +54,7 @@ python3 scripts/python_compat.py collect --date 2026-08-06 --sources 財政部 �
 
 ## 原始碼建置與驗證
 
-需求：stable Rust、Node.js 22、平台對應的 Tauri 2 系統函式庫；需要動態來源時另須 Chrome／Chromium。
+需求：stable Rust、Node.js 22、平台對應的 Tauri 2 系統函式庫；需要動態來源時另須 Chrome、Chromium 或 Microsoft Edge。
 
 ```bash
 npm ci

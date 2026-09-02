@@ -2,6 +2,7 @@ use futures::{SinkExt, StreamExt};
 use reqwest::Client;
 use serde::Deserialize;
 use serde_json::{json, Value};
+use std::ffi::OsString;
 use std::path::PathBuf;
 use std::process::Stdio;
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -21,7 +22,7 @@ struct DevToolsTarget {
 static PROFILE_SEQUENCE: AtomicU64 = AtomicU64::new(1);
 static BROWSER_SEMAPHORE: Semaphore = Semaphore::const_new(1);
 
-/// Fetch a rendered page through the system Chrome/Chromium DevTools Protocol.
+/// Fetch a rendered page through the system Chromium browser DevTools Protocol.
 ///
 /// The browser process is scoped to one request and is terminated before the
 /// function returns. No Selenium, chromedriver, or Python runtime is involved.
@@ -49,7 +50,7 @@ pub async fn fetch_rendered_html_after(
 
 async fn launch_browser() -> Result<(Child, PathBuf, String), String> {
     let program = find_browser().ok_or_else(|| {
-        "找不到系統 Chrome/Chromium；browser route 需要可執行的 Chrome 或 Chromium".to_owned()
+        "找不到系統 Chrome/Chromium/Edge；browser route 需要可執行的 Chromium 瀏覽器".to_owned()
     })?;
     let profile_dir = std::env::temp_dir().join(format!(
         "taiwan-news-cdp-{}-{}",
@@ -166,7 +167,7 @@ async fn fetch_from_target(
             &mut socket,
             6,
             "Runtime.evaluate",
-            json!({"expression":script, "returnByValue":true}),
+            json!({"expression":script, "returnByValue":true, "awaitPromise":true}),
         )
         .await?;
         wait_for_response(&mut socket, 6).await?;
@@ -278,28 +279,121 @@ async fn wait_for_event(
 }
 
 fn find_browser() -> Option<PathBuf> {
-    if let Some(configured) = std::env::var_os("NEWS_SCRAPER_CHROME_BIN") {
-        let path = PathBuf::from(configured);
-        if path.is_file() {
-            return Some(path);
+    let path_dirs = std::env::var_os("PATH")
+        .map(|value| std::env::split_paths(&value).collect::<Vec<_>>())
+        .unwrap_or_default();
+    browser_candidates(
+        std::env::var_os("NEWS_SCRAPER_CHROME_BIN"),
+        std::env::var_os("ProgramFiles"),
+        std::env::var_os("ProgramFiles(x86)"),
+        std::env::var_os("LOCALAPPDATA"),
+        &path_dirs,
+    )
+    .into_iter()
+    .find(|path| path.is_file())
+}
+
+fn browser_candidates(
+    configured: Option<OsString>,
+    program_files: Option<OsString>,
+    program_files_x86: Option<OsString>,
+    local_app_data: Option<OsString>,
+    path_dirs: &[PathBuf],
+) -> Vec<PathBuf> {
+    let mut candidates = Vec::new();
+    if let Some(configured) = configured {
+        candidates.push(PathBuf::from(configured));
+    }
+
+    candidates.extend(
+        [
+            "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+            "/Applications/Chromium.app/Contents/MacOS/Chromium",
+            "/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge",
+            "/usr/bin/google-chrome",
+            "/usr/bin/chromium",
+            "/usr/bin/chromium-browser",
+            "/usr/bin/microsoft-edge",
+            "/opt/homebrew/bin/chromium",
+        ]
+        .into_iter()
+        .map(PathBuf::from),
+    );
+
+    for root in [program_files, program_files_x86]
+        .into_iter()
+        .flatten()
+        .map(PathBuf::from)
+    {
+        candidates.push(root.join("Google/Chrome/Application/chrome.exe"));
+        candidates.push(root.join("Chromium/Application/chrome.exe"));
+        candidates.push(root.join("Microsoft/Edge/Application/msedge.exe"));
+    }
+    if let Some(root) = local_app_data.map(PathBuf::from) {
+        candidates.push(root.join("Google/Chrome/Application/chrome.exe"));
+        candidates.push(root.join("Chromium/Application/chrome.exe"));
+        candidates.push(root.join("Microsoft/Edge/Application/msedge.exe"));
+    }
+
+    for directory in path_dirs {
+        for executable in [
+            "google-chrome",
+            "chromium",
+            "chromium-browser",
+            "microsoft-edge",
+            "chrome.exe",
+            "chromium.exe",
+            "msedge.exe",
+        ] {
+            candidates.push(directory.join(executable));
         }
     }
-    [
-        "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
-        "/Applications/Chromium.app/Contents/MacOS/Chromium",
-        "/usr/bin/google-chrome",
-        "/usr/bin/chromium",
-        "/usr/bin/chromium-browser",
-        "/opt/homebrew/bin/chromium",
-    ]
-    .iter()
-    .map(PathBuf::from)
-    .find(|path| path.is_file())
+    candidates
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn configured_browser_is_the_first_candidate() {
+        let candidates = browser_candidates(
+            Some(OsString::from("/custom/chrome")),
+            None,
+            None,
+            None,
+            &[],
+        );
+        assert_eq!(candidates.first(), Some(&PathBuf::from("/custom/chrome")));
+    }
+
+    #[test]
+    fn discovers_standard_windows_browser_locations() {
+        let candidates = browser_candidates(
+            None,
+            Some(OsString::from("/program-files")),
+            Some(OsString::from("/program-files-x86")),
+            Some(OsString::from("/local-app-data")),
+            &[],
+        );
+        assert!(candidates.contains(&PathBuf::from(
+            "/program-files/Google/Chrome/Application/chrome.exe"
+        )));
+        assert!(candidates.contains(&PathBuf::from(
+            "/program-files-x86/Microsoft/Edge/Application/msedge.exe"
+        )));
+        assert!(candidates.contains(&PathBuf::from(
+            "/local-app-data/Chromium/Application/chrome.exe"
+        )));
+    }
+
+    #[test]
+    fn discovers_browser_commands_from_path() {
+        let directory = PathBuf::from("/tools/bin");
+        let candidates = browser_candidates(None, None, None, None, &[directory]);
+        assert!(candidates.contains(&PathBuf::from("/tools/bin/google-chrome")));
+        assert!(candidates.contains(&PathBuf::from("/tools/bin/msedge.exe")));
+    }
 
     #[test]
     fn discovered_browser_paths_are_files() {

@@ -58,7 +58,7 @@ fn html_profile(source: &str) -> Option<DatedListSelectors<'static>> {
             item: "table tbody tr",
             link: "td[data-title='主題'] a[href]",
             title: "td[data-title='主題'] a[href]",
-            date: "td[data-title='上版日期'] div.in",
+            date: "td[data-title='發布日期'] div.in, td[data-title='上版日期'] div.in",
             summary: None,
             department: Some("td[data-title='資料來源'] div.in"),
             category: None,
@@ -276,6 +276,11 @@ pub fn parse_route(
 
     if let Some(profile) = html_profile(source) {
         let mut items = html::parse_dated_list(source, body, &route.url, &profile)?;
+        if source == "運動部" && items.is_empty() {
+            return Err(ScraperError::ParserRegression(
+                "運動部頁面未完成新聞資料渲染".into(),
+            ));
+        }
         if source == "環境部" {
             let trailing_date = regex::Regex::new(r"\s+\d{2,4}-\d{1,2}-\d{1,2}$")
                 .expect("valid trailing date regex");
@@ -389,6 +394,44 @@ mod tests {
             "https://example.test/Page/9277F759E41CCD91/item-one"
         );
         assert_eq!(items[1].date, "2026-08-05");
+    }
+
+    #[test]
+    fn parses_current_sports_ministry_date_label() {
+        let body = r#"
+            <table><tbody><tr>
+              <td data-title="主題"><div class="in"><a href="/News_Content/309/23641">總統盃街舞大賽預賽啟動</a></div></td>
+              <td data-title="資料來源"><div class="in">運動部全民運動署</div></td>
+              <td data-title="發布日期"><div class="in">2026-08-29</div></td>
+            </tr></tbody></table>
+        "#;
+        let mut sports_route = route("sports-html");
+        sports_route.url = "https://www.sports.gov.tw/News/309".into();
+        let items = parse_route("運動部", &sports_route, body).unwrap();
+
+        assert_eq!(items.len(), 1);
+        assert_eq!(items[0].date, "2026-08-29");
+        assert_eq!(items[0].title, "總統盃街舞大賽預賽啟動");
+        assert_eq!(items[0].department, "運動部／運動部全民運動署");
+        assert_eq!(
+            items[0].link,
+            "https://www.sports.gov.tw/News_Content/309/23641"
+        );
+    }
+
+    #[test]
+    fn rejects_unrendered_sports_ministry_template() {
+        let body = r#"
+            <table><tbody><tr v-for="item in items">
+              <td data-title="主題"><a :href="item.Path">{{item.主題}}</a></td>
+              <td data-title="發布日期"><div class="in">{{item.發布日期}}</div></td>
+            </tr></tbody></table>
+        "#;
+        let mut sports_route = route("sports-html");
+        sports_route.url = "https://www.sports.gov.tw/News/309".into();
+        let error = parse_route("運動部", &sports_route, body).unwrap_err();
+
+        assert!(matches!(error, ScraperError::ParserRegression(_)));
     }
 
     #[test]
