@@ -3,20 +3,20 @@
 [![Rust quality](https://github.com/ECJura2000/taiwan-government-news-scraper/actions/workflows/test.yml/badge.svg)](https://github.com/ECJura2000/taiwan-government-news-scraper/actions/workflows/test.yml)
 [![Tauri v2](https://github.com/ECJura2000/taiwan-government-news-scraper/actions/workflows/tauri-v2.yml/badge.svg)](https://github.com/ECJura2000/taiwan-government-news-scraper/actions/workflows/tauri-v2.yml)
 
-v2.1.9 是完整 Rust 版：72 個政府來源、CLI、Tauri GUI、RSS／HTML／JSON、Chrome CDP、品質檢查、相關性規則、JSON schema v4 與 Excel 都由同一個 Rust application service 執行。此版修正 Excel 與 GUI 字體，讓中文以標楷體呈現、英文與數字保留 Times New Roman，並調整 GUI 執行進度計算，避免啟動後長時間停在 0%。v2.0.0 保留在 GitHub Releases 作為 rollback。
+v2.1.10 是完整 Rust 版：72 個政府來源、CLI、Tauri GUI、RSS／HTML／JSON、Chrome CDP、品質檢查、相關性規則、JSON schema v4 與 Excel 都由同一個 Rust application service 執行。此版補強 Windows 的 Chrome、Chromium 與 Microsoft Edge 偵測，修正運動部動態表格解析，並更新 RSS／Atom 相容性。v2.0.0 保留在 GitHub Releases 作為 rollback。
 
 ## 下載
 
-從 [GitHub Releases](https://github.com/ECJura2000/taiwan-government-news-scraper/releases) 下載 `v2.1.9`，並先用 `SHA256SUMS.txt` 驗證。
+從 [GitHub Releases](https://github.com/ECJura2000/taiwan-government-news-scraper/releases) 下載 `v2.1.10`，並先用 `SHA256SUMS.txt` 驗證。
 
-- Windows 一般使用者：下載 `TaiwanGovernmentNews-Setup-v2.1.9.exe`。
-- Windows 免安裝版：下載 `taiwan-government-news-v2.1.9-windows-portable.zip`，完整解壓後雙擊頂層的 `各機關新聞整理.exe`；進階 CLI 位於 `cli/news-scraper.exe`。
+- Windows 一般使用者：下載 `TaiwanGovernmentNews-Setup-v2.1.10.exe`。
+- Windows 免安裝版：下載 `taiwan-government-news-v2.1.10-windows-portable.zip`，完整解壓後雙擊頂層的 `各機關新聞整理.exe`；進階 CLI 位於 `cli/news-scraper.exe`。
 - macOS：下載 `macos-arm64`（Apple Silicon）或 `macos-x64`（Intel）ZIP；解壓縮後頂層會有 `各機關新聞整理.app`、`解除封鎖並開啟.command` 與 CLI `news-scraper`。
 - Linux：下載對應平台 ZIP；CLI 在 ZIP 頂層，GUI installer 位於 `installers/`。
 
 Windows 安裝檔會建立正常桌面應用入口，不需要開 CMD。macOS ZIP 的 `.app` bundle 經 `codesign --verify` 驗證；若 macOS 顯示「已損毀」或無法開啟，請先執行 ZIP 內的 `解除封鎖並開啟.command`，或在 Finder 對 `各機關新聞整理.app` 按右鍵後選「打開」。
 
-封裝不含 Python runtime、PyInstaller、openpyxl 或 Selenium。動態來源使用 Rust CDP 呼叫系統 Chrome／Chromium。
+封裝不含 Python runtime、PyInstaller、openpyxl 或 Selenium。動態來源使用 Rust CDP 呼叫系統 Chrome／Chromium／Microsoft Edge；Windows 標準安裝位置會自動偵測。
 
 GUI 與 Excel 採用同一套字體策略：中文內容使用標楷體，英文、數字、日期與規則 ID 使用 Times New Roman。GUI 執行百分比以準備階段 5%、來源完成比例 90%、寫出 Excel/JSON 95%、完成 100% 顯示；單一來源內部下載不顯示假百分比。
 
@@ -54,7 +54,7 @@ python3 scripts/python_compat.py collect --date 2026-08-06 --sources 財政部 �
 
 ## 原始碼建置與驗證
 
-需求：stable Rust、Node.js 22、平台對應的 Tauri 2 系統函式庫；需要動態來源時另須 Chrome／Chromium。
+需求：stable Rust、Node.js 22、平台對應的 Tauri 2 系統函式庫；需要動態來源時另須 Chrome、Chromium 或 Microsoft Edge。
 
 ```bash
 npm ci

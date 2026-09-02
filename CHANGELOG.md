@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+## 2.1.10 - 2026-09-02
+
+- Detect Chrome, Chromium and Microsoft Edge from standard Windows system and per-user install locations, plus executable directories on `PATH`.
+- Wait for the Ministry of Sports dynamic news table to render and accept its current `發布日期` label, while rejecting an unrendered Vue template as a parser failure.
+- Update the RSS/Atom parser for `quick-xml` 0.42 string events and normalized link attributes.
+- Update the transitive `nanoid` build dependency to 3.3.18 for the zero-size custom-generator security fix.
+
 ## 2.1.7 - 2026-08-10
 
 - Made the Windows release installer-first and simplified the portable ZIP to a single top-level GUI entry, with the CLI moved under `cli/`.

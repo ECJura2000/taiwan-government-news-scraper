@@ -17,7 +17,7 @@ tauri-build = { version = "2", features = [] }
 chrono = { version = "0.4", features = ["serde"] }
 chrono-tz = "0.10"
 futures = "0.3"
-quick-xml = "0.41"
+quick-xml = "0.42"
 regex = "1"
 reqwest = { version = "0.12", default-features = false, features = ["gzip", "json", "native-tls"] }
 rust_xlsxwriter = "0.89"

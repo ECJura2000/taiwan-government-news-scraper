@@ -386,7 +386,7 @@ async fn fetch_source(client: &HttpClient, source: &str, date_range: DateRange) 
         let fetched = if route.kind == "browser" {
             let page_script = if source == "運動部" {
                 Some(
-                    "(() => { const select = document.querySelector('#InputPageSize'); if (!select) return false; select.value = '500'; select.dispatchEvent(new Event('change', { bubbles: true })); return true; })()",
+                    "(async () => { const select = document.querySelector('#InputPageSize'); if (select) { select.value = '500'; select.dispatchEvent(new Event('change', { bubbles: true })); } const deadline = Date.now() + 20000; while (Date.now() < deadline) { const date = document.querySelector(\"tbody tr td[data-title='發布日期'] div.in, tbody tr td[data-title='上版日期'] div.in\"); if (date && date.textContent.trim()) return true; await new Promise(resolve => setTimeout(resolve, 250)); } return false; })()",
                 )
             } else {
                 None

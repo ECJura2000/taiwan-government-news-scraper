@@ -1,6 +1,6 @@
 use super::{NewsItem, ScraperError};
 use quick_xml::events::Event;
-use quick_xml::Reader;
+use quick_xml::{Reader, XmlVersion};
 use regex::Regex;
 
 fn empty_item(source: &str) -> NewsItem {
@@ -16,9 +16,8 @@ fn empty_item(source: &str) -> NewsItem {
     }
 }
 
-fn local_name(name: &[u8]) -> String {
-    String::from_utf8_lossy(name)
-        .rsplit(':')
+fn local_name(name: &str) -> String {
+    name.rsplit(':')
         .next()
         .unwrap_or_default()
         .to_ascii_lowercase()
@@ -175,7 +174,10 @@ pub fn parse_feed(source: &str, xml: &str) -> Result<Vec<NewsItem>, ScraperError
                             .flatten()
                             .find(|attribute| local_name(attribute.key.as_ref()) == "href")
                         {
-                            current.link = String::from_utf8_lossy(attribute.value.as_ref()).into();
+                            current.link = attribute
+                                .normalized_value(XmlVersion::Implicit1_0)
+                                .map_err(|error| ScraperError::ParserRegression(error.to_string()))?
+                                .into_owned();
                         }
                     }
                     field = name;
@@ -190,30 +192,25 @@ pub fn parse_feed(source: &str, xml: &str) -> Result<Vec<NewsItem>, ScraperError
                         .flatten()
                         .find(|attribute| local_name(attribute.key.as_ref()) == "href")
                     {
-                        current.link = String::from_utf8_lossy(attribute.value.as_ref()).into();
+                        current.link = attribute
+                            .normalized_value(XmlVersion::Implicit1_0)
+                            .map_err(|error| ScraperError::ParserRegression(error.to_string()))?
+                            .into_owned();
                     }
                 }
                 field.clear();
                 field_value.clear();
             }
             Ok(Event::Text(text)) if item_depth == 1 && !field.is_empty() => {
-                let value = text
-                    .decode()
-                    .map_err(|error| ScraperError::ParserRegression(error.to_string()))?
-                    .into_owned();
+                let value = text.xml10_content().into_owned();
                 field_value.push_str(&value);
             }
             Ok(Event::CData(text)) if item_depth == 1 && !field.is_empty() => {
-                let value = text
-                    .decode()
-                    .map_err(|error| ScraperError::ParserRegression(error.to_string()))?
-                    .into_owned();
+                let value = text.xml10_content().into_owned();
                 field_value.push_str(&value);
             }
             Ok(Event::GeneralRef(reference)) if item_depth == 1 && !field.is_empty() => {
-                let reference = reference
-                    .decode()
-                    .map_err(|error| ScraperError::ParserRegression(error.to_string()))?;
+                let reference = reference.xml10_content();
                 let encoded = format!("&{reference};");
                 let value = quick_xml::escape::unescape(&encoded)
                     .map_err(|error| ScraperError::ParserRegression(error.to_string()))?;
@@ -270,11 +267,11 @@ mod tests {
     fn parses_cdata_namespaces_atom_links_and_resets_items() {
         let items = parse_feed(
             "測試來源",
-            r#"<feed xmlns:dc="urn:dc"><entry><title><![CDATA[第一則]]></title><link href="https://example.test/1"/><dc:date>2026-08-06</dc:date><dc:creator>第一單位</dc:creator></entry><entry><title>第二則</title><link href="https://example.test/2"/><published>2026-08-05</published></entry></feed>"#,
+            r#"<feed xmlns:dc="urn:dc"><entry><title><![CDATA[第一則]]></title><link href="https://example.test/1?a=1&amp;b=2"/><dc:date>2026-08-06</dc:date><dc:creator>第一單位</dc:creator></entry><entry><title>第二則</title><link href="https://example.test/2"/><published>2026-08-05</published></entry></feed>"#,
         )
         .unwrap();
         assert_eq!(items.len(), 2);
-        assert_eq!(items[0].link, "https://example.test/1");
+        assert_eq!(items[0].link, "https://example.test/1?a=1&b=2");
         assert_eq!(items[0].department, "第一單位");
         assert_eq!(items[1].title, "第二則");
         assert_eq!(items[1].department, "測試來源");
