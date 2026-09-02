@@ -3679,7 +3679,7 @@ dependencies = [
 
 [[package]]
 name = "taiwan-government-news"
-version = "2.1.9"
+version = "2.1.10"
 dependencies = [
  "chrono",
  "chrono-tz",
