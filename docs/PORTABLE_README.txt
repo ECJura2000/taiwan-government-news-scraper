@@ -1,7 +1,7 @@
-各機關新聞整理 v2.1.10（Rust）
+各機關新聞整理 v2.1.11（Rust）
 
 1. 先以 GitHub Release 的 SHA256SUMS.txt 驗證本 ZIP。
-2. Windows：一般使用者請優先下載並執行 TaiwanGovernmentNews-Setup-v2.1.10.exe。
+2. Windows：一般使用者請優先下載並執行 TaiwanGovernmentNews-Setup-v2.1.11.exe。
 3. Windows portable：完整解壓後雙擊頂層的 各機關新聞整理.exe；CLI 位於 cli/news-scraper.exe。
 4. macOS：解壓縮後可先雙擊 解除封鎖並開啟.command；若系統仍跳安全提示，請在 Finder 對 各機關新聞整理.app 按右鍵選「打開」。
 5. Headless CLI：

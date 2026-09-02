@@ -6,7 +6,7 @@ on:
       tag:
         description: Existing Rust release tag to verify
         required: true
-        default: v2.1.10
+        default: v2.1.11
         type: string
 
 permissions:
