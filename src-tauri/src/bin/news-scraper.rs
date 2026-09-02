@@ -177,6 +177,6 @@ mod tests {
 
     #[test]
     fn reports_workspace_package_version() {
-        assert_eq!(version_text(), "news-scraper 2.1.10");
+        assert_eq!(version_text(), "news-scraper 2.1.11");
     }
 }

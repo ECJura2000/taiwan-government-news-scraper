@@ -20,6 +20,52 @@ export interface QualitySummary {
   source_counts?: Record<string, number>;
 }
 
+export interface FailureEvidence {
+  url_host?: string;
+  message?: string;
+}
+
+export interface FinalRoute {
+  route_id?: string;
+  url?: string;
+  url_host?: string;
+  used_fallback?: boolean;
+  coverage_reduced?: boolean;
+  aggregated?: boolean;
+}
+
+export interface RouteAttempt {
+  source: string;
+  route_id?: string;
+  url?: string;
+  url_host?: string;
+  route_kind?: string;
+  parser?: string;
+  attempt_number?: number;
+  status: "success" | "failed";
+  elapsed_seconds?: number;
+  item_count?: number;
+  failure_class?: string;
+  error_category?: string;
+  failure_evidence?: FailureEvidence;
+}
+
+export interface SourceDiagnostic {
+  source: string;
+  status: "success" | "failed";
+  unstable?: boolean;
+  item_count?: number;
+  attempt_count?: number;
+  failure_class?: string;
+  last_failure_class?: string;
+  error_category?: string;
+  failure_evidence?: FailureEvidence;
+  elapsed_seconds?: number;
+  final_route?: FinalRoute;
+  route_attempt_count?: number;
+  route_failure_classes?: string[];
+}
+
 export interface RunSummary {
   status: RunStatus;
   report_schema_version?: number;
@@ -36,9 +82,9 @@ export interface RunSummary {
   parser_warnings?: unknown[];
   scheduling_plan?: unknown[];
   alerts?: unknown[];
-  source_attempts?: unknown[];
-  source_diagnostics?: unknown[];
-  route_attempts?: unknown[];
+  source_attempts?: RouteAttempt[];
+  source_diagnostics?: SourceDiagnostic[];
+  route_attempts?: RouteAttempt[];
   insecure_ssl_hosts?: string[];
   source_health: SourceHealth;
   quality: QualitySummary;

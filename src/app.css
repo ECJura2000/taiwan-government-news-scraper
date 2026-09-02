@@ -54,10 +54,47 @@ button:disabled { cursor: not-allowed; opacity: .45; }
 .results-card { margin-top: 24px; }
 .news-count { color: #3158c9; }
 .metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
-.metrics div { padding: 15px; border-radius: 12px; background: #f5f7fb; }
+.metric-card { position: relative; min-width: 0; padding: 15px; border: 1px solid transparent; border-radius: 12px; background: #f5f7fb; text-align: left; }
 .metrics span, .paths span { display: block; color: #77839a; font-size: 12px; }
 .metrics strong { display: block; margin-top: 4px; font-size: 24px; }
+.metric-button { overflow: visible; color: inherit; transition: border-color .16s ease, box-shadow .16s ease, transform .16s ease; }
+.metric-button small { display: block; margin-top: 5px; color: #77839a; font-size: 10px; font-weight: 600; }
+.metric-button:hover, .metric-button:focus-visible, .metric-button[data-active="true"] { z-index: 3; border-color: #9fb2e9; box-shadow: 0 12px 28px rgba(38, 55, 92, .14); transform: translateY(-1px); outline: none; }
+.metric-button.unstable strong { color: #96600c; }
+.metric-button.failed strong { color: #a52e3d; }
+.metric-tooltip { position: absolute; z-index: 10; top: calc(100% + 9px); left: 0; display: grid !important; width: max-content; min-width: 220px; max-width: 360px; max-height: 240px; overflow: auto; gap: 6px; padding: 12px 14px; border: 1px solid #d7dfed; border-radius: 10px; background: #172033; box-shadow: 0 16px 36px rgba(23, 32, 51, .22); color: #eef3ff !important; font-size: 12px !important; line-height: 1.35; opacity: 0; pointer-events: none; transform: translateY(-4px); transition: opacity .14s ease, transform .14s ease; visibility: hidden; }
+.metric-tooltip b { color: #fff; font-size: 11px; letter-spacing: .05em; }
+.metric-tooltip span { color: #dfe7f8 !important; }
+.metric-button:hover .metric-tooltip, .metric-button:focus-visible .metric-tooltip { opacity: 1; transform: translateY(0); visibility: visible; }
+.health-details { margin-top: 18px; padding: 18px; border: 1px solid #d8e1f0; border-radius: 14px; background: linear-gradient(145deg, #f8faff, #f2f6fc); }
+.health-details-heading, .health-detail-title { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; }
+.health-details-heading { margin-bottom: 14px; }
+.health-details-heading h3 { margin: 0; font-size: 17px; }
+.health-detail-list { display: grid; gap: 12px; }
+.health-detail { padding: 16px; border: 1px solid #e0e6f0; border-radius: 12px; background: #fff; }
+.health-detail-title strong { display: block; font-size: 16px; }
+.health-detail-title div > span { display: block; margin-top: 3px; color: #718099; font-size: 12px; }
+.health-detail-title > span { padding: 5px 9px; border-radius: 999px; font-size: 11px; font-weight: 800; white-space: nowrap; }
+.failed-badge { color: #9d2e3e; background: #ffedf0; }
+.unstable-badge { color: #8b5a0b; background: #fff3d4; }
+.health-facts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin: 14px 0 0; }
+.health-facts div { padding: 9px 10px; border-radius: 8px; background: #f5f7fb; }
+.health-facts dt { color: #7a879d; font-size: 10px; }
+.health-facts dd { margin: 3px 0 0; color: #25334d; font-size: 12px; font-weight: 800; }
+.health-message { margin-top: 12px; padding: 10px 12px; border-left: 3px solid #e2a94a; border-radius: 0 8px 8px 0; background: #fff8e8; color: #775220; font-size: 12px; line-height: 1.5; }
+.route-summary { display: grid; gap: 5px; margin-top: 12px; color: #60708a; font-size: 11px; overflow-wrap: anywhere; }
+.health-actions { margin-top: 12px; }
+.compact { padding: 7px 10px; font-size: 11px; }
+.attempt-list { margin-top: 12px; border-top: 1px solid #e8edf5; padding-top: 10px; color: #60708a; font-size: 11px; }
+.attempt-list summary { cursor: pointer; font-weight: 800; }
+.attempt-row { display: grid; grid-template-columns: 42px minmax(0, 1fr) auto; gap: 9px; align-items: center; margin-top: 8px; }
+.attempt-row > span:first-child { color: #16734a; font-weight: 800; }
+.attempt-row > span.attempt-failed { color: #a52e3d; }
+.attempt-row code { overflow: hidden; color: #53627b; text-overflow: ellipsis; white-space: nowrap; }
 .paths { display: grid; gap: 10px; margin-top: 18px; }
 .paths code { display: block; overflow: hidden; color: #53627b; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
 .result-actions { margin-top: 18px; flex-wrap: wrap; }
-@media (max-width: 1100px) { .source-list { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 1100px) {
+  .source-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .health-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}

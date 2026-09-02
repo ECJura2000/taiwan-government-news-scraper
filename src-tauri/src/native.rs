@@ -1,5 +1,5 @@
 use crate::scraper::adapters;
-use crate::scraper::catalog::{all_sources, find_source, routes_for};
+use crate::scraper::catalog::{all_sources, find_source, routes_for, SourceRoute};
 use crate::scraper::http::HttpClient;
 use crate::scraper::{NewsItem, ScraperError};
 use chrono::{Datelike, Local, NaiveDate, Utc, Weekday};
@@ -82,7 +82,7 @@ pub async fn run_with_progress(
                         message: Some(format!("正在處理：{source}")),
                     });
                 }
-                fetch_source(&client, &source, date_range).await
+                fetch_source(&client, &source, date_range, progress.as_ref(), total).await
             }
         })
         .buffer_unordered(max_workers);
@@ -164,35 +164,7 @@ pub async fn run_with_progress(
                 }
             }
         }
-        let failed_attempts: Vec<&serde_json::Value> = result
-            .attempts
-            .iter()
-            .filter(|attempt| {
-                attempt.get("status").and_then(|value| value.as_str()) == Some("failed")
-            })
-            .collect();
-        let final_attempt = result.attempts.last().cloned().unwrap_or_else(|| json!({}));
-        let last_failure = failed_attempts
-            .last()
-            .cloned()
-            .cloned()
-            .unwrap_or_else(|| json!({}));
-        let unstable = result.error.is_none() && !failed_attempts.is_empty();
-        source_diagnostics.push(json!({
-            "source": result.source,
-            "status": if result.error.is_some() { "failed" } else { "success" },
-            "unstable": unstable,
-            "item_count": result.items.len(),
-            "attempt_count": result.attempts.len(),
-            "failure_class": if result.error.is_some() { final_attempt.get("failure_class").cloned().unwrap_or(json!("unknown")) } else { json!("") },
-            "last_failure_class": last_failure.get("failure_class").cloned().unwrap_or(json!("")),
-            "error_category": if result.error.is_some() { final_attempt.get("error_category").cloned().unwrap_or(json!("unexpected")) } else { json!("") },
-            "failure_evidence": last_failure.get("failure_evidence").cloned().unwrap_or(json!({})),
-            "elapsed_seconds": result.attempts.iter().filter_map(|attempt| attempt.get("elapsed_seconds").and_then(|value| value.as_f64())).sum::<f64>(),
-            "final_route": result.final_route.clone().unwrap_or_else(|| json!({})),
-            "route_attempt_count": result.attempts.len(),
-            "route_failure_classes": failed_attempts.iter().filter_map(|attempt| attempt.get("failure_class").and_then(|value| value.as_str())).collect::<Vec<_>>(),
-        }));
+        source_diagnostics.push(source_diagnostic(result));
     }
     if options.dedupe_affiliated {
         items = crate::scraper::quality::dedupe_affiliated(items);
@@ -359,7 +331,13 @@ fn parse_date_argument(value: &str) -> Result<NaiveDate, String> {
         .map_err(|_| format!("日期格式必須是 YYYY-MM-DD：{value}"))
 }
 
-async fn fetch_source(client: &HttpClient, source: &str, date_range: DateRange) -> SourceResult {
+async fn fetch_source(
+    client: &HttpClient,
+    source: &str,
+    date_range: DateRange,
+    progress: Option<&ProgressCallback>,
+    total: u32,
+) -> SourceResult {
     let Some(definition) = find_source(source) else {
         return SourceResult {
             source: source.to_owned(),
@@ -374,88 +352,100 @@ async fn fetch_source(client: &HttpClient, source: &str, date_range: DateRange) 
     let mut aggregated_items = Vec::new();
     let mut successful_routes = 0usize;
     let mut aggregate_final_route = None;
-    for route in routes_for(definition) {
+    'routes: for route in routes_for(definition) {
         let index = route.priority.saturating_sub(1) as usize;
         let url = &route.url;
-        let started = Instant::now();
-        let route_id = route.id.clone();
         let host = url::Url::parse(url)
             .ok()
             .and_then(|value| value.host_str().map(str::to_ascii_lowercase))
             .unwrap_or_default();
-        let fetched = if route.kind == "browser" {
-            let page_script = if source == "運動部" {
-                Some(
-                    "(async () => { const select = document.querySelector('#InputPageSize'); if (select) { select.value = '500'; select.dispatchEvent(new Event('change', { bubbles: true })); } const deadline = Date.now() + 20000; while (Date.now() < deadline) { const date = document.querySelector(\"tbody tr td[data-title='發布日期'] div.in, tbody tr td[data-title='上版日期'] div.in\"); if (date && date.textContent.trim()) return true; await new Promise(resolve => setTimeout(resolve, 250)); } return false; })()",
+        for attempt_number in 1..=2 {
+            let started = Instant::now();
+            let fetched = if route.kind == "browser" {
+                crate::browser::fetch_rendered_html_after(
+                    url,
+                    browser_page_script(route.parser.as_str()),
                 )
-            } else {
-                None
-            };
-            crate::browser::fetch_rendered_html_after(url, page_script)
                 .await
                 .map_err(ScraperError::BrowserRuntime)
-        } else {
-            client.fetch_text(url).await
-        };
-        match fetched {
-            Ok(body) => {
-                let parsed = adapters::parse_route(source, &route, &body);
-                match parsed {
-                    Ok(items) => {
-                        let parsed_item_count = items.len();
-                        let filtered_items = filter_to_date_range(items, date_range);
-                        let filtered_items =
-                            enrich_detail_summaries(client, source, filtered_items).await;
-                        attempts.push(json!({
-                            "source": source,
-                            "route_id": route_id,
+            } else {
+                client.fetch_text(url).await
+            };
+            let outcome = fetched.and_then(|body| adapters::parse_route(source, &route, &body));
+            match outcome {
+                Ok(items) => {
+                    let parsed_item_count = items.len();
+                    let filtered_items = filter_to_date_range(items, date_range);
+                    let filtered_items =
+                        enrich_detail_summaries(client, source, filtered_items).await;
+                    attempts.push(json!({
+                        "source": source,
+                        "route_id": route.id,
+                        "url": url,
+                        "url_host": host,
+                        "route_kind": route.kind.as_str(),
+                        "parser": route.parser.as_str(),
+                        "attempt_number": attempt_number,
+                        "status": "success",
+                        "elapsed_seconds": elapsed_seconds(started),
+                        "item_count": parsed_item_count,
+                        "failure_class": "",
+                        "error_category": "",
+                        "failure_evidence": {},
+                    }));
+                    if definition.aggregate_routes {
+                        successful_routes += 1;
+                        aggregated_items.extend(filtered_items);
+                        aggregate_final_route = Some(json!({
+                            "route_id": route.id,
                             "url": url,
                             "url_host": host,
-                            "route_kind": route.kind.as_str(),
-                            "parser": route.parser.as_str(),
-                            "status": "success",
-                            "elapsed_seconds": elapsed_seconds(started),
-                            "item_count": parsed_item_count,
-                            "failure_class": "",
-                            "error_category": "",
-                            "failure_evidence": {},
+                            "used_fallback": false,
+                            "coverage_reduced": route.coverage_reduced,
+                            "aggregated": true,
                         }));
-                        if definition.aggregate_routes {
-                            successful_routes += 1;
-                            aggregated_items.extend(filtered_items);
-                            aggregate_final_route = Some(json!({
-                                "route_id": route_id,
-                                "url": url,
-                                "url_host": host,
-                                "used_fallback": false,
-                                "coverage_reduced": route.coverage_reduced,
-                                "aggregated": true,
-                            }));
-                            continue;
-                        }
-                        return SourceResult {
-                            source: source.to_owned(),
-                            items: filtered_items,
-                            error: None,
-                            final_route: Some(json!({
-                                "route_id": route_id,
-                                "url": url,
-                                "url_host": host,
-                                "used_fallback": index > 0,
-                                "coverage_reduced": route.coverage_reduced,
-                            })),
-                            attempts,
-                        };
+                        continue 'routes;
                     }
-                    Err(error) => {
-                        attempts.push(attempt_json(source, &route, &host, started, &error));
-                        last_error = Some(error)
-                    }
+                    return SourceResult {
+                        source: source.to_owned(),
+                        items: filtered_items,
+                        error: None,
+                        final_route: Some(json!({
+                            "route_id": route.id,
+                            "url": url,
+                            "url_host": host,
+                            "used_fallback": index > 0,
+                            "coverage_reduced": route.coverage_reduced,
+                        })),
+                        attempts,
+                    };
                 }
-            }
-            Err(error) => {
-                attempts.push(attempt_json(source, &route, &host, started, &error));
-                last_error = Some(error)
+                Err(error) => {
+                    let should_retry = should_retry_browser_route(&route, &error, attempt_number);
+                    attempts.push(attempt_json(
+                        source,
+                        &route,
+                        &host,
+                        started,
+                        attempt_number,
+                        &error,
+                    ));
+                    last_error = Some(error);
+                    if should_retry {
+                        if let Some(progress) = progress {
+                            progress(crate::ProgressEvent {
+                                kind: "retry".into(),
+                                source: Some(source.to_owned()),
+                                completed: None,
+                                total: Some(total),
+                                message: Some(format!("頁面第一次載入未完成，正在重試：{source}")),
+                            });
+                        }
+                        tokio::time::sleep(std::time::Duration::from_millis(750)).await;
+                        continue;
+                    }
+                    break;
+                }
             }
         }
     }
@@ -477,6 +467,67 @@ async fn fetch_source(client: &HttpClient, source: &str, date_range: DateRange) 
     }
 }
 
+fn browser_page_script(parser: &str) -> Option<&'static str> {
+    match parser {
+        "sports-html" => Some(
+            "(async () => { const select = document.querySelector('#InputPageSize'); if (select) { select.value = '500'; select.dispatchEvent(new Event('change', { bubbles: true })); } const deadline = Date.now() + 20000; while (Date.now() < deadline) { const date = document.querySelector(\"tbody tr td[data-title='發布日期'] div.in, tbody tr td[data-title='上版日期'] div.in\"); if (date && date.textContent.trim()) return true; await new Promise(resolve => setTimeout(resolve, 250)); } return false; })()",
+        ),
+        "vghtpe-html" => Some(
+            "(async () => { const deadline = Date.now() + 20000; while (Date.now() < deadline) { if (document.querySelector('table.stackedTable tbody tr, table tbody tr')) return true; await new Promise(resolve => setTimeout(resolve, 250)); } return false; })()",
+        ),
+        "moenv-html" => Some(
+            "(async () => { const deadline = Date.now() + 20000; while (Date.now() < deadline) { if (document.querySelector('ul.list_group li, article.idx-news-card')) return true; await new Promise(resolve => setTimeout(resolve, 250)); } return false; })()",
+        ),
+        "moea-html" => Some(
+            "(async () => { const deadline = Date.now() + 20000; while (Date.now() < deadline) { if (document.querySelector('#holderContent_grdNews tbody tr')) return true; await new Promise(resolve => setTimeout(resolve, 250)); } return false; })()",
+        ),
+        _ => None,
+    }
+}
+
+fn should_retry_browser_route(
+    route: &SourceRoute,
+    error: &ScraperError,
+    attempt_number: u32,
+) -> bool {
+    route.kind == "browser"
+        && attempt_number == 1
+        && matches!(
+            error,
+            ScraperError::BrowserRuntime(_) | ScraperError::ParserRegression(_)
+        )
+}
+
+fn source_diagnostic(result: &SourceResult) -> serde_json::Value {
+    let failed_attempts: Vec<&serde_json::Value> = result
+        .attempts
+        .iter()
+        .filter(|attempt| attempt.get("status").and_then(|value| value.as_str()) == Some("failed"))
+        .collect();
+    let final_attempt = result.attempts.last().cloned().unwrap_or_else(|| json!({}));
+    let last_failure = failed_attempts
+        .last()
+        .cloned()
+        .cloned()
+        .unwrap_or_else(|| json!({}));
+    let unstable = result.error.is_none() && !failed_attempts.is_empty();
+    json!({
+        "source": result.source,
+        "status": if result.error.is_some() { "failed" } else { "success" },
+        "unstable": unstable,
+        "item_count": result.items.len(),
+        "attempt_count": result.attempts.len(),
+        "failure_class": if result.error.is_some() { final_attempt.get("failure_class").cloned().unwrap_or(json!("unknown")) } else { json!("") },
+        "last_failure_class": last_failure.get("failure_class").cloned().unwrap_or(json!("")),
+        "error_category": if result.error.is_some() { final_attempt.get("error_category").cloned().unwrap_or(json!("unexpected")) } else { json!("") },
+        "failure_evidence": last_failure.get("failure_evidence").cloned().unwrap_or(json!({})),
+        "elapsed_seconds": result.attempts.iter().filter_map(|attempt| attempt.get("elapsed_seconds").and_then(|value| value.as_f64())).sum::<f64>(),
+        "final_route": result.final_route.clone().unwrap_or_else(|| json!({})),
+        "route_attempt_count": result.attempts.len(),
+        "route_failure_classes": failed_attempts.iter().filter_map(|attempt| attempt.get("failure_class").and_then(|value| value.as_str())).collect::<Vec<_>>(),
+    })
+}
+
 fn elapsed_seconds(started: Instant) -> f64 {
     (started.elapsed().as_millis() as f64 / 1000.0 * 1000.0).round() / 1000.0
 }
@@ -486,6 +537,7 @@ fn attempt_json(
     route: &crate::scraper::catalog::SourceRoute,
     host: &str,
     started: Instant,
+    attempt_number: u32,
     error: &ScraperError,
 ) -> serde_json::Value {
     json!({
@@ -495,6 +547,7 @@ fn attempt_json(
         "url_host": host,
         "route_kind": route.kind,
         "parser": route.parser,
+        "attempt_number": attempt_number,
         "status": "failed",
         "elapsed_seconds": elapsed_seconds(started),
         "item_count": 0,
@@ -1235,6 +1288,166 @@ mod tests {
             dedupe_affiliated: false,
             fail_on_source_error: false,
         }
+    }
+
+    fn browser_route(parser: &str) -> SourceRoute {
+        SourceRoute {
+            id: "official-browser".into(),
+            url: "https://example.test/news".into(),
+            kind: "browser".into(),
+            parser: parser.into(),
+            priority: 1,
+            official: true,
+            coverage_reduced: false,
+        }
+    }
+
+    fn route_attempt(
+        route_id: &str,
+        attempt_number: u32,
+        status: &str,
+        failure_class: &str,
+    ) -> serde_json::Value {
+        json!({
+            "source": "測試來源",
+            "route_id": route_id,
+            "url": format!("https://{route_id}.example.test/news"),
+            "url_host": format!("{route_id}.example.test"),
+            "route_kind": "browser",
+            "parser": "test-html",
+            "attempt_number": attempt_number,
+            "status": status,
+            "elapsed_seconds": 1.25,
+            "item_count": if status == "success" { 3 } else { 0 },
+            "failure_class": failure_class,
+            "error_category": if failure_class.is_empty() { "" } else { "parse" },
+            "failure_evidence": if failure_class.is_empty() {
+                json!({})
+            } else {
+                json!({"url_host": format!("{route_id}.example.test"), "message": "頁面未完成渲染"})
+            },
+        })
+    }
+
+    #[test]
+    fn browser_retry_policy_is_narrow_and_single_attempt() {
+        let route = browser_route("vghtpe-html");
+        assert!(should_retry_browser_route(
+            &route,
+            &ScraperError::BrowserRuntime("timeout".into()),
+            1
+        ));
+        assert!(should_retry_browser_route(
+            &route,
+            &ScraperError::ParserRegression("not rendered".into()),
+            1
+        ));
+        assert!(!should_retry_browser_route(
+            &route,
+            &ScraperError::ParserRegression("not rendered".into()),
+            2
+        ));
+        assert!(!should_retry_browser_route(
+            &route,
+            &ScraperError::AccessBlocked("403".into()),
+            1
+        ));
+        assert!(!should_retry_browser_route(
+            &route,
+            &ScraperError::Unknown("unknown".into()),
+            1
+        ));
+        let mut html_route = route;
+        html_route.kind = "html".into();
+        assert!(!should_retry_browser_route(
+            &html_route,
+            &ScraperError::ParserRegression("changed".into()),
+            1
+        ));
+    }
+
+    #[test]
+    fn dynamic_browser_parsers_wait_for_expected_dom() {
+        for parser in ["sports-html", "vghtpe-html", "moenv-html", "moea-html"] {
+            assert!(browser_page_script(parser).is_some(), "missing {parser}");
+        }
+        assert!(browser_page_script("standard").is_none());
+    }
+
+    #[test]
+    fn retry_recovery_is_reported_as_unstable() {
+        let result = SourceResult {
+            source: "測試來源".into(),
+            items: Vec::new(),
+            error: None,
+            attempts: vec![
+                route_attempt("primary", 1, "failed", "parser_regression"),
+                route_attempt("primary", 2, "success", ""),
+            ],
+            final_route: Some(json!({
+                "route_id": "primary",
+                "url": "https://primary.example.test/news",
+                "url_host": "primary.example.test",
+                "used_fallback": false,
+                "coverage_reduced": false,
+            })),
+        };
+
+        let diagnostic = source_diagnostic(&result);
+
+        assert_eq!(diagnostic["status"], "success");
+        assert_eq!(diagnostic["unstable"], true);
+        assert_eq!(diagnostic["attempt_count"], 2);
+        assert_eq!(diagnostic["last_failure_class"], "parser_regression");
+    }
+
+    #[test]
+    fn exhausted_retry_remains_failed() {
+        let result = SourceResult {
+            source: "測試來源".into(),
+            items: Vec::new(),
+            error: Some(ScraperError::ParserRegression("still unavailable".into())),
+            attempts: vec![
+                route_attempt("primary", 1, "failed", "parser_regression"),
+                route_attempt("primary", 2, "failed", "parser_regression"),
+            ],
+            final_route: None,
+        };
+
+        let diagnostic = source_diagnostic(&result);
+
+        assert_eq!(diagnostic["status"], "failed");
+        assert_eq!(diagnostic["unstable"], false);
+        assert_eq!(diagnostic["failure_class"], "parser_regression");
+        assert_eq!(diagnostic["route_attempt_count"], 2);
+    }
+
+    #[test]
+    fn fallback_recovery_keeps_primary_failure_evidence() {
+        let result = SourceResult {
+            source: "測試來源".into(),
+            items: Vec::new(),
+            error: None,
+            attempts: vec![
+                route_attempt("primary", 1, "failed", "browser_runtime"),
+                route_attempt("primary", 2, "failed", "browser_runtime"),
+                route_attempt("fallback", 1, "success", ""),
+            ],
+            final_route: Some(json!({
+                "route_id": "fallback",
+                "url": "https://fallback.example.test/news",
+                "url_host": "fallback.example.test",
+                "used_fallback": true,
+                "coverage_reduced": false,
+            })),
+        };
+
+        let diagnostic = source_diagnostic(&result);
+
+        assert_eq!(diagnostic["status"], "success");
+        assert_eq!(diagnostic["unstable"], true);
+        assert_eq!(diagnostic["final_route"]["used_fallback"], true);
+        assert_eq!(diagnostic["last_failure_class"], "browser_runtime");
     }
 
     #[test]

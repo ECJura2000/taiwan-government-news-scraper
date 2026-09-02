@@ -2,9 +2,16 @@
   import { invoke } from "@tauri-apps/api/core";
   import { listen, type UnlistenFn } from "@tauri-apps/api/event";
   import { open as openDialog } from "@tauri-apps/plugin-dialog";
-  import { revealItemInDir } from "@tauri-apps/plugin-opener";
+  import { openUrl, revealItemInDir } from "@tauri-apps/plugin-opener";
   import { onDestroy, onMount } from "svelte";
   import type { ProgressEvent, RunOptions, RunSummary } from "./lib/contracts";
+  import {
+    buildSourceHealthDetails,
+    healthTooltip,
+    toggleHealthPanel,
+    type HealthPanel,
+    type SourceHealthDetail,
+  } from "./lib/source-health";
 
   let sources: string[] = [];
   let selectedSources: string[] = [];
@@ -29,6 +36,10 @@
   let lastCompleted = 0;
   let jsonFollowsExcel = true;
   let defaultOutputDir = "";
+  let activeHealthPanel: HealthPanel | null = null;
+  let unstableDetails: SourceHealthDetail[] = [];
+  let failedDetails: SourceHealthDetail[] = [];
+  let activeHealthDetails: SourceHealthDetail[] = [];
 
   async function loadSources() {
     loadingSources = true;
@@ -48,6 +59,7 @@
   async function runScraper() {
     running = true;
     summary = null;
+    activeHealthPanel = null;
     error = "";
     lastCompleted = 0;
     elapsedSeconds = 0;
@@ -130,6 +142,22 @@
     }
   }
 
+  async function openWebsite(url: string) {
+    try {
+      await openUrl(url);
+    } catch (cause) {
+      error = String(cause);
+    }
+  }
+
+  function selectHealthPanel(panel: HealthPanel, detailCount: number) {
+    activeHealthPanel = toggleHealthPanel(activeHealthPanel, panel, detailCount);
+  }
+
+  function formatSeconds(value: number): string {
+    return `${value.toFixed(value >= 10 ? 1 : 2)} 秒`;
+  }
+
   $: statusLabel = summary?.status ?? (progress?.kind === "cancelled" ? "已取消" : running ? "執行中" : loadingSources ? "載入中" : "尚未執行");
   $: progressTotal = progress?.total ?? selectedSources.length;
   $: progressCompleted = progress?.completed ?? lastCompleted;
@@ -156,6 +184,10 @@
       : jsonFollowsExcel
         ? "跟隨 Excel 資料夾下的執行紀錄"
         : "使用指定 JSON 資料夾";
+  $: unstableDetails = summary ? buildSourceHealthDetails(summary, "unstable") : [];
+  $: failedDetails = summary ? buildSourceHealthDetails(summary, "failed") : [];
+  $: activeHealthDetails = activeHealthPanel === "unstable" ? unstableDetails : activeHealthPanel === "failed" ? failedDetails : [];
+  $: activeHealthTitle = activeHealthPanel === "unstable" ? "不穩定來源明細" : "失敗來源明細";
 
   onMount(() => {
     loadSources();
@@ -294,11 +326,110 @@
         <strong class="news-count">{summary.news_count} 筆新聞</strong>
       </div>
       <div class="metrics">
-        <div><span>健康來源</span><strong>{summary.source_health.healthy_count}</strong></div>
-        <div><span>不穩定</span><strong>{summary.source_health.unstable_count}</strong></div>
-        <div><span>失敗來源</span><strong>{summary.source_health.failed_count}</strong></div>
-        <div><span>品質告警</span><strong>{summary.quality.alert_reasons?.length ?? 0}</strong></div>
+        <div class="metric-card"><span>健康來源</span><strong>{summary.source_health.healthy_count}</strong></div>
+        {#if unstableDetails.length > 0}
+          <button
+            type="button"
+            class="metric-card metric-button unstable"
+            data-active={activeHealthPanel === "unstable"}
+            aria-expanded={activeHealthPanel === "unstable"}
+            aria-controls="source-health-details"
+            aria-label={`查看 ${unstableDetails.length} 個不穩定來源`}
+            onclick={() => selectHealthPanel("unstable", unstableDetails.length)}
+          >
+            <span>不穩定</span><strong>{summary.source_health.unstable_count}</strong>
+            <small>移入查看，按下展開</small>
+            <span class="metric-tooltip" role="tooltip">
+              <b>不穩定網站</b>
+              {#each healthTooltip(unstableDetails) as item}<span>{item}</span>{/each}
+            </span>
+          </button>
+        {:else}
+          <div class="metric-card"><span>不穩定</span><strong>{summary.source_health.unstable_count}</strong></div>
+        {/if}
+        {#if failedDetails.length > 0}
+          <button
+            type="button"
+            class="metric-card metric-button failed"
+            data-active={activeHealthPanel === "failed"}
+            aria-expanded={activeHealthPanel === "failed"}
+            aria-controls="source-health-details"
+            aria-label={`查看 ${failedDetails.length} 個失敗來源`}
+            onclick={() => selectHealthPanel("failed", failedDetails.length)}
+          >
+            <span>失敗來源</span><strong>{summary.source_health.failed_count}</strong>
+            <small>移入查看，按下展開</small>
+            <span class="metric-tooltip" role="tooltip">
+              <b>失敗網站</b>
+              {#each healthTooltip(failedDetails) as item}<span>{item}</span>{/each}
+            </span>
+          </button>
+        {:else}
+          <div class="metric-card"><span>失敗來源</span><strong>{summary.source_health.failed_count}</strong></div>
+        {/if}
+        <div class="metric-card"><span>品質告警</span><strong>{summary.quality.alert_reasons?.length ?? 0}</strong></div>
       </div>
+      {#if activeHealthPanel && activeHealthDetails.length > 0}
+        <section class="health-details" id="source-health-details" aria-live="polite">
+          <div class="health-details-heading">
+            <div>
+              <p class="eyebrow">SOURCE HEALTH</p>
+              <h3>{activeHealthTitle}</h3>
+            </div>
+            <button class="quiet compact" type="button" onclick={() => (activeHealthPanel = null)}>收合</button>
+          </div>
+          <div class="health-detail-list">
+            {#each activeHealthDetails as detail}
+              <article class="health-detail">
+                <div class="health-detail-title">
+                  <div>
+                    <strong>{detail.source}</strong>
+                    <span>{detail.host || "網站未記錄"}</span>
+                  </div>
+                  <span class:failed-badge={detail.status === "failed"} class:unstable-badge={detail.status === "unstable"}>
+                    {detail.status === "failed" ? "最終失敗" : "已恢復但不穩定"}
+                  </span>
+                </div>
+                <dl class="health-facts">
+                  <div><dt>原因</dt><dd>{detail.failureLabel}</dd></div>
+                  <div><dt>重試</dt><dd>{detail.retryCount} 次</dd></div>
+                  <div><dt>取得筆數</dt><dd>{detail.itemCount}</dd></div>
+                  <div><dt>耗時</dt><dd>{formatSeconds(detail.elapsedSeconds)}</dd></div>
+                </dl>
+                <p class="health-message">{detail.message}</p>
+                <div class="route-summary">
+                  <span>問題路由：{detail.url || "未記錄"}</span>
+                  {#if detail.usedFallback || detail.finalRouteId}
+                    <span>
+                      最終路由：{detail.finalRouteId || "未記錄"}{detail.finalHost ? ` · ${detail.finalHost}` : ""}{detail.usedFallback ? "（備援）" : ""}
+                    </span>
+                  {/if}
+                </div>
+                <div class="button-row health-actions">
+                  {#if detail.url}
+                    <button class="quiet compact" type="button" onclick={() => openWebsite(detail.url)}>開啟問題網站</button>
+                  {/if}
+                  {#if detail.finalUrl && detail.finalUrl !== detail.url}
+                    <button class="quiet compact" type="button" onclick={() => openWebsite(detail.finalUrl)}>開啟最終網站</button>
+                  {/if}
+                </div>
+                {#if detail.attempts.length > 0}
+                  <details class="attempt-list">
+                    <summary>查看 {detail.attempts.length} 次路由紀錄</summary>
+                    {#each detail.attempts as attempt}
+                      <div class="attempt-row">
+                        <span class:attempt-failed={attempt.status === "failed"}>{attempt.status === "failed" ? "失敗" : "成功"}</span>
+                        <code>{attempt.route_id || "未命名路由"} · 第 {attempt.attempt_number ?? 1} 次</code>
+                        <span>{formatSeconds(attempt.elapsed_seconds ?? 0)}</span>
+                      </div>
+                    {/each}
+                  </details>
+                {/if}
+              </article>
+            {/each}
+          </div>
+        </section>
+      {/if}
       <div class="paths">
         <div><span>Excel</span><code>{summary.output_file || "未產生"}</code></div>
         <div><span>報告</span><code>{summary.report_file || "未產生"}</code></div>

@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+## 2.1.11 - 2026-09-02
+
+- Retry browser runtime and parser regression failures once with a fresh browser profile after 750 ms, while preserving both route attempts and classifying recovered sources as unstable.
+- Wait for the expected Taipei Veterans General Hospital, Ministry of Environment and Ministry of Economic Affairs content before parsing their dynamic pages.
+- Make the unstable and failed source cards keyboard-accessible, with source tooltips and expandable Chinese diagnostic details for routes, retries, errors, item counts and elapsed time.
+- Add typed frontend source diagnostics with schema-v4-compatible route attempt numbers and legacy report fallbacks.
+
 ## 2.1.10 - 2026-09-02
 
 - Detect Chrome, Chromium and Microsoft Edge from standard Windows system and per-user install locations, plus executable directories on `PATH`.
