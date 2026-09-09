@@ -7,6 +7,8 @@ use tauri::{Emitter, Manager, State};
 pub mod browser;
 pub mod core;
 pub mod native;
+pub mod policy;
+pub mod ranking;
 pub mod relevance;
 pub mod scraper;
 
@@ -15,6 +17,10 @@ pub mod scraper;
 pub struct RunOptions {
     #[serde(default)]
     pub sources: Vec<String>,
+    #[serde(default)]
+    pub topics_json: Option<String>,
+    #[serde(default)]
+    pub topics_policy: Option<policy::Profile>,
     pub output_dir: Option<String>,
     pub report_dir: Option<String>,
     pub date: Option<String>,
@@ -123,6 +129,47 @@ mod commands {
         marker
             .write_all(b"ready\n")
             .map_err(|error| format!("無法寫入介面就緒標記：{error}"))
+    }
+
+    fn policy_path(app: &tauri::AppHandle) -> Result<PathBuf, String> {
+        Ok(app
+            .path()
+            .app_config_dir()
+            .map_err(|e| e.to_string())?
+            .join("topics.json"))
+    }
+    #[tauri::command]
+    pub fn load_topic_policy(app: tauri::AppHandle) -> Result<policy::Profile, String> {
+        let path = policy_path(&app)?;
+        if path.exists() {
+            policy::read_profile(&path)
+        } else {
+            Ok(policy::Profile::embedded())
+        }
+    }
+    #[tauri::command]
+    pub fn default_topic_policy() -> policy::Profile {
+        policy::Profile::embedded()
+    }
+    #[tauri::command]
+    pub fn preview_topic_import(
+        current: policy::Profile,
+        text: String,
+        replace: bool,
+    ) -> Result<serde_json::Value, String> {
+        current.validate()?;
+        policy::preview_import(&current, &text, replace)
+    }
+    #[tauri::command]
+    pub fn save_topic_policy(
+        app: tauri::AppHandle,
+        profile: policy::Profile,
+    ) -> Result<(), String> {
+        policy::save_profile(&policy_path(&app)?, &profile)
+    }
+    #[tauri::command]
+    pub fn export_topic_policy(path: String, profile: policy::Profile) -> Result<(), String> {
+        policy::save_profile(std::path::Path::new(&path), &profile)
     }
 
     #[tauri::command]
@@ -251,6 +298,11 @@ pub fn run() {
             commands::list_sources,
             commands::default_output_dir,
             commands::run_scrape,
+            commands::load_topic_policy,
+            commands::default_topic_policy,
+            commands::preview_topic_import,
+            commands::save_topic_policy,
+            commands::export_topic_policy,
             commands::cancel_run
         ])
         .run(tauri::generate_context!())

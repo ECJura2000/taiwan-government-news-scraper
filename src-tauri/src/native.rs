@@ -46,6 +46,17 @@ pub async fn run_with_progress(
     progress: Option<ProgressCallback>,
 ) -> Result<crate::RunSummary, String> {
     let started_at = Utc::now();
+    if options.topics_json.is_some() && options.topics_policy.is_some() {
+        return Err("主題設定不得同時指定檔案與內嵌設定".into());
+    }
+    let profile = if let Some(path) = &options.topics_json {
+        crate::policy::read_profile(Path::new(path))?
+    } else if let Some(profile) = &options.topics_policy {
+        profile.clone()
+    } else {
+        crate::policy::Profile::embedded()
+    };
+    profile.require_enabled()?;
     let selected: Vec<String> = if options.sources.is_empty() {
         all_sources()
             .iter()
@@ -183,7 +194,32 @@ pub async fn run_with_progress(
     for item in &items {
         *source_counts.entry(item.source.clone()).or_default() += 1;
     }
-    let paths = write_outputs(options, &items, duplicate_count, date_range)?;
+    let pre_policy_count = items.len();
+    let batch = crate::ranking::rank(&profile, &items);
+    let classifications: Vec<_> = batch
+        .results
+        .iter()
+        .filter(|r| r["hard_excluded"] != true)
+        .cloned()
+        .collect();
+    items = items
+        .into_iter()
+        .zip(&batch.results)
+        .filter(|(_, r)| r["hard_excluded"] != true)
+        .map(|(item, _)| item)
+        .collect();
+    source_counts.values_mut().for_each(|v| *v = 0);
+    for item in &items {
+        *source_counts.entry(item.source.clone()).or_default() += 1;
+    }
+    let paths = write_outputs(
+        options,
+        &items,
+        duplicate_count,
+        date_range,
+        &profile,
+        &classifications,
+    )?;
     let finished_at = Utc::now();
     let duplicate_ratio = duplicate_count as f64 / input_count.max(1) as f64;
     let excluded_ratio = excluded_non_news_count as f64 / input_count.max(1) as f64;
@@ -204,7 +240,11 @@ pub async fn run_with_progress(
     } else {
         "success"
     };
-    let relevance_policy = crate::relevance::default_summary();
+    let mut relevance_policy = profile.summary();
+    relevance_policy["pre_policy_count"] = json!(pre_policy_count);
+    relevance_policy["excluded_news_count"] = json!(batch.excluded_count);
+    relevance_policy["rule_counts"] = json!(batch.rule_counts);
+    relevance_policy["topic_counts"] = json!(batch.topic_counts);
     let summary_count = items.iter().filter(|item| !item.summary.is_empty()).count();
     let mut date_source_counts: HashMap<String, usize> = HashMap::new();
     for item in &items {
@@ -233,6 +273,8 @@ pub async fn run_with_progress(
         }),
         quality: json!({
             "input_count": input_count,
+            "pre_policy_count": pre_policy_count,
+            "excluded_by_topic_rules_count": batch.excluded_count,
             "output_count": items.len(),
             "duplicate_count": duplicate_count,
             "invalid_count": invalid_count,
@@ -635,7 +677,7 @@ fn parse_date(value: &str) -> Option<NaiveDate> {
         })
 }
 
-const EXCEL_HEADERS: [&str; 15] = [
+const EXCEL_HEADERS: [&str; 17] = [
     "部會",
     "新聞日期",
     "單位分類",
@@ -651,6 +693,8 @@ const EXCEL_HEADERS: [&str; 15] = [
     "命中關鍵字",
     "排除關鍵字",
     "各主題評分",
+    "BM25 排序分數",
+    "開啟原文",
 ];
 
 const EXCEL_CELL_CHAR_LIMIT: usize = 32_767;
@@ -676,8 +720,7 @@ fn contains_cjk(value: &str) -> bool {
     })
 }
 
-fn excel_row(item: &NewsItem) -> (Vec<String>, u32, String) {
-    let result = crate::relevance::classify(&item.title, &item.source, &item.summary);
+fn excel_row(item: &NewsItem, result: &serde_json::Value) -> (Vec<String>, u32, String) {
     let (parent_source, department_path) = excel_agency_path(&item.source, &item.department);
     let strings = |key: &str| {
         result[key]
@@ -740,6 +783,8 @@ fn excel_row(item: &NewsItem) -> (Vec<String>, u32, String) {
         strings("matched_keywords"),
         strings("excluded_keywords"),
         topic_scores,
+        result["bm25_score"].as_f64().unwrap_or(0.0).to_string(),
+        item.link.clone(),
     ];
     (values, score, relevance)
 }
@@ -766,22 +811,19 @@ fn excel_agency_path(source: &str, department: &str) -> (String, String) {
     (parent, department)
 }
 
-fn source_order(source: &str) -> usize {
-    all_sources()
-        .iter()
-        .position(|definition| definition.name == source)
-        .unwrap_or(usize::MAX)
-}
-
 fn extract_http_url(value: &str) -> Option<&str> {
-    let start = value.find("https://").or_else(|| value.find("http://"))?;
-    Some(&value[start..])
+    let value = value.trim();
+    let parsed = url::Url::parse(value).ok()?;
+    (matches!(parsed.scheme(), "http" | "https")
+        && parsed.host_str().is_some()
+        && !value.chars().any(char::is_whitespace))
+    .then_some(value)
 }
 
 fn roc_date(value: &str) -> Option<String> {
     let date = parse_date(value)?;
     Some(format!(
-        "民國{}/{}/{}",
+        "{:03}-{:02}-{:02}",
         date.year() - 1911,
         date.month(),
         date.day()
@@ -882,15 +924,49 @@ fn policy_reference_rows(document: &serde_json::Value) -> Vec<Vec<String>> {
         .map(|initiative| {
             vec![
                 initiative["name"].as_str().unwrap_or("").into(),
-                "是".into(),
+                if initiative["enabled"] == false {
+                    "否"
+                } else {
+                    "是"
+                }
+                .into(),
                 initiative["lead_source"].as_str().unwrap_or("").into(),
                 "是".into(),
                 "#FFFF00".into(),
-                json_string_list(&initiative["strong_keywords"]).join("、"),
-                json_string_list(&initiative["context_keywords"]).join("、"),
+                json_string_list(&initiative["strong_keywords"])
+                    .into_iter()
+                    .chain(
+                        initiative["weighted_keywords"]
+                            .as_array()
+                            .into_iter()
+                            .flatten()
+                            .filter(|k| {
+                                k["weight"].as_f64().unwrap_or(0.0) >= 3.0 && k["enabled"] != false
+                            })
+                            .filter_map(|k| k["text"].as_str().map(String::from)),
+                    )
+                    .collect::<Vec<_>>()
+                    .join("、"),
+                json_string_list(&initiative["context_keywords"])
+                    .into_iter()
+                    .chain(
+                        initiative["weighted_keywords"]
+                            .as_array()
+                            .into_iter()
+                            .flatten()
+                            .filter(|k| {
+                                k["weight"].as_f64().unwrap_or(0.0) < 3.0 && k["enabled"] != false
+                            })
+                            .filter_map(|k| k["text"].as_str().map(String::from)),
+                    )
+                    .collect::<Vec<_>>()
+                    .join("、"),
                 String::new(),
                 global_context.clone(),
-                String::new(),
+                format!(
+                    "扣分：{}；完全排除：{}",
+                    initiative["penalty_keywords"], initiative["exclude_keywords"]
+                ),
                 global_exclusions.clone(),
             ]
         })
@@ -899,48 +975,91 @@ fn policy_reference_rows(document: &serde_json::Value) -> Vec<Vec<String>> {
 
 fn policy_rule_rows(document: &serde_json::Value) -> Vec<Vec<String>> {
     let mut rows = Vec::new();
-    for keyword in json_string_list(&document["general_keywords"]) {
-        let id = crate::relevance::stable_default_id("global-context", &[&keyword]);
-        rows.push(vec![
-            "全域".into(),
-            "脈絡詞".into(),
-            keyword,
-            "標題與摘要".into(),
-            "是".into(),
-            "default".into(),
-            id,
-        ]);
-    }
-    for initiative in document["initiatives"].as_array().into_iter().flatten() {
-        let name = initiative["name"].as_str().unwrap_or("");
-        for (kind, key, label) in [
-            ("core", "strong_keywords", "核心詞"),
-            ("supporting", "context_keywords", "輔助詞"),
-        ] {
-            for keyword in json_string_list(&initiative[key]) {
-                let id = crate::relevance::stable_default_id(kind, &[name, &keyword]);
+    for topic in document["initiatives"].as_array().into_iter().flatten() {
+        let name = topic["name"].as_str().unwrap_or("");
+        for key in ["weighted_keywords", "penalty_keywords", "exclude_keywords"] {
+            for rule in topic[key].as_array().into_iter().flatten() {
                 rows.push(vec![
                     name.into(),
-                    label.into(),
-                    keyword,
+                    match key {
+                        "penalty_keywords" => "扣分詞",
+                        "exclude_keywords" => "完全排除詞",
+                        _ => "加權政策詞",
+                    }
+                    .into(),
+                    rule["text"].as_str().unwrap_or("").into(),
+                    rule.get("match_fields")
+                        .map(|v| {
+                            json_string_list(v)
+                                .iter()
+                                .map(|f| if f == "title" { "標題" } else { "摘要" })
+                                .collect::<Vec<_>>()
+                                .join("、")
+                        })
+                        .unwrap_or("標題與摘要".into()),
+                    if topic["enabled"] == false {
+                        "否（主題停用）"
+                    } else if rule["enabled"] == false {
+                        "否"
+                    } else {
+                        "是"
+                    }
+                    .into(),
+                    match rule["origin"].as_str() {
+                        Some("pdf") => "PDF 原詞",
+                        Some("synonym") => "補充同義詞",
+                        _ => "自行設定",
+                    }
+                    .into(),
+                    match key {
+                        "weighted_keywords" => {
+                            format!("權重={}；依據={}", rule["weight"], rule["references"])
+                        }
+                        "penalty_keywords" => {
+                            format!("扣分={}（多詞命中取最高值）", rule["penalty"])
+                        }
+                        _ => "命中即禁止本主題收錄".into(),
+                    },
+                ]);
+            }
+        }
+        for (key, kind) in [
+            ("exact_phrases", "完整片語"),
+            ("strong_keywords", "核心詞"),
+            ("context_keywords", "脈絡詞"),
+        ] {
+            for word in json_string_list(&topic[key]) {
+                rows.push(vec![
+                    name.into(),
+                    kind.into(),
+                    word,
                     "標題與摘要".into(),
-                    "是".into(),
-                    "default".into(),
-                    id,
+                    if topic["enabled"] == false {
+                        "否（主題停用）"
+                    } else {
+                        "是"
+                    }
+                    .into(),
+                    "設定".into(),
+                    if key == "context_keywords" {
+                        "權重=1"
+                    } else {
+                        "權重=3"
+                    }
+                    .into(),
                 ]);
             }
         }
     }
-    for keyword in json_string_list(&document["negative_keywords"]) {
-        let id = crate::relevance::stable_default_id("exclusion", &[&keyword]);
+    for word in json_string_list(&document["general_keywords"]) {
         rows.push(vec![
-            "全域".into(),
-            "排除詞".into(),
-            keyword,
-            "標題".into(),
+            "共用".into(),
+            "一般詞".into(),
+            word,
+            "標題與摘要".into(),
             "是".into(),
-            "default".into(),
-            id,
+            "設定".into(),
+            document["scoring"]["general_weight"].to_string(),
         ]);
     }
     rows
@@ -962,8 +1081,8 @@ fn policy_version_rows(summary: &serde_json::Value) -> Vec<Vec<String>> {
         ("排除詞總數", "exclusion_count"),
         ("啟用排除詞數", "enabled_exclusion_count"),
         ("停用排除詞數", "disabled_exclusion_count"),
-        ("自訂項目數", "custom_item_count"),
-        ("已刪除預設項目數", "deleted_default_count"),
+        ("扣分詞總數", "penalty_count"),
+        ("啟用扣分詞數", "enabled_penalty_count"),
     ]
     .into_iter()
     .map(|(label, key)| {
@@ -1028,14 +1147,27 @@ fn write_news_sheet(
             } else {
                 base_format
             };
-            if column == 4 && extract_http_url(value).is_some() {
+            if column == 16 && extract_http_url(value).is_some() {
                 let url = extract_http_url(value).expect("URL checked");
                 worksheet
-                    .write_url_with_text(row, column as u16, url, bounded_value.as_str())
+                    .write_url_with_text(row, column as u16, url, "開啟原文")
                     .map_err(|error| error.to_string())?;
                 worksheet
                     .set_cell_format(row, column as u16, cell_format)
                     .map_err(|error| error.to_string())?;
+            } else if column == 16 {
+                worksheet
+                    .write_string_with_format(row, column as u16, "", cell_format)
+                    .map_err(|e| e.to_string())?;
+            } else if column == 15 {
+                worksheet
+                    .write_number_with_format(
+                        row,
+                        column as u16,
+                        value.parse::<f64>().unwrap_or(0.0),
+                        cell_format,
+                    )
+                    .map_err(|e| e.to_string())?;
             } else if column == 10 {
                 worksheet
                     .write_number_with_format(row, column as u16, *score as f64, cell_format)
@@ -1084,6 +1216,7 @@ fn write_news_sheet(
         .map_err(|error| error.to_string())?;
     for (column, width) in [
         23.2, 28.0, 45.0, 120.0, 130.0, 90.0, 22.0, 36.0, 16.0, 14.0, 12.0, 65.0, 55.0, 32.0, 65.0,
+        20.0, 16.0,
     ]
     .iter()
     .enumerate()
@@ -1095,11 +1228,77 @@ fn write_news_sheet(
     Ok(())
 }
 
+fn sort_news_rows(rows: &mut [(Vec<String>, u32, String)]) {
+    rows.sort_by(|a, b| {
+        let rank = |s: &str| match s {
+            "高度相關" => 0,
+            "可能相關" => 1,
+            "待人工判讀" => 2,
+            _ => 3,
+        };
+        rank(&a.2)
+            .cmp(&rank(&b.2))
+            .then_with(|| {
+                b.0[15]
+                    .parse::<f64>()
+                    .unwrap_or(0.0)
+                    .total_cmp(&a.0[15].parse::<f64>().unwrap_or(0.0))
+            })
+            .then_with(|| b.0[1].cmp(&a.0[1]))
+            .then_with(|| a.0[3].cmp(&b.0[3]))
+            .then_with(|| a.0[16].cmp(&b.0[16]))
+    });
+}
+fn unique_sheet_name(name: &str, used: &mut std::collections::BTreeSet<String>) -> String {
+    let base: String = name
+        .chars()
+        .map(|c| {
+            if "[]:*?/\\".contains(c) || c.is_control() {
+                '_'
+            } else {
+                c
+            }
+        })
+        .collect::<String>()
+        .trim_matches('\'')
+        .to_owned();
+    let base = if base.is_empty() {
+        "主題".to_owned()
+    } else {
+        base
+    };
+    for index in 0.. {
+        let suffix = if index == 0 {
+            String::new()
+        } else {
+            format!(" ({index})")
+        };
+        let mut out = String::new();
+        for c in base.chars() {
+            if out.encode_utf16().count() + c.len_utf16() + suffix.len() > 31 {
+                break;
+            }
+            out.push(c);
+        }
+        out = out.trim_end_matches('\'').to_owned();
+        out.push_str(&suffix);
+        if out.eq_ignore_ascii_case("history") {
+            continue;
+        }
+        if used.insert(out.to_lowercase()) {
+            return out;
+        }
+    }
+    unreachable!()
+}
+
 fn write_outputs(
     options: &crate::RunOptions,
     items: &[NewsItem],
     duplicate_count: usize,
     date_range: DateRange,
+    profile: &crate::policy::Profile,
+    classifications: &[serde_json::Value],
 ) -> Result<(PathBuf, PathBuf), String> {
     let output_dir = PathBuf::from(options.output_dir.as_deref().unwrap_or(DEFAULT_OUTPUT_DIR));
     let report_dir = options
@@ -1124,26 +1323,18 @@ fn write_outputs(
     let report_path = report_dir.join(format!("news_scraper_run_{stamp}.json"));
 
     let mut workbook = Workbook::new();
-    let mut rows: Vec<(Vec<String>, u32, String)> = items.iter().map(excel_row).collect();
-    rows.sort_by(|left, right| {
-        source_order(&left.0[0])
-            .cmp(&source_order(&right.0[0]))
-            .then_with(|| left.0[1].cmp(&right.0[1]))
-            .then_with(|| left.0[2].cmp(&right.0[2]))
-            .then_with(|| left.0[3].cmp(&right.0[3]))
-    });
+    let mut rows: Vec<(Vec<String>, u32, String)> = items
+        .iter()
+        .zip(classifications)
+        .map(|(item, result)| excel_row(item, result))
+        .collect();
+    sort_news_rows(&mut rows);
     let mut selected_rows: Vec<(Vec<String>, u32, String)> = rows
         .iter()
         .filter(|(_, _, relevance)| relevance == "高度相關" || relevance == "可能相關")
         .cloned()
         .collect();
-    selected_rows.sort_by(|left, right| {
-        let rank = |relevance: &str| if relevance == "高度相關" { 0 } else { 1 };
-        rank(&left.2)
-            .cmp(&rank(&right.2))
-            .then_with(|| right.1.cmp(&left.1))
-            .then_with(|| left.0[7].cmp(&right.0[7]))
-    });
+    sort_news_rows(&mut selected_rows);
     let formats = ExcelFormats {
         header: Format::new()
             .set_bold()
@@ -1189,7 +1380,47 @@ fn write_outputs(
     };
     write_news_sheet(&mut workbook, "全部新聞", &rows, &formats)?;
     write_news_sheet(&mut workbook, "已初步篩選工作表", &selected_rows, &formats)?;
-    let policy_document = crate::relevance::policy_document();
+    let mut sheet_names: std::collections::BTreeSet<String> = [
+        "全部新聞",
+        "已初步篩選工作表",
+        "主題規則對照",
+        "關聯性規則",
+        "規則版本",
+        "財政部",
+        "國發會",
+        "國科會",
+        "數發部",
+        "經濟部",
+    ]
+    .iter()
+    .map(|s| s.to_lowercase())
+    .collect();
+    let mut mapping = Vec::new();
+    for topic in profile.initiatives.iter().filter(|t| t.enabled) {
+        let sheet = unique_sheet_name(&topic.name, &mut sheet_names);
+        let mut topic_rows = Vec::new();
+        for (item, result) in items.iter().zip(classifications) {
+            if let Some(matched) = result["topic_matches"]
+                .as_array()
+                .into_iter()
+                .flatten()
+                .find(|m| {
+                    m["name"] == topic.name
+                        && m["score"].as_u64().unwrap_or(0) >= profile.thresholds.possible as u64
+                        && m["hard_excluded"] != true
+                })
+            {
+                let mut topic_result = matched.clone();
+                topic_result["topics"] = json!([topic.name]);
+                topic_result["topic_matches"] = json!([matched]);
+                topic_rows.push(excel_row(item, &topic_result));
+            }
+        }
+        sort_news_rows(&mut topic_rows);
+        write_news_sheet(&mut workbook, &sheet, &topic_rows, &formats)?;
+        mapping.push(vec![format!("主題工作表：{}", topic.name), sheet]);
+    }
+    let policy_document = serde_json::to_value(profile).map_err(|e| e.to_string())?;
     let reference_rows = policy_reference_rows(&policy_document);
     write_table_sheet(
         &mut workbook,
@@ -1221,13 +1452,22 @@ fn write_outputs(
             "比對欄位",
             "啟用",
             "來源",
-            "規則ID",
+            "權重、扣分及政策來源",
         ],
         &rule_rows,
         &formats,
     )?;
-    let policy_summary = crate::relevance::default_summary();
-    let version_rows = policy_version_rows(&policy_summary);
+    let policy_summary = profile.summary();
+    let mut version_rows = policy_version_rows(&policy_summary);
+    version_rows.extend(mapping);
+    for (label, key) in [
+        ("分詞器版本", "tokenizer"),
+        ("政策詞典版本", "dictionary_version"),
+        ("評分設定", "scoring"),
+        ("政策來源", "references"),
+    ] {
+        version_rows.push(vec![label.into(), policy_summary[key].to_string()]);
+    }
     write_table_sheet(
         &mut workbook,
         "規則版本",
@@ -1279,6 +1519,8 @@ mod tests {
     fn options() -> crate::RunOptions {
         crate::RunOptions {
             sources: Vec::new(),
+            topics_json: None,
+            topics_policy: None,
             output_dir: None,
             report_dir: None,
             date: None,
@@ -1545,6 +1787,105 @@ mod tests {
     }
 
     #[test]
+    fn policy_workbook_has_copyable_sources_and_local_exclusions() {
+        use std::io::Read;
+        let profile=crate::policy::Profile::parse(r#"{"initiatives":[{"name":"甲","strong_keywords":["智慧醫療"],"exclude_keywords":[{"text":"徵才"}]},{"name":"乙","strong_keywords":["量子運算"]}]}"#).unwrap();
+        let make = |title: &str| NewsItem {
+            source: "國發會".into(),
+            date: "2026-08-31".into(),
+            title: title.into(),
+            summary: String::new(),
+            link: "https://www.ndc.gov.tw/".into(),
+            department: "國發會".into(),
+            category: String::new(),
+            date_source: "published".into(),
+        };
+        let items = vec![
+            make("智慧醫療徵才：應完全移除"),
+            make("智慧醫療徵才與量子運算：乙保留"),
+            make("智慧醫療政策發布"),
+        ];
+        let batch = crate::ranking::rank(&profile, &items);
+        let items: Vec<_> = items
+            .into_iter()
+            .zip(&batch.results)
+            .filter(|(_, r)| r["hard_excluded"] != true)
+            .map(|(n, _)| n)
+            .collect();
+        let results: Vec<_> = batch
+            .results
+            .into_iter()
+            .filter(|r| r["hard_excluded"] != true)
+            .collect();
+        let temp = tempfile::tempdir().unwrap();
+        let mut options = options();
+        options.output_dir = Some(temp.path().to_string_lossy().into_owned());
+        let (path, _) = write_outputs(
+            &options,
+            &items,
+            0,
+            DateRange {
+                start: NaiveDate::from_ymd_opt(2026, 8, 31).unwrap(),
+                end: NaiveDate::from_ymd_opt(2026, 9, 6).unwrap(),
+            },
+            &profile,
+            &results,
+        )
+        .unwrap();
+        let mut archive = zip::ZipArchive::new(std::fs::File::open(&path).unwrap()).unwrap();
+        let mut strings = String::new();
+        archive
+            .by_name("xl/sharedStrings.xml")
+            .unwrap()
+            .read_to_string(&mut strings)
+            .unwrap();
+        assert!(!strings.contains("應完全移除"));
+        assert!(strings.contains("乙保留"));
+        assert!(strings.contains("開啟原文"));
+        let pattern = Regex::new(r#"<hyperlink ref="([A-Z]+)[0-9]+""#).unwrap();
+        for name in [
+            "xl/worksheets/sheet1.xml",
+            "xl/worksheets/sheet2.xml",
+            "xl/worksheets/sheet3.xml",
+            "xl/worksheets/sheet4.xml",
+        ] {
+            let mut xml = String::new();
+            archive
+                .by_name(name)
+                .unwrap()
+                .read_to_string(&mut xml)
+                .unwrap();
+            assert!(pattern.is_match(&xml), "missing explicit original link");
+            for cap in pattern.captures_iter(&xml) {
+                assert_eq!(&cap[1], "Q");
+            }
+            assert!(xml.contains("115-08-31"));
+            assert!(!xml.contains("民國115"));
+        }
+        assert_eq!(roc_date("2026-08-31").unwrap(), "115-08-31");
+        if let Some(dir) = std::env::var_os("NEWS_SCRAPER_QA_OUTPUT") {
+            std::fs::create_dir_all(&dir).unwrap();
+            std::fs::copy(path, PathBuf::from(dir).join("stage1-verification.xlsx")).unwrap();
+        }
+    }
+    #[test]
+    fn topic_sheet_names_are_unique_and_valid() {
+        let mut used = std::collections::BTreeSet::new();
+        let a = unique_sheet_name("[]:*?/\\abcdefghijklmnopqrstuvwxyzabcdef", &mut used);
+        let b = unique_sheet_name("[]:*?/\\abcdefghijklmnopqrstuvwxyzabcdef", &mut used);
+        assert_ne!(a, b);
+        assert!(a.encode_utf16().count() <= 31);
+        assert!(!a.contains('/'));
+        assert_eq!(unique_sheet_name("History", &mut used), "History (1)");
+        assert!(extract_http_url("https://").is_none());
+        assert!(extract_http_url("javascript:alert(1)").is_none());
+        assert_eq!(
+            extract_http_url("https://www.ndc.gov.tw/"),
+            Some("https://www.ndc.gov.tw/")
+        );
+    }
+
+    #[test]
     fn report_dir_defaults_under_selected_output_dir() {
         let sandbox = tempfile::tempdir().unwrap();
         let output_dir = sandbox.path().join("selected-output");
@@ -1559,6 +1900,8 @@ mod tests {
                 start: NaiveDate::from_ymd_opt(2026, 8, 3).unwrap(),
                 end: NaiveDate::from_ymd_opt(2026, 8, 9).unwrap(),
             },
+            &crate::policy::Profile::embedded(),
+            &[],
         )
         .unwrap();
 

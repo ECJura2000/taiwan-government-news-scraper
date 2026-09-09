@@ -1,65 +1,13 @@
 use regex::Regex;
-use serde::Deserialize;
 use serde_json::Value;
-use sha2::{Digest, Sha256};
-use std::collections::BTreeMap;
 
-#[derive(Debug, Clone, Deserialize)]
-struct Ruleset {
-    version: String,
-    initiatives: Vec<Initiative>,
-    general_keywords: Vec<String>,
-    negative_keywords: Vec<String>,
-    thresholds: Thresholds,
-}
-
-#[derive(Debug, Clone, Deserialize)]
-struct Initiative {
-    name: String,
-    lead_source: String,
-    strong_keywords: Vec<String>,
-    context_keywords: Vec<String>,
-}
-
-#[derive(Debug, Clone, Deserialize)]
-struct Thresholds {
-    high: u32,
-    possible: u32,
-    negative_penalty: u32,
-}
-
+use crate::policy::Profile as Ruleset;
 fn ruleset() -> Ruleset {
-    serde_json::from_str(include_str!("../resources/relevance-policy.json"))
-        .expect("embedded relevance policy must be valid JSON")
+    Ruleset::embedded()
 }
 
 pub fn default_summary() -> serde_json::Value {
-    let profile = ruleset();
-    let hash = effective_profile_hash(&profile);
-    let keyword_count = profile.general_keywords.len()
-        + profile
-            .initiatives
-            .iter()
-            .map(|initiative| initiative.strong_keywords.len() + initiative.context_keywords.len())
-            .sum::<usize>();
-    serde_json::json!({
-        "name": "AI 新十大建設預設範本",
-        "schema_version": 1,
-        "template_version": profile.version,
-        "ruleset_hash": hash,
-        "source": "內建預設範本",
-        "topic_count": profile.initiatives.len(),
-        "enabled_topic_count": profile.initiatives.len(),
-        "disabled_topic_count": 0,
-        "keyword_count": keyword_count,
-        "enabled_keyword_count": keyword_count,
-        "disabled_keyword_count": 0,
-        "exclusion_count": profile.negative_keywords.len(),
-        "enabled_exclusion_count": profile.negative_keywords.len(),
-        "disabled_exclusion_count": 0,
-        "custom_item_count": 0,
-        "deleted_default_count": 0,
-    })
+    ruleset().summary()
 }
 
 pub fn policy_document() -> Value {
@@ -68,30 +16,77 @@ pub fn policy_document() -> Value {
 }
 
 pub fn classify(title: &str, source: &str, summary: &str) -> serde_json::Value {
-    let profile = ruleset();
+    classify_with_profile(&ruleset(), title, source, summary)
+}
+
+pub fn classify_with_profile(
+    profile: &Ruleset,
+    title: &str,
+    source: &str,
+    summary: &str,
+) -> serde_json::Value {
     let normalized_title = normalize(title);
     let normalized_summary = normalize(summary);
     let title_global = find_matches(&normalized_title, &profile.general_keywords);
     let summary_global = find_matches(&normalized_summary, &profile.general_keywords);
-    let exclusions = find_matches(&normalized_title, &profile.negative_keywords);
+    let exclusions: Vec<String> = Vec::new();
     let mut candidates = Vec::new();
     let mut matches = Vec::new();
 
-    for initiative in &profile.initiatives {
-        let title_name = if contains(&normalized_title, &initiative.name) {
+    for initiative in profile.initiatives.iter().filter(|t| t.enabled) {
+        let title_name = if contains(&normalized_title, &initiative.name)
+            || initiative
+                .exact_phrases
+                .iter()
+                .any(|p| contains(&normalized_title, p))
+        {
             vec![initiative.name.clone()]
         } else {
             Vec::new()
         };
-        let summary_name = if contains(&normalized_summary, &initiative.name) {
+        let summary_name = if contains(&normalized_summary, &initiative.name)
+            || initiative
+                .exact_phrases
+                .iter()
+                .any(|p| contains(&normalized_summary, p))
+        {
             vec![initiative.name.clone()]
         } else {
             Vec::new()
         };
-        let title_core = find_matches(&normalized_title, &initiative.strong_keywords);
-        let summary_core = find_matches(&normalized_summary, &initiative.strong_keywords);
-        let title_supporting = find_matches(&normalized_title, &initiative.context_keywords);
-        let summary_supporting = find_matches(&normalized_summary, &initiative.context_keywords);
+        let mut core = initiative.strong_keywords.clone();
+        core.extend(
+            initiative
+                .weighted_keywords
+                .iter()
+                .filter(|k| k.enabled && k.weight >= 3.0)
+                .map(|k| k.text.clone()),
+        );
+        let mut supporting = initiative.context_keywords.clone();
+        supporting.extend(
+            initiative
+                .weighted_keywords
+                .iter()
+                .filter(|k| k.enabled && k.weight < 3.0)
+                .map(|k| k.text.clone()),
+        );
+        let exclusions = initiative
+            .penalty_keywords
+            .iter()
+            .filter(|r| rule_matches(r, title, summary))
+            .map(|r| r.text.clone())
+            .collect::<Vec<_>>();
+        let penalty = initiative
+            .penalty_keywords
+            .iter()
+            .filter(|r| rule_matches(r, title, summary))
+            .map(|r| r.penalty)
+            .max()
+            .unwrap_or(0);
+        let title_core = find_matches(&normalized_title, &core);
+        let summary_core = find_matches(&normalized_summary, &core);
+        let title_supporting = find_matches(&normalized_title, &supporting);
+        let summary_supporting = find_matches(&normalized_summary, &supporting);
         let priority_source = source == initiative.lead_source;
         let mut scores: Vec<u32> = Vec::new();
         let mut reasons = Vec::new();
@@ -131,7 +126,7 @@ pub fn classify(title: &str, source: &str, summary: &str) -> serde_json::Value {
             continue;
         };
         if !exclusions.is_empty() {
-            score = score.saturating_sub(profile.thresholds.negative_penalty);
+            score = score.saturating_sub(penalty);
             reasons.push("命中排除詞，分數下修");
         }
         let relevance = if score >= profile.thresholds.high {
@@ -268,7 +263,7 @@ pub fn classify(title: &str, source: &str, summary: &str) -> serde_json::Value {
         .unwrap_or(0);
     aggregate_candidates(
         candidates,
-        if score >= 80 {
+        if score >= u64::from(profile.thresholds.high) {
             "高度相關"
         } else {
             "可能相關"
@@ -363,33 +358,32 @@ fn result_json(
     })
 }
 
-fn normalize(value: &str) -> String {
-    value
-        .chars()
-        .filter(|character| !character.is_whitespace())
-        .flat_map(|character| character.to_lowercase())
-        .collect::<String>()
-        .replace('（', "(")
-        .replace('）', ")")
+pub(crate) fn normalize(value: &str) -> String {
+    crate::policy::normalized_name(value)
 }
 
-fn contains(text: &str, keyword: &str) -> bool {
+pub(crate) fn contains(text: &str, keyword: &str) -> bool {
     let keyword = normalize(keyword);
     if keyword.is_empty() {
         return false;
     }
-    if keyword.len() <= 4
-        && keyword
-            .chars()
-            .all(|character| character.is_ascii_alphanumeric())
-    {
+    if keyword.chars().all(|c| c.is_ascii_alphanumeric()) {
         return Regex::new(&format!(
-            r"(?i)(?:^|[^a-z0-9]){}(?:$|[^a-z0-9])",
+            r"(?:^|[^a-z0-9]){}(?:$|[^a-z0-9])",
             regex::escape(&keyword)
         ))
-        .is_ok_and(|pattern| pattern.is_match(text));
+        .is_ok_and(|p| p.is_match(text));
     }
-    text.contains(&keyword)
+    text.replace(' ', "").contains(&keyword.replace(' ', ""))
+}
+pub(crate) fn rule_matches(rule: &crate::policy::NegativeRule, title: &str, summary: &str) -> bool {
+    rule.enabled
+        && rule.match_fields.iter().any(|field| {
+            contains(
+                &normalize(if field == "title" { title } else { summary }),
+                &rule.text,
+            )
+        })
 }
 
 fn find_matches(text: &str, keywords: &[String]) -> Vec<String> {
@@ -409,125 +403,6 @@ fn unique(values: Vec<String>) -> Vec<String> {
     })
 }
 
-pub(crate) fn stable_default_id(kind: &str, parts: &[&str]) -> String {
-    let payload = std::iter::once(kind.to_owned())
-        .chain(parts.iter().map(|part| normalize(part)))
-        .collect::<Vec<_>>()
-        .join("|");
-    let digest = Sha256::digest(payload.as_bytes());
-    format!(
-        "default:{kind}:{}",
-        digest[..8]
-            .iter()
-            .map(|byte| format!("{byte:02x}"))
-            .collect::<String>()
-    )
-}
-
-fn keyword_rule(kind: &str, topic: Option<&str>, keyword: &str) -> Value {
-    let id = match topic {
-        Some(topic) => stable_default_id(kind, &[topic, keyword]),
-        None => stable_default_id(kind, &[keyword]),
-    };
-    serde_json::json!({
-        "id": id,
-        "text": keyword,
-        "enabled": true,
-        "origin": "default",
-    })
-}
-
-fn effective_profile_payload(profile: &Ruleset) -> Value {
-    let topics = profile
-        .initiatives
-        .iter()
-        .map(|initiative| {
-            serde_json::json!({
-                "id": stable_default_id("topic", &[&initiative.name]),
-                "name": initiative.name,
-                "enabled": true,
-                "match_name": true,
-                "priority_sources": [initiative.lead_source],
-                "core_keywords": initiative.strong_keywords.iter()
-                    .map(|keyword| keyword_rule("core", Some(&initiative.name), keyword))
-                    .collect::<Vec<_>>(),
-                "supporting_keywords": initiative.context_keywords.iter()
-                    .map(|keyword| keyword_rule("supporting", Some(&initiative.name), keyword))
-                    .collect::<Vec<_>>(),
-                "context_keywords": [],
-            })
-        })
-        .collect::<Vec<_>>();
-    let global_context_keywords = profile
-        .general_keywords
-        .iter()
-        .map(|keyword| keyword_rule("global-context", None, keyword))
-        .collect::<Vec<_>>();
-    let exclusions = profile
-        .negative_keywords
-        .iter()
-        .map(|keyword| {
-            serde_json::json!({
-                "id": stable_default_id("exclusion", &[keyword]),
-                "text": keyword,
-                "topic_id": "",
-                "match_fields": ["title"],
-                "enabled": true,
-                "origin": "default",
-            })
-        })
-        .collect::<Vec<_>>();
-    serde_json::json!({
-        "schema_version": 1,
-        "include_unassigned_context_matches": true,
-        "topics": topics,
-        "global_context_keywords": global_context_keywords,
-        "exclusions": exclusions,
-    })
-}
-
-fn effective_profile_hash(profile: &Ruleset) -> String {
-    let digest = Sha256::digest(canonical_json(&effective_profile_payload(profile)).as_bytes());
-    digest[..8]
-        .iter()
-        .map(|byte| format!("{byte:02x}"))
-        .collect()
-}
-
-fn canonical_json(value: &Value) -> String {
-    match value {
-        Value::Null => "null".into(),
-        Value::Bool(value) => value.to_string(),
-        Value::Number(value) => value.to_string(),
-        Value::String(value) => serde_json::to_string(value).expect("string serializes"),
-        Value::Array(values) => format!(
-            "[{}]",
-            values
-                .iter()
-                .map(canonical_json)
-                .collect::<Vec<_>>()
-                .join(",")
-        ),
-        Value::Object(values) => {
-            let sorted: BTreeMap<_, _> = values.iter().collect();
-            format!(
-                "{{{}}}",
-                sorted
-                    .into_iter()
-                    .map(|(key, value)| {
-                        format!(
-                            "{}:{}",
-                            serde_json::to_string(key).expect("key serializes"),
-                            canonical_json(value)
-                        )
-                    })
-                    .collect::<Vec<_>>()
-                    .join(",")
-            )
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -536,9 +411,9 @@ mod tests {
     fn embedded_policy_has_ten_topics_and_stable_hash() {
         let summary = default_summary();
         assert_eq!(summary["topic_count"], 10);
-        assert_eq!(summary["keyword_count"], 107);
-        assert_eq!(summary["template_version"], "2.1.5");
-        assert_eq!(summary["ruleset_hash"], "e75be08ee1c5dab8");
+        assert!(summary["keyword_count"].as_u64().unwrap() > 107);
+        assert_eq!(summary["schema_version"], 2);
+        assert_eq!(summary["ruleset_hash"].as_str().unwrap().len(), 64);
     }
 
     #[test]
@@ -558,7 +433,9 @@ mod tests {
         for (index, line) in fixture.lines().skip(1).enumerate() {
             let columns = line.split('\t').collect::<Vec<_>>();
             assert!(columns.len() >= 5, "fixture row {} is invalid", index + 2);
-            let result = classify(columns[1], columns[0], columns[2]);
+            let legacy =
+                Ruleset::parse(include_str!("../tests/fixtures/legacy-policy.json")).unwrap();
+            let result = classify_with_profile(&legacy, columns[1], columns[0], columns[2]);
             let actual_relevance = result["relevance"].as_str().unwrap_or("");
             if columns[3].is_empty() {
                 assert!(

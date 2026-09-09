@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "各機關新聞整理",
-  "version": "2.1.11",
+  "version": "2.1.12",
   "identifier": "com.ecjura.taiwan-government-news",
   "build": {
     "beforeDevCommand": "npm run dev",
@@ -14,8 +14,8 @@
       "title": "各機關新聞整理",
       "width": 1440,
       "height": 960,
-      "minWidth": 980,
-      "minHeight": 700,
+      "minWidth": 600,
+      "minHeight": 500,
       "resizable": true
     }],
     "security": { "csp": null }
@@ -24,8 +24,13 @@
     "active": true,
     "targets": "all",
     "category": "Utility",
-    "shortDescription": "Taiwan government news scraper",
-    "longDescription": "各機關新聞抓取、品質檢查與 Excel 匯出工具",
+    "resources": {
+      "../examples/topics/ai-ten-topics.json": "topics/ai-ten-topics.json",
+      "../examples/topics/two-topics.json": "topics/two-topics.json",
+      "../examples/topics/README.md": "topics/README.md"
+    },
+    "shortDescription": "中華民國各機關公開新聞彙整",
+    "longDescription": "中華民國各機關公開新聞蒐集、主題篩選與 Excel 匯出工具",
     "icon": ["icons/32x32.png", "icons/128x128.png", "icons/128x128@2x.png", "icons/icon.icns", "icons/icon.ico"]
   }
 }

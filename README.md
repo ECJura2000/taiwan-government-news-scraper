@@ -3,14 +3,14 @@
 [![Rust quality](https://github.com/ECJura2000/taiwan-government-news-scraper/actions/workflows/test.yml/badge.svg)](https://github.com/ECJura2000/taiwan-government-news-scraper/actions/workflows/test.yml)
 [![Tauri v2](https://github.com/ECJura2000/taiwan-government-news-scraper/actions/workflows/tauri-v2.yml/badge.svg)](https://github.com/ECJura2000/taiwan-government-news-scraper/actions/workflows/tauri-v2.yml)
 
-v2.1.11 是完整 Rust 版：72 個政府來源、CLI、Tauri GUI、RSS／HTML／JSON、Chrome CDP、品質檢查、相關性規則、JSON schema v4 與 Excel 都由同一個 Rust application service 執行。此版為動態來源加入全新瀏覽器 profile 自動重試與 DOM 就緒等待，並讓 GUI 可直接查看不穩定及失敗來源明細。v2.0.0 保留在 GitHub Releases 作為 rollback。
+v2.1.12 是完整 Rust 版：72 個政府來源、CLI、Tauri GUI、RSS／HTML／JSON、Chrome CDP、品質檢查、相關性規則、JSON schema v4 與 Excel 都由同一個 Rust application service 執行。此版為動態來源加入全新瀏覽器 profile 自動重試與 DOM 就緒等待，並讓 GUI 可直接查看不穩定及失敗來源明細。v2.0.0 保留在 GitHub Releases 作為 rollback。
 
 ## 下載
 
-從 [GitHub Releases](https://github.com/ECJura2000/taiwan-government-news-scraper/releases) 下載 `v2.1.11`，並先用 `SHA256SUMS.txt` 驗證。
+從 [GitHub Releases](https://github.com/ECJura2000/taiwan-government-news-scraper/releases) 下載 `v2.1.12`，並先用 `SHA256SUMS.txt` 驗證。
 
-- Windows 一般使用者：下載 `TaiwanGovernmentNews-Setup-v2.1.11.exe`。
-- Windows 免安裝版：下載 `taiwan-government-news-v2.1.11-windows-portable.zip`，完整解壓後雙擊頂層的 `各機關新聞整理.exe`；進階 CLI 位於 `cli/news-scraper.exe`。
+- Windows 一般使用者：下載 `TaiwanGovernmentNews-Setup-v2.1.12.exe`。
+- Windows 免安裝版：下載 `taiwan-government-news-v2.1.12-windows-portable.zip`，完整解壓後雙擊頂層的 `各機關新聞整理.exe`；進階 CLI 位於 `cli/news-scraper.exe`。
 - macOS：下載 `macos-arm64`（Apple Silicon）或 `macos-x64`（Intel）ZIP；解壓縮後頂層會有 `各機關新聞整理.app`、`解除封鎖並開啟.command` 與 CLI `news-scraper`。
 - Linux：下載對應平台 ZIP；CLI 在 ZIP 頂層，GUI installer 位於 `installers/`。
 
@@ -71,3 +71,15 @@ npm run tauri build
 來源 catalog 在 `src-tauri/resources/sources.json`；Rust adapters 在 `src-tauri/src/scraper/`；CDP 在 `src-tauri/src/browser.rs`；共用 application service 與 Excel／JSON 匯出在 `src-tauri/src/native.rs`。
 
 更多操作契約見 [AGENTS.md](AGENTS.md)、[AI 自動化](docs/AI_AUTOMATION.md) 與 [發布流程](docs/RELEASING.md)。
+
+## 政策主題與介面設定
+
+「搜尋主題」支援 JSON 匯入預覽、同名取代、清空後匯入、逐項刪除、啟停及規則編輯。製作階段已完成十大主題的 173 個加權詞與政策來源頁碼，首次啟動即可使用。請參閱 [主題 JSON 範例與格式](examples/topics/README.md)。
+
+新聞依規則判斷相關性，再以中文斷詞及標題加權 BM25 排序。扣分詞及完全排除詞各自適用於所屬主題；甲排除、乙符合時仍可由乙收錄。各啟用主題產製獨立 Excel 工作表，JSON 報告保存實際設定雜湊、各主題筆數與排除統計。
+
+介面採正體中文與中華民國法律用語，支援依系統、淺色及深色模式。Excel 來源欄為可複製的純文字，另由「開啟原文」欄開啟網址；日期維持西元預設，民國下拉選項為 `115-08-31` 格式。
+
+政策詞逐項核對紀錄見 [政策詞來源核對](docs/policy-keywords-audit.md)。文字大小提供 100%、125%、150%、200%，與顯示模式分別保留。
+
+本次測試與實際操作結果見 [第一階段驗證紀錄](docs/stage1-verification.md)。

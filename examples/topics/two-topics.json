@@ -1,0 +1,44 @@
+{
+  "schema_version": 2,
+  "name": "兩主題匯入範例",
+  "initiatives": [
+    {
+      "name": "智慧醫療",
+      "enabled": true,
+      "strong_keywords": [
+        "智慧醫療"
+      ],
+      "penalty_keywords": [
+        {
+          "text": "研討會",
+          "penalty": 20,
+          "enabled": true,
+          "match_fields": [
+            "title",
+            "summary"
+          ]
+        }
+      ],
+      "exclude_keywords": [
+        {
+          "text": "徵才",
+          "enabled": true,
+          "match_fields": [
+            "title",
+            "summary"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "量子科技",
+      "enabled": true,
+      "strong_keywords": [
+        "量子運算",
+        "量子科技"
+      ],
+      "penalty_keywords": [],
+      "exclude_keywords": []
+    }
+  ]
+}

@@ -17,6 +17,9 @@ tauri-build = { version = "2", features = [] }
 chrono = { version = "0.4", features = ["serde"] }
 chrono-tz = "0.10"
 futures = "0.3"
+jieba-rs = "=0.10.3"
+unicode-normalization = "0.1"
+tempfile = "3"
 quick-xml = "0.42"
 regex = "1"
 reqwest = { version = "0.12", default-features = false, features = ["gzip", "json", "native-tls"] }
@@ -34,4 +37,4 @@ tokio-tungstenite = "0.27"
 url = "2"
 
 [dev-dependencies]
-tempfile = "3"
+zip = { version = "4.6", default-features = false, features = ["deflate"] }

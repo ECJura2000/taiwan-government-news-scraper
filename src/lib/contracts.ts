@@ -97,6 +97,8 @@ export interface RunSummary {
 }
 
 export interface RunOptions {
+  topics_policy?: import("./topic-policy").TopicPolicy;
+  topics_json?: string;
   sources: string[];
   date?: string;
   start_date?: string;
