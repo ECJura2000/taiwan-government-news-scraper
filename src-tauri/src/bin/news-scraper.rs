@@ -86,6 +86,8 @@ fn version_text() -> String {
 fn parse_options(args: &[String]) -> Result<RunOptions, String> {
     let mut options = RunOptions {
         sources: Vec::new(),
+        topics_json: None,
+        topics_policy: None,
         output_dir: None,
         report_dir: None,
         date: None,
@@ -112,6 +114,11 @@ fn parse_options(args: &[String]) -> Result<RunOptions, String> {
                     return Err("--max-workers 必須是正整數".into());
                 }
                 options.max_workers = workers;
+            }
+            "--topics-json" => {
+                index += 1;
+                options.topics_json =
+                    Some(args.get(index).ok_or("--topics-json 需要路徑")?.clone());
             }
             "--output-dir" => {
                 index += 1;
@@ -177,6 +184,6 @@ mod tests {
 
     #[test]
     fn reports_workspace_package_version() {
-        assert_eq!(version_text(), "news-scraper 2.1.11");
+        assert_eq!(version_text(), "news-scraper 2.1.12");
     }
 }

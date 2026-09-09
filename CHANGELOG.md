@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+## 2.1.12 - 2026-09-09
+
+- Add BM25 ranking with jieba-rs Chinese segmentation, policy-topic weighting, and title/summary 3:1 scoring.
+- Add versioned topic JSON management with scoped penalty and complete-exclusion rules, PDF provenance, and CLI/GUI parity.
+- Refresh the Traditional Chinese government-style interface with persisted light/dark mode, text sizing, responsive layout, and accessible focus states.
+- Improve Excel source copying, add a dedicated original-link column, and support ROC date display such as `115-08-31`.
+
 ## 2.1.11 - 2026-09-02
 
 - Retry browser runtime and parser regression failures once with a fresh browser profile after 750 ms, while preserving both route attempts and classifying recovered sources as unstable.

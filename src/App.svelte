@@ -13,6 +13,11 @@
     type SourceHealthDetail,
   } from "./lib/source-health";
 
+  import TopicManager from "./TopicManager.svelte";
+  import ThemeToggle from "./ThemeToggle.svelte";
+  import { enabledCount, type TopicPolicy } from "./lib/topic-policy";
+  let topicsPolicy: TopicPolicy | null = null;
+  let topicsPending = true;
   let sources: string[] = [];
   let selectedSources: string[] = [];
   let maxWorkers = 8;
@@ -57,6 +62,7 @@
   }
 
   async function runScraper() {
+    if (!topicsPolicy || topicsPending || !enabledCount(topicsPolicy)) return;
     running = true;
     summary = null;
     activeHealthPanel = null;
@@ -70,6 +76,7 @@
     }, 1000);
     try {
       const options: RunOptions = {
+        topics_policy: topicsPolicy,
         sources: selectedSources.length === sources.length ? [] : selectedSources,
         output_dir: outputDir || undefined,
         report_dir: jsonFollowsExcel ? undefined : reportDir || undefined,
@@ -158,7 +165,7 @@
     return `${value.toFixed(value >= 10 ? 1 : 2)} 秒`;
   }
 
-  $: statusLabel = summary?.status ?? (progress?.kind === "cancelled" ? "已取消" : running ? "執行中" : loadingSources ? "載入中" : "尚未執行");
+  $: statusLabel = (summary ? ({success:"執行完成",attention:"需注意",partial_failure:"部分來源失敗",failure:"執行失敗"}[summary.status]) : null) ?? (progress?.kind === "cancelled" ? "已取消" : running ? "執行中" : loadingSources ? "載入中" : "尚未執行");
   $: progressTotal = progress?.total ?? selectedSources.length;
   $: progressCompleted = progress?.completed ?? lastCompleted;
   $: if (progress?.completed !== undefined) lastCompleted = progress.completed;
@@ -205,18 +212,19 @@
 <main class="shell">
   <header class="topbar">
     <div>
-      <p class="eyebrow">TAIWAN GOVERNMENT NEWS</p>
+      <p class="eyebrow">中華民國・公開資訊</p>
       <h1>各機關新聞整理</h1>
-      <p class="subtitle">Rust + Tauri v2 遷移版</p>
+      <p class="subtitle">中華民國各機關公開新聞彙整</p>
     </div>
-    <div class="status-pill" data-status={summary?.status ?? "idle"}>{statusLabel}</div>
+    <div class="header-actions"><ThemeToggle /><div class="status-pill" data-status={summary?.status ?? "idle"}><span aria-hidden="true">{summary?.status === "success" ? "✓" : summary ? "!" : "○"}</span> {statusLabel}</div></div>
   </header>
 
   <section class="grid">
+    <div class="selection-column"><TopicManager bind:profile={topicsPolicy} busy={running} bind:pending={topicsPending} />
     <article class="card sources-card">
       <div class="card-heading">
         <div>
-          <h2>來源</h2>
+          <h2>新聞來源</h2>
           {#if loadingSources}
             <p>載入來源 {sourceLoadPercent}%</p>
           {:else}
@@ -224,8 +232,8 @@
           {/if}
         </div>
         <div class="button-row">
-          <button class="quiet" onclick={() => (selectedSources = [...sources])}>全選</button>
-          <button class="quiet" onclick={() => (selectedSources = [])}>清除</button>
+          <button class="quiet" disabled={running} onclick={() => (selectedSources = [...sources])}>全選</button>
+          <button class="quiet" disabled={running} onclick={() => (selectedSources = [])}>清除</button>
         </div>
       </div>
       {#if loadingSources}
@@ -236,6 +244,7 @@
           <label class:selected={selectedSources.includes(source)}>
             <input
               type="checkbox"
+              disabled={running}
               checked={selectedSources.includes(source)}
               onchange={() => toggleSource(source)}
             />
@@ -245,14 +254,15 @@
       </div>
     </article>
 
+    </div>
     <article class="card controls-card">
       <div class="card-heading">
         <div>
           <h2>執行設定</h2>
-          <p>相容於既有 headless pipeline</p>
+          <p>設定蒐集期間與檔案儲存位置</p>
         </div>
       </div>
-      <label class="field">
+      <fieldset disabled={running} class="settings-fields"><label class="field">
         <span>並行來源數</span>
         <input type="number" min="1" max="32" bind:value={maxWorkers} />
       </label>
@@ -288,11 +298,11 @@
       </div>
       <label class="check-row"><input type="checkbox" bind:checked={dedupeAffiliated} /> 合併部會與所屬機關重複新聞</label>
       <label class="check-row"><input type="checkbox" bind:checked={failOnSourceError} /> 任一來源失敗時回傳失敗碼</label>
-      <div class="action-row">
+      </fieldset><div class="action-row">
         {#if running}
           <button class="danger" onclick={cancelScraper}>停止執行</button>
         {:else}
-          <button class="primary" onclick={runScraper} disabled={selectedSources.length === 0}>開始抓取</button>
+          <button class="primary" onclick={runScraper} disabled={selectedSources.length === 0 || !enabledCount(topicsPolicy) || topicsPending || loadingSources}>開始蒐集</button>
         {/if}
       </div>
       {#if progress}
