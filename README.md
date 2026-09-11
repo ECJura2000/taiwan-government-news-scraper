@@ -3,14 +3,14 @@
 [![Rust quality](https://github.com/ECJura2000/taiwan-government-news-scraper/actions/workflows/test.yml/badge.svg)](https://github.com/ECJura2000/taiwan-government-news-scraper/actions/workflows/test.yml)
 [![Tauri v2](https://github.com/ECJura2000/taiwan-government-news-scraper/actions/workflows/tauri-v2.yml/badge.svg)](https://github.com/ECJura2000/taiwan-government-news-scraper/actions/workflows/tauri-v2.yml)
 
-v2.1.12 是完整 Rust 版：72 個政府來源、CLI、Tauri GUI、RSS／HTML／JSON、Chrome CDP、品質檢查、相關性規則、JSON schema v4 與 Excel 都由同一個 Rust application service 執行。此版為動態來源加入全新瀏覽器 profile 自動重試與 DOM 就緒等待，並讓 GUI 可直接查看不穩定及失敗來源明細。v2.0.0 保留在 GitHub Releases 作為 rollback。
+v2.1.13 是完整 Rust 版：72 個政府來源、CLI、Tauri GUI、RSS／HTML／JSON、Chrome CDP、品質檢查、相關性規則、JSON schema v4 與 Excel 都由同一個 Rust application service 執行。GUI 進度會依已完成來源及資料整理、政策排序、Excel 與 JSON 寫入階段遞增，並顯示處理中來源數；延遲事件不會使進度倒退。v2.0.0 保留在 GitHub Releases 作為 rollback。
 
 ## 下載
 
-從 [GitHub Releases](https://github.com/ECJura2000/taiwan-government-news-scraper/releases) 下載 `v2.1.12`，並先用 `SHA256SUMS.txt` 驗證。
+從 [GitHub Releases](https://github.com/ECJura2000/taiwan-government-news-scraper/releases) 下載 `v2.1.13`，並先用 `SHA256SUMS.txt` 驗證。
 
-- Windows 一般使用者：下載 `TaiwanGovernmentNews-Setup-v2.1.12.exe`。
-- Windows 免安裝版：下載 `taiwan-government-news-v2.1.12-windows-portable.zip`，完整解壓後雙擊頂層的 `各機關新聞整理.exe`；進階 CLI 位於 `cli/news-scraper.exe`。
+- Windows 一般使用者：下載 `TaiwanGovernmentNews-Setup-v2.1.13.exe`。
+- Windows 免安裝版：下載 `taiwan-government-news-v2.1.13-windows-portable.zip`，完整解壓後雙擊頂層的 `各機關新聞整理.exe`；進階 CLI 位於 `cli/news-scraper.exe`。
 - macOS：下載 `macos-arm64`（Apple Silicon）或 `macos-x64`（Intel）ZIP；解壓縮後頂層會有 `各機關新聞整理.app`、`解除封鎖並開啟.command` 與 CLI `news-scraper`。
 - Linux：下載對應平台 ZIP；CLI 在 ZIP 頂層，GUI installer 位於 `installers/`。
 
@@ -18,7 +18,7 @@ Windows 安裝檔會建立正常桌面應用入口，不需要開 CMD。macOS ZI
 
 封裝不含 Python runtime、PyInstaller、openpyxl 或 Selenium。動態來源使用 Rust CDP 呼叫系統 Chrome／Chromium／Microsoft Edge；Windows 標準安裝位置會自動偵測。
 
-GUI 與 Excel 採用同一套字體策略：中文內容使用標楷體，英文、數字、日期與規則 ID 使用 Times New Roman。GUI 執行百分比以準備階段 5%、來源完成比例 90%、寫出 Excel/JSON 95%、完成 100% 顯示；單一來源內部下載不顯示假百分比。
+GUI 與 Excel 採用同一套字體策略：中文內容使用標楷體，英文、數字、日期與規則 ID 使用 Times New Roman。GUI 執行百分比以完成來源比例推進至 90%，再依整理新聞、政策排序、Excel 與 JSON 寫入階段遞增至 99%，完成後才顯示 100%；單一來源內部下載不顯示假百分比。
 
 ## CLI
 

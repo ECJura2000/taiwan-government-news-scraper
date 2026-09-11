@@ -5,6 +5,7 @@
   import { openUrl, revealItemInDir } from "@tauri-apps/plugin-opener";
   import { onDestroy, onMount } from "svelte";
   import type { ProgressEvent, RunOptions, RunSummary } from "./lib/contracts";
+  import { advanceCompleted, advanceRunPercent, calculateRunPercent } from "./lib/progress";
   import {
     buildSourceHealthDetails,
     healthTooltip,
@@ -39,6 +40,8 @@
   let elapsedSeconds = 0;
   let timer: ReturnType<typeof setInterval> | undefined;
   let lastCompleted = 0;
+  let lastPercent = 0;
+  let startedSources = new Set<string>();
   let jsonFollowsExcel = true;
   let defaultOutputDir = "";
   let activeHealthPanel: HealthPanel | null = null;
@@ -68,6 +71,8 @@
     activeHealthPanel = null;
     error = "";
     lastCompleted = 0;
+    lastPercent = 0;
+    startedSources = new Set();
     elapsedSeconds = 0;
     startedAt = Date.now();
     progress = { kind: "started", completed: 0, total: selectedSources.length, message: "正在準備執行環境" };
@@ -101,7 +106,7 @@
 
   async function cancelScraper() {
     try {
-      progress = { kind: "cancelling", message: "正在安全停止；不會寫出未完成的報告" };
+      applyProgress({ kind: "cancelling", message: "正在安全停止；不會寫出未完成的報告" });
       await invoke("cancel_run");
     } catch (cause) {
       error = String(cause);
@@ -165,22 +170,25 @@
     return `${value.toFixed(value >= 10 ? 1 : 2)} 秒`;
   }
 
+  function applyProgress(event: ProgressEvent) {
+    lastCompleted = advanceCompleted(lastCompleted, event);
+    lastPercent = advanceRunPercent(
+      lastPercent,
+      event,
+      lastCompleted,
+      event.total ?? selectedSources.length,
+    );
+    if (event.kind === "source_started" && event.source) {
+      startedSources = new Set(startedSources).add(event.source);
+    }
+    progress = event;
+  }
+
   $: statusLabel = (summary ? ({success:"執行完成",attention:"需注意",partial_failure:"部分來源失敗",failure:"執行失敗"}[summary.status]) : null) ?? (progress?.kind === "cancelled" ? "已取消" : running ? "執行中" : loadingSources ? "載入中" : "尚未執行");
   $: progressTotal = progress?.total ?? selectedSources.length;
-  $: progressCompleted = progress?.completed ?? lastCompleted;
-  $: if (progress?.completed !== undefined) lastCompleted = progress.completed;
-  $: runPercent = (() => {
-    if (!progress) return 0;
-    if (progress.kind === "completed") return 100;
-    if (progress.kind === "writing_outputs") return 95;
-    if (progress.kind === "started" || progress.kind === "source_started") {
-      return progressCompleted > 0 && progressTotal
-        ? Math.max(5, Math.round(5 + (progressCompleted / progressTotal) * 90))
-        : 5;
-    }
-    if (!progressTotal) return running ? 5 : 0;
-    return Math.min(95, Math.max(5, Math.round(5 + (progressCompleted / progressTotal) * 90)));
-  })();
+  $: progressCompleted = Math.max(lastCompleted, progress?.completed ?? 0);
+  $: runPercent = Math.max(lastPercent, calculateRunPercent(progress, progressCompleted, progressTotal));
+  $: processingSourceCount = Math.max(0, startedSources.size - progressCompleted);
   $: activeSource = progress?.source ?? "";
   $: progressMessage = progress?.message ?? progress?.kind ?? "尚未開始";
   $: outputPlaceholder = defaultOutputDir ? `預設：${defaultOutputDir}` : "使用預設資料夾";
@@ -199,7 +207,7 @@
   onMount(() => {
     loadSources();
     listen<ProgressEvent>("scraper-progress", (event) => {
-      progress = event.payload;
+      applyProgress(event.payload);
     }).then((cleanup) => (unlisten = cleanup));
   });
 
@@ -309,11 +317,15 @@
         <div class="progress-box">
           <div class="progress-heading">
             <strong>{progressMessage}</strong>
-            <span>{runPercent}%</span>
+            <span class="progress-percent" aria-label={`完成百分比 ${runPercent}%`}>{runPercent}%</span>
           </div>
-          <div class="progress-track"><div style={`width: ${runPercent}%`}></div></div>
+          <div
+            class="progress-track"
+            class:indeterminate={running && progressCompleted === 0 && runPercent === 0}
+          ><div style={`width: ${runPercent}%`}></div></div>
           <div class="progress-meta">
-            <span>{progressCompleted} / {progressTotal} 個來源</span>
+            <span>已完成：{progressCompleted} / {progressTotal} 個來源</span>
+            {#if running && processingSourceCount > 0}<span>處理中：{processingSourceCount} 個來源</span>{/if}
             {#if activeSource}<span>目前：{activeSource}</span>{/if}
             {#if running}<span>耗時：{elapsedSeconds} 秒</span>{/if}
           </div>
