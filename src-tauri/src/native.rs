@@ -139,11 +139,11 @@ pub async fn run_with_progress(
     }
     if let Some(progress) = &progress {
         progress(crate::ProgressEvent {
-            kind: "writing_outputs".into(),
+            kind: "processing_items".into(),
             source: None,
             completed: Some(completed),
             total: Some(total),
-            message: Some("正在產生 Excel 與 JSON 報告".into()),
+            message: Some("正在整理並去除重複新聞".into()),
         });
     }
     let mut items = Vec::new();
@@ -195,6 +195,15 @@ pub async fn run_with_progress(
         *source_counts.entry(item.source.clone()).or_default() += 1;
     }
     let pre_policy_count = items.len();
+    if let Some(progress) = &progress {
+        progress(crate::ProgressEvent {
+            kind: "ranking".into(),
+            source: None,
+            completed: Some(completed),
+            total: Some(total),
+            message: Some("正在計算政策相關性與排序".into()),
+        });
+    }
     let batch = crate::ranking::rank(&profile, &items);
     let classifications: Vec<_> = batch
         .results
@@ -211,6 +220,15 @@ pub async fn run_with_progress(
     source_counts.values_mut().for_each(|v| *v = 0);
     for item in &items {
         *source_counts.entry(item.source.clone()).or_default() += 1;
+    }
+    if let Some(progress) = &progress {
+        progress(crate::ProgressEvent {
+            kind: "writing_outputs".into(),
+            source: None,
+            completed: Some(completed),
+            total: Some(total),
+            message: Some("正在產生 Excel 活頁簿".into()),
+        });
     }
     let paths = write_outputs(
         options,
@@ -313,6 +331,15 @@ pub async fn run_with_progress(
         insecure_ssl_hosts: Vec::new(),
         error: None,
     };
+    if let Some(progress) = &progress {
+        progress(crate::ProgressEvent {
+            kind: "writing_report".into(),
+            source: None,
+            completed: Some(completed),
+            total: Some(total),
+            message: Some("正在寫入 JSON 執行報告".into()),
+        });
+    }
     let mut report_value = serde_json::to_value(&summary).map_err(|error| error.to_string())?;
     if let Some(report) = report_value.as_object_mut() {
         report.remove("engine");

@@ -1,6 +1,9 @@
 # Changelog
 
-## Unreleased
+## 2.1.13 - 2026-09-11
+
+- Make GUI execution progress correspond to completed sources and explicit post-processing stages: item preparation, policy ranking, Excel generation and JSON report writing.
+- Keep percentage and completed-source counts monotonic when progress events arrive late, show the active source count before the first source completes, and keep the percentage label visually fixed.
 
 ## 2.1.12 - 2026-09-09
 
