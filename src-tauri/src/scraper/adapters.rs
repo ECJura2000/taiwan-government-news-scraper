@@ -316,8 +316,8 @@ pub fn parse_route(
     }
 }
 
-pub fn parse_detail_summary(source: &str, body: &str) -> String {
-    let selectors: &[&str] = match source {
+pub fn parse_detail_full_text(source: &str, body: &str) -> String {
+    let source_selectors: &[&str] = match source {
         "數位發展部" | "數位產業署" | "資通安全署" => {
             &[".article1.cpArticle", ".cpArticle", "article"]
         }
@@ -328,34 +328,39 @@ pub fn parse_detail_summary(source: &str, body: &str) -> String {
             ".cpArticle",
             "article",
         ],
-        _ => return String::new(),
+        _ => &[],
     };
+    const GENERIC_SELECTORS: &[&str] = &[
+        "[itemprop='articleBody']",
+        ".article-body",
+        ".articleBody",
+        ".article-content",
+        ".article_content",
+        ".news-content",
+        ".news_content",
+        ".detail-content",
+        ".detail_content",
+        ".cpArticle",
+        ".cp-content",
+        ".cp_content",
+        "main article",
+        "article",
+    ];
     let document = Html::parse_document(body);
-    for raw_selector in selectors {
+    for (raw_selector, source_specific) in source_selectors
+        .iter()
+        .map(|selector| (*selector, true))
+        .chain(GENERIC_SELECTORS.iter().map(|selector| (*selector, false)))
+    {
         let Ok(selector) = Selector::parse(raw_selector) else {
             continue;
         };
         let Some(container) = document.select(&selector).next() else {
             continue;
         };
-        let paragraph_selector = Selector::parse("p").expect("valid paragraph selector");
-        let paragraphs = container
-            .select(&paragraph_selector)
-            .map(html::clean_text)
-            .filter(|value| !value.is_empty())
-            .collect::<Vec<_>>();
-        let text = if paragraphs.is_empty() {
-            html::clean_text(container)
-        } else {
-            paragraphs.join(" ")
-        };
-        if !text.is_empty() {
-            return text
-                .chars()
-                .take(1_200)
-                .collect::<String>()
-                .trim()
-                .to_owned();
+        let text = html::clean_text(container);
+        if !text.is_empty() && (source_specific || text.chars().count() >= 80) {
+            return text;
         }
     }
     String::new()
@@ -441,13 +446,25 @@ mod tests {
     }
 
     #[test]
-    fn extracts_detail_summary_with_python_length_limit() {
+    fn extracts_complete_detail_text_without_the_legacy_excerpt_limit() {
         let body = format!(
             "<article class='cpArticle'><p>{}</p><p>第二段</p></article>",
             "字".repeat(1_250)
         );
-        let summary = parse_detail_summary("數位發展部", &body);
-        assert_eq!(summary.chars().count(), 1_200);
-        assert!(summary.starts_with("字字字"));
+        let full_text = parse_detail_full_text("數位發展部", &body);
+        assert_eq!(full_text.chars().count(), 1_254);
+        assert!(full_text.ends_with("第二段"));
+    }
+
+    #[test]
+    fn extracts_generic_article_text_for_sources_without_a_custom_selector() {
+        let body = format!(
+            "<html><body><nav>導覽</nav><article><p>{}</p><p>全文結尾</p></article></body></html>",
+            "新聞內容".repeat(30)
+        );
+        let full_text = parse_detail_full_text("行政院", &body);
+        assert!(full_text.starts_with("新聞內容"));
+        assert!(full_text.ends_with("全文結尾"));
+        assert!(!full_text.contains("導覽"));
     }
 }

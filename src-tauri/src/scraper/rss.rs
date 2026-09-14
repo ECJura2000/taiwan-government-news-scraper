@@ -12,6 +12,7 @@ fn empty_item(source: &str) -> NewsItem {
         link: String::new(),
         category: String::new(),
         summary: String::new(),
+        full_text: String::new(),
         date_source: "published".to_owned(),
     }
 }
@@ -85,9 +86,6 @@ fn finalize_item(item: &mut NewsItem) {
     if !item.summary.is_empty() {
         item.summary =
             super::html::clean_text(scraper::Html::parse_fragment(&item.summary).root_element())
-                .chars()
-                .take(4_000)
-                .collect::<String>()
                 .trim()
                 .to_owned();
     }

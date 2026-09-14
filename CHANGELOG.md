@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.1.14 - 2026-09-14
+
+- Export the Excel news-content column as full article text, with per-run full-text coverage diagnostics and summary fallback counts.
+- Rank selected and topic sheets by relevance class, rule score, BM25 score, date, title and original link so BM25 refines ordering without overriding rule strength.
+
 ## 2.1.13 - 2026-09-11
 
 - Make GUI execution progress correspond to completed sources and explicit post-processing stages: item preparation, policy ranking, Excel generation and JSON report writing.
