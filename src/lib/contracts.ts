@@ -16,6 +16,8 @@ export interface QualitySummary {
   invalid_count?: number;
   excluded_non_news_count?: number;
   summary_coverage_rate?: number;
+  full_text_count?: number;
+  full_text_coverage_rate?: number;
   alert_reasons?: string[];
   source_counts?: Record<string, number>;
 }

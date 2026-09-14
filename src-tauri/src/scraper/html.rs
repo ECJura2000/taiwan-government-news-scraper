@@ -135,6 +135,7 @@ pub fn parse_dated_list(
             link,
             category,
             summary,
+            full_text: String::new(),
             date_source: "published".to_owned(),
         });
     }
@@ -180,6 +181,7 @@ pub fn parse_link_list(
             link,
             category: String::new(),
             summary: String::new(),
+            full_text: String::new(),
             date_source: "published".to_owned(),
         });
     }

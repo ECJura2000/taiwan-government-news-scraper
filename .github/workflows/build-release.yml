@@ -3,7 +3,7 @@ name: Build and release Rust apps
 on:
   workflow_dispatch:
   push:
-    tags: ["v2.1.13"]
+    tags: ["v2.1.14"]
 
 permissions:
   contents: read
@@ -21,9 +21,9 @@ jobs:
         if: github.event_name == 'workflow_dispatch' && github.ref != 'refs/heads/main'
         run: exit 1
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - name: Require the v2.1.13 workspace version
+      - name: Require the v2.1.14 workspace version
         shell: bash
-        run: test "$(sed -n 's/^version = "\([^"]*\)"/\1/p' Cargo.toml)" = "2.1.13"
+        run: test "$(sed -n 's/^version = "\([^"]*\)"/\1/p' Cargo.toml)" = "2.1.14"
 
   source-health:
     name: Gate all 72 live sources
@@ -46,7 +46,7 @@ jobs:
         shell: bash
         run: |
           version="$(sed -n 's/^version = "\([^"]*\)"/\1/p' Cargo.toml)"
-          test "$version" = "2.1.13"
+          test "$version" = "2.1.14"
           if [[ "$GITHUB_REF" == refs/tags/* ]]; then test "$GITHUB_REF_NAME" = "v$version"; fi
           mkdir -p source-health/output source-health/reports
           cargo run --release --bin news-scraper -- collect \
@@ -184,7 +184,7 @@ jobs:
       - name: Stage portable archive
         shell: bash
         run: |
-          tag="v2.1.13"
+          tag="v2.1.14"
           if [[ "${{ runner.os }}" == "Windows" ]]; then
             root="taiwan-government-news-${tag}-windows-portable"
             mkdir -p "release-assets/$root/cli"
@@ -193,10 +193,10 @@ jobs:
             cp docs/PORTABLE_README.txt "release-assets/$root/README.txt"
             installer="$(find target/release/bundle/nsis -type f -name '*.exe' -print -quit)"
             test -n "$installer"
-            cp "$installer" "release-assets/TaiwanGovernmentNews-Setup-v2.1.13.exe"
+            cp "$installer" "release-assets/TaiwanGovernmentNews-Setup-v2.1.14.exe"
             test -s "release-assets/$root/各機關新聞整理.exe"
             test -s "release-assets/$root/cli/news-scraper.exe"
-            test -s "release-assets/TaiwanGovernmentNews-Setup-v2.1.13.exe"
+            test -s "release-assets/TaiwanGovernmentNews-Setup-v2.1.14.exe"
           else
             root="taiwan-government-news-${tag}-${{ matrix.platform }}"
             mkdir -p "release-assets/$root"
@@ -225,15 +225,15 @@ jobs:
       - name: Create ZIP on Windows
         if: runner.os == 'Windows'
         shell: pwsh
-        run: Compress-Archive -Path "release-assets/taiwan-government-news-v2.1.13-windows-portable" -DestinationPath "release-assets/taiwan-government-news-v2.1.13-windows-portable.zip"
+        run: Compress-Archive -Path "release-assets/taiwan-government-news-v2.1.14-windows-portable" -DestinationPath "release-assets/taiwan-government-news-v2.1.14-windows-portable.zip"
       - name: Create ZIP on Linux
         if: runner.os == 'Linux'
         shell: bash
-        run: cd release-assets && zip -qr "taiwan-government-news-v2.1.13-${{ matrix.platform }}.zip" "taiwan-government-news-v2.1.13-${{ matrix.platform }}"
+        run: cd release-assets && zip -qr "taiwan-government-news-v2.1.14-${{ matrix.platform }}.zip" "taiwan-government-news-v2.1.14-${{ matrix.platform }}"
       - name: Create ZIP on macOS
         if: runner.os == 'macOS'
         shell: bash
-        run: cd release-assets && ditto -c -k --sequesterRsrc --keepParent "taiwan-government-news-v2.1.13-${{ matrix.platform }}" "taiwan-government-news-v2.1.13-${{ matrix.platform }}.zip"
+        run: cd release-assets && ditto -c -k --sequesterRsrc --keepParent "taiwan-government-news-v2.1.14-${{ matrix.platform }}" "taiwan-government-news-v2.1.14-${{ matrix.platform }}.zip"
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: release-bundle-${{ matrix.platform }}
@@ -245,7 +245,7 @@ jobs:
           retention-days: 1
 
   release:
-    name: Publish v2.1.13
+    name: Publish v2.1.14
     needs: [source-health, build]
     runs-on: ubuntu-22.04
     permissions:
@@ -261,7 +261,7 @@ jobs:
         shell: bash
         run: |
           for platform in linux macos-arm64 macos-x64; do
-            archive="release-assets/taiwan-government-news-v2.1.13-${platform}.zip"
+            archive="release-assets/taiwan-government-news-v2.1.14-${platform}.zip"
             test -s "$archive"
             verify_dir="$(mktemp -d)"
             unzip -q "$archive" -d "$verify_dir"
@@ -282,8 +282,8 @@ jobs:
             fi
             rm -rf "$verify_dir"
           done
-          archive="release-assets/taiwan-government-news-v2.1.13-windows-portable.zip"
-          installer="release-assets/TaiwanGovernmentNews-Setup-v2.1.13.exe"
+          archive="release-assets/taiwan-government-news-v2.1.14-windows-portable.zip"
+          installer="release-assets/TaiwanGovernmentNews-Setup-v2.1.14.exe"
           test -s "$archive"
           test -s "$installer"
           python3 - "$archive" <<'PY'
@@ -304,18 +304,18 @@ jobs:
               raise SystemExit(f"{archive} is missing required entries: {missing}; entries={names}")
           PY
           cd release-assets
-          sha256sum -- *.zip *.exe > taiwan-government-news-v2.1.13-SHA256SUMS.txt
+          sha256sum -- *.zip *.exe > taiwan-government-news-v2.1.14-SHA256SUMS.txt
           for file in ./*.zip ./*.exe; do
             printf '%s bytes  %s\n' "$(stat -c %s "$file")" "${file#./}"
-          done > taiwan-government-news-v2.1.13-SIZE-MANIFEST.txt
-      - name: Refuse to overwrite v2.0.0 or an existing v2.1.13 release
+          done > taiwan-government-news-v2.1.14-SIZE-MANIFEST.txt
+      - name: Refuse to overwrite v2.0.0 or an existing v2.1.14 release
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
           gh release view v2.0.0 --repo "$GITHUB_REPOSITORY" >/dev/null
-          if gh release view v2.1.13 --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            echo "v2.1.13 already exists; refusing to overwrite it" >&2
+          if gh release view v2.1.14 --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "v2.1.14 already exists; refusing to overwrite it" >&2
             exit 1
           fi
       - name: Publish immutable Rust release
@@ -323,14 +323,14 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
-          if [[ "$GITHUB_REF" == refs/tags/v2.1.13 ]]; then
+          if [[ "$GITHUB_REF" == refs/tags/v2.1.14 ]]; then
             tag_args=(--verify-tag)
           else
             tag_args=(--target "$GITHUB_SHA")
           fi
-          gh release create v2.1.13 release-assets/*.zip release-assets/*.exe release-assets/*.txt \
+          gh release create v2.1.14 release-assets/*.zip release-assets/*.exe release-assets/*.txt \
             --repo "$GITHUB_REPOSITORY" \
             "${tag_args[@]}" \
             --generate-notes \
-            --title "各機關新聞整理 v2.1.13" \
-            --notes "GUI 執行進度修正版。Windows 一般使用者請優先下載 TaiwanGovernmentNews-Setup-v2.1.13.exe；portable ZIP 維持頂層 各機關新聞整理.exe，CLI 位於 cli/news-scraper.exe。來源蒐集進度現以已完成來源數計算，並依整理新聞、政策排序、Excel 活頁簿與 JSON 執行報告的實際階段遞增；處理中的來源數、動態指示與固定寬度百分比可清楚反映執行狀態。延遲事件不會使完成數或百分比倒退。CLI、JSON schema v4、Excel 欄位與 72 個來源 catalog 維持相容。"
+            --title "各機關新聞整理 v2.1.14" \
+            --notes "新聞全文與排序修正版。Windows 一般使用者請優先下載 TaiwanGovernmentNews-Setup-v2.1.14.exe；portable ZIP 維持頂層 各機關新聞整理.exe，CLI 位於 cli/news-scraper.exe。Excel 新聞內容欄位改為新聞全文，JSON schema v4 品質摘要新增全文覆蓋率與摘要 fallback 數；入選與主題工作表依關聯等級、規則分數、BM25、日期排序，BM25 只作為同級同分時的排序輔助。72 個來源 catalog、CLI 與 GUI 執行流程維持相容。"

@@ -275,6 +275,7 @@ mod tests {
             link: "https://example.test".into(),
             category: String::new(),
             summary: String::new(),
+            full_text: String::new(),
             date_source: "published".into(),
         }
     }

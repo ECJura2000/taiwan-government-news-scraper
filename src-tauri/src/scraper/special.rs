@@ -26,6 +26,7 @@ fn item(source: &str, date: chrono::NaiveDate, title: String, link: String) -> N
         link,
         category: String::new(),
         summary: String::new(),
+        full_text: String::new(),
         date_source: "published".to_owned(),
     }
 }

@@ -264,6 +264,14 @@ pub async fn run_with_progress(
     relevance_policy["rule_counts"] = json!(batch.rule_counts);
     relevance_policy["topic_counts"] = json!(batch.topic_counts);
     let summary_count = items.iter().filter(|item| !item.summary.is_empty()).count();
+    let full_text_count = items
+        .iter()
+        .filter(|item| !item.full_text.is_empty())
+        .count();
+    let description_fallback_count = items
+        .iter()
+        .filter(|item| item.full_text.is_empty() && !item.summary.is_empty())
+        .count();
     let mut date_source_counts: HashMap<String, usize> = HashMap::new();
     for item in &items {
         *date_source_counts
@@ -274,6 +282,11 @@ pub async fn run_with_progress(
         0.0
     } else {
         ((summary_count as f64 / items.len() as f64) * 10_000.0).round() / 10_000.0
+    };
+    let full_text_coverage_rate = if items.is_empty() {
+        0.0
+    } else {
+        ((full_text_count as f64 / items.len() as f64) * 10_000.0).round() / 10_000.0
     };
     let summary = crate::RunSummary {
         status: status.into(),
@@ -300,8 +313,10 @@ pub async fn run_with_progress(
             "source_counts": source_counts,
             "summary_count": summary_count,
             "summary_coverage_rate": summary_coverage_rate,
+            "full_text_count": full_text_count,
+            "full_text_coverage_rate": full_text_coverage_rate,
             "date_source_counts": date_source_counts,
-            "description_fallback_count": 0,
+            "description_fallback_count": description_fallback_count,
             "issues": issues,
             "alert_reasons": alert_reasons
         }),
@@ -445,8 +460,7 @@ async fn fetch_source(
                 Ok(items) => {
                     let parsed_item_count = items.len();
                     let filtered_items = filter_to_date_range(items, date_range);
-                    let filtered_items =
-                        enrich_detail_summaries(client, source, filtered_items).await;
+                    let filtered_items = enrich_detail_full_text(client, filtered_items).await;
                     attempts.push(json!({
                         "source": source,
                         "route_id": route.id,
@@ -648,24 +662,18 @@ fn filter_to_date_range(items: Vec<NewsItem>, date_range: DateRange) -> Vec<News
         .collect()
 }
 
-async fn enrich_detail_summaries(
-    client: &HttpClient,
-    source: &str,
-    items: Vec<NewsItem>,
-) -> Vec<NewsItem> {
-    if !matches!(
-        source,
-        "數位發展部" | "數位產業署" | "資通安全署" | "國科會" | "經濟部"
-    ) {
-        return items;
-    }
+async fn enrich_detail_full_text(client: &HttpClient, items: Vec<NewsItem>) -> Vec<NewsItem> {
     stream::iter(items)
         .map(|mut item| {
             let client = client.clone();
             async move {
-                if item.summary.is_empty() && !item.link.is_empty() {
+                if !item.link.is_empty() {
                     if let Ok(body) = client.fetch_text(&item.link).await {
-                        item.summary = adapters::parse_detail_summary(&item.source, &body);
+                        let full_text = adapters::parse_detail_full_text(&item.source, &body);
+                        if !full_text.is_empty() {
+                            item.summary = full_text.clone();
+                            item.full_text = full_text;
+                        }
                     }
                 }
                 item
@@ -710,7 +718,7 @@ const EXCEL_HEADERS: [&str; 17] = [
     "單位分類",
     "新聞標題",
     "新聞連結",
-    "新聞摘要",
+    "新聞全文",
     "日期來源",
     "關聯主題",
     "優先關聯機關",
@@ -800,7 +808,7 @@ fn excel_row(item: &NewsItem, result: &serde_json::Value) -> (Vec<String>, u32, 
         } else {
             item.link.clone()
         },
-        item.summary.clone(),
+        item.full_text.clone(),
         item.date_source.clone(),
         strings("topics"),
         strings("priority_sources"),
@@ -1265,6 +1273,7 @@ fn sort_news_rows(rows: &mut [(Vec<String>, u32, String)]) {
         };
         rank(&a.2)
             .cmp(&rank(&b.2))
+            .then_with(|| b.1.cmp(&a.1))
             .then_with(|| {
                 b.0[15]
                     .parse::<f64>()
@@ -1795,6 +1804,56 @@ mod tests {
         );
     }
 
+    #[test]
+    fn selected_news_sort_prefers_rule_score_before_bm25() {
+        let row = |title: &str, date: &str, bm25: &str| {
+            let mut values = vec![String::new(); EXCEL_HEADERS.len()];
+            values[1] = date.into();
+            values[3] = title.into();
+            values[15] = bm25.into();
+            values[16] = format!("https://example.test/{title}");
+            values
+        };
+        let mut rows = vec![
+            (
+                row("low-rule-high-bm25", "2026-09-12", "99"),
+                40,
+                "可能相關".into(),
+            ),
+            (
+                row("high-rule-low-bm25", "2026-09-10", "1"),
+                70,
+                "可能相關".into(),
+            ),
+            (
+                row("same-rule-newer", "2026-09-13", "10"),
+                70,
+                "可能相關".into(),
+            ),
+            (
+                row("high-relevance", "2026-09-09", "0"),
+                20,
+                "高度相關".into(),
+            ),
+        ];
+
+        sort_news_rows(&mut rows);
+
+        let titles = rows
+            .iter()
+            .map(|(values, _, _)| values[3].as_str())
+            .collect::<Vec<_>>();
+        assert_eq!(
+            titles,
+            vec![
+                "high-relevance",
+                "same-rule-newer",
+                "high-rule-low-bm25",
+                "low-rule-high-bm25",
+            ]
+        );
+    }
+
     #[tokio::test]
     async fn cancelled_run_does_not_write_partial_artifacts() {
         let sandbox = tempfile::tempdir().unwrap();
@@ -1822,6 +1881,7 @@ mod tests {
             date: "2026-08-31".into(),
             title: title.into(),
             summary: String::new(),
+            full_text: String::new(),
             link: "https://www.ndc.gov.tw/".into(),
             department: "國發會".into(),
             category: String::new(),

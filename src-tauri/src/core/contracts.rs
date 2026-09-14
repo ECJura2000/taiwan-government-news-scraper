@@ -11,6 +11,8 @@ pub struct NewsItem {
     pub category: String,
     #[serde(default)]
     pub summary: String,
+    #[serde(default)]
+    pub full_text: String,
     #[serde(default = "default_date_source")]
     pub date_source: String,
 }
