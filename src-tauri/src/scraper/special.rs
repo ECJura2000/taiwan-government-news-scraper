@@ -321,6 +321,13 @@ pub fn parse_cms_json(source: &str, body: &str) -> Result<Vec<NewsItem>, Scraper
             }
         };
         let mut news = item(source, date, title.to_owned(), link);
+        if let Some(content) = row["content"].as_str() {
+            let full_text = clean_text(Html::parse_fragment(content).root_element());
+            if !full_text.is_empty() {
+                news.summary = full_text.clone();
+                news.full_text = full_text;
+            }
+        }
         if let Some(department) = row["jsh_unit"]["name"].as_str().map(str::trim) {
             if !department.is_empty() && !["內政部國家公園署", "國家公園署"].contains(&department)
             {
@@ -480,11 +487,12 @@ mod tests {
     fn parses_nps_json_rows() {
         let items = parse_cms_json(
             "國家公園署",
-            r#"[{"publish_up":"2026-08-06T01:00:00Z","title":"公園新聞","id":"abc","jsh_unit":{"name":"國家公園署"}}]"#,
+            r#"[{"publish_up":"2026-08-06T01:00:00Z","title":"公園新聞","id":"abc","content":"<p>完整公園新聞內文</p>","jsh_unit":{"name":"國家公園署"}}]"#,
         )
         .unwrap();
         assert_eq!(items[0].date, "2026-08-06");
         assert!(items[0].link.ends_with("/abc"));
+        assert_eq!(items[0].full_text, "完整公園新聞內文");
     }
 
     #[test]

@@ -445,6 +445,11 @@ async fn fetch_source(
             .unwrap_or_default();
         for attempt_number in 1..=2 {
             let started = Instant::now();
+            let recent_nps_window =
+                Local::now().with_timezone(&Taipei).date_naive() - chrono::Duration::days(180);
+            let uses_recent_nps_prefix = source == "國家公園署"
+                && route.parser == "nps-json"
+                && date_range.end >= recent_nps_window;
             let fetched = if route.kind == "browser" {
                 let page_script = browser_page_script(route.parser.as_str());
                 if route.parser == "mnd-browser-tls-fallback" {
@@ -460,9 +465,23 @@ async fn fetch_source(
                         .map_err(ScraperError::BrowserRuntime)
                 }
             } else {
-                client.fetch_text(url).await
+                if uses_recent_nps_prefix {
+                    client.fetch_recent_json_array(url).await
+                } else {
+                    client.fetch_text(url).await
+                }
             };
-            let outcome = fetched.and_then(|body| adapters::parse_route(source, &route, &body));
+            let mut outcome = fetched.and_then(|body| adapters::parse_route(source, &route, &body));
+            if uses_recent_nps_prefix
+                && outcome
+                    .as_ref()
+                    .is_ok_and(|items| !items_cover_date_range(items, date_range))
+            {
+                outcome = client
+                    .fetch_text(url)
+                    .await
+                    .and_then(|body| adapters::parse_route(source, &route, &body));
+            }
             match outcome {
                 Ok(items) => {
                     let parsed_item_count = items.len();
@@ -674,6 +693,14 @@ fn filter_to_date_range(items: Vec<NewsItem>, date_range: DateRange) -> Vec<News
             })
         })
         .collect()
+}
+
+fn items_cover_date_range(items: &[NewsItem], date_range: DateRange) -> bool {
+    items
+        .iter()
+        .filter_map(|item| parse_date(&item.date))
+        .min()
+        .is_some_and(|oldest| oldest <= date_range.start)
 }
 
 async fn enrich_detail_full_text(client: &HttpClient, items: Vec<NewsItem>) -> Vec<NewsItem> {
@@ -1805,6 +1832,31 @@ mod tests {
     #[test]
     fn naive_calendar_date_is_not_shifted() {
         assert_eq!(parse_date("2026-06-24").unwrap().to_string(), "2026-06-24");
+    }
+
+    #[test]
+    fn recent_json_prefix_must_reach_the_requested_week() {
+        let item = |date: &str| NewsItem {
+            source: "國家公園署".into(),
+            date: date.into(),
+            department: "國家公園署".into(),
+            title: "公園新聞".into(),
+            link: "https://www.nps.gov.tw/ch/titlelist/parknews/1".into(),
+            category: String::new(),
+            summary: String::new(),
+            full_text: String::new(),
+            date_source: "published".into(),
+        };
+        let range = DateRange {
+            start: NaiveDate::from_ymd_opt(2026, 9, 14).unwrap(),
+            end: NaiveDate::from_ymd_opt(2026, 9, 20).unwrap(),
+        };
+
+        assert!(items_cover_date_range(
+            &[item("2026-09-18"), item("2026-09-10")],
+            range
+        ));
+        assert!(!items_cover_date_range(&[item("2026-09-18")], range));
     }
 
     #[test]

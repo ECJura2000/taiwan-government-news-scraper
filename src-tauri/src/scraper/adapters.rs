@@ -283,6 +283,11 @@ pub fn parse_route(
     }
     if route.kind == "rss" || looks_like_feed(&route.url, body) {
         let mut items = rss::parse_feed(source, body)?;
+        if source == "農業部" {
+            for item in &mut items {
+                item.full_text = item.summary.clone();
+            }
+        }
         if source == "經濟部" && route.parser == "moea-rss-full-text" {
             for item in &mut items {
                 item.full_text = item.summary.clone();
@@ -422,6 +427,22 @@ mod tests {
             "https://example.test/Page/9277F759E41CCD91/item-one"
         );
         assert_eq!(items[1].date, "2026-08-05");
+    }
+
+    #[test]
+    fn agriculture_rss_description_is_reused_as_full_text() {
+        let mut rss_route = route("standard");
+        rss_route.kind = "rss".into();
+        rss_route.url = "https://www.moa.gov.tw/open_data.php?format=rss&func=news_agri".into();
+        let items = parse_route(
+            "農業部",
+            &rss_route,
+            r#"<rss><channel><item><title>農業新聞</title><link>https://www.moa.gov.tw/news/1</link><description><![CDATA[<p>農業新聞完整內文</p>]]></description><pubDate>2026-09-20</pubDate></item></channel></rss>"#,
+        )
+        .unwrap();
+
+        assert_eq!(items[0].summary, "農業新聞完整內文");
+        assert_eq!(items[0].full_text, "農業新聞完整內文");
     }
 
     #[test]

@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.1.17 - 2026-09-21
+
+- Read the recent National Park Service JSON through its official byte-range response, with automatic full-download fallback when the requested date range is not covered.
+- Reuse the complete Ministry of Agriculture RSS descriptions and National Park Service JSON content as article full text instead of refetching every detail page.
+- Bound Ministry of Agriculture detail-page fallback requests to one eight-second attempt so a slow article cannot stall the weekly run.
+
 ## 2.1.16 - 2026-09-21
 
 - Add the Taiwan Creative Content Agency (文策院) official news route, using a Chrome CDP readiness check to pass its Cloudflare-protected listing page and collect dated news cards.

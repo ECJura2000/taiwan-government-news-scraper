@@ -1,6 +1,9 @@
 use super::ScraperError;
 use reqwest::{
-    header::{HeaderMap, HeaderValue, ACCEPT, ACCEPT_LANGUAGE, CACHE_CONTROL, PRAGMA},
+    header::{
+        HeaderMap, HeaderValue, ACCEPT, ACCEPT_ENCODING, ACCEPT_LANGUAGE, CACHE_CONTROL, PRAGMA,
+        RANGE,
+    },
     Client, StatusCode,
 };
 use std::time::Duration;
@@ -9,6 +12,7 @@ const DEFAULT_TIMEOUT: Duration = Duration::from_secs(60);
 const WDA_TIMEOUT: Duration = Duration::from_secs(25);
 const NICS_PRIMARY_TIMEOUT: Duration = Duration::from_secs(8);
 const DETAIL_FAST_FAIL_TIMEOUT: Duration = Duration::from_secs(8);
+const RECENT_JSON_PREFIX_END: usize = 262_143;
 
 #[derive(Clone)]
 pub struct HttpClient {
@@ -143,34 +147,116 @@ impl HttpClient {
         }
     }
 
-    async fn fetch_once(&self, client: &Client, url: &str) -> Result<String, ScraperError> {
-        let response = client.get(url).send().await.map_err(|error| {
-            let message = error.to_string();
-            if message.to_ascii_lowercase().contains("certificate") {
-                ScraperError::TlsCertificate(message)
-            } else if error.is_timeout() || error.is_connect() {
-                ScraperError::RunnerNetwork(error.to_string())
-            } else if error.is_request() {
-                ScraperError::SourceOutage(error.to_string())
-            } else {
-                ScraperError::Unknown(error.to_string())
-            }
-        })?;
+    pub async fn fetch_recent_json_array(&self, url: &str) -> Result<String, ScraperError> {
+        let response = self
+            .client
+            .get(url)
+            .header(RANGE, format!("bytes=0-{RECENT_JSON_PREFIX_END}"))
+            .header(ACCEPT_ENCODING, "identity")
+            .send()
+            .await
+            .map_err(classify_request_error)?;
         let status = response.status();
-        if status == StatusCode::FORBIDDEN || status == StatusCode::UNAUTHORIZED {
-            return Err(ScraperError::AccessBlocked(format!("HTTP {status}")));
-        }
-        if status == StatusCode::TOO_MANY_REQUESTS || status.is_server_error() {
-            return Err(ScraperError::SourceOutage(format!("HTTP {status}")));
-        }
-        if !status.is_success() {
-            return Err(ScraperError::ParserRegression(format!("HTTP {status}")));
-        }
+        validate_status(status)?;
+        let bytes = response
+            .bytes()
+            .await
+            .map_err(|error| ScraperError::SourceOutage(format!("response body: {error:?}")))?;
+        complete_json_array_prefix(&bytes)
+    }
+
+    async fn fetch_once(&self, client: &Client, url: &str) -> Result<String, ScraperError> {
+        let response = client
+            .get(url)
+            .send()
+            .await
+            .map_err(classify_request_error)?;
+        let status = response.status();
+        validate_status(status)?;
         response
             .text()
             .await
             .map_err(|error| ScraperError::SourceOutage(format!("response body: {error:?}")))
     }
+}
+
+fn classify_request_error(error: reqwest::Error) -> ScraperError {
+    let message = error.to_string();
+    if message.to_ascii_lowercase().contains("certificate") {
+        ScraperError::TlsCertificate(message)
+    } else if error.is_timeout() || error.is_connect() {
+        ScraperError::RunnerNetwork(message)
+    } else if error.is_request() {
+        ScraperError::SourceOutage(message)
+    } else {
+        ScraperError::Unknown(message)
+    }
+}
+
+fn validate_status(status: StatusCode) -> Result<(), ScraperError> {
+    if status == StatusCode::FORBIDDEN || status == StatusCode::UNAUTHORIZED {
+        return Err(ScraperError::AccessBlocked(format!("HTTP {status}")));
+    }
+    if status == StatusCode::TOO_MANY_REQUESTS || status.is_server_error() {
+        return Err(ScraperError::SourceOutage(format!("HTTP {status}")));
+    }
+    if !status.is_success() {
+        return Err(ScraperError::ParserRegression(format!("HTTP {status}")));
+    }
+    Ok(())
+}
+
+fn complete_json_array_prefix(bytes: &[u8]) -> Result<String, ScraperError> {
+    let mut depth = 0_u32;
+    let mut in_string = false;
+    let mut escaped = false;
+    let mut last_complete = None;
+    let mut complete_array = false;
+
+    for (index, byte) in bytes.iter().copied().enumerate() {
+        if in_string {
+            if escaped {
+                escaped = false;
+            } else if byte == b'\\' {
+                escaped = true;
+            } else if byte == b'"' {
+                in_string = false;
+            }
+            continue;
+        }
+        match byte {
+            b'"' => in_string = true,
+            b'[' | b'{' => depth += 1,
+            b'}' => {
+                depth = depth.saturating_sub(1);
+                if depth == 1 {
+                    last_complete = Some(index + 1);
+                }
+            }
+            b']' => {
+                depth = depth.saturating_sub(1);
+                if depth == 0 {
+                    complete_array = true;
+                    last_complete = Some(index + 1);
+                    break;
+                }
+            }
+            _ => {}
+        }
+    }
+
+    let Some(end) = last_complete else {
+        return Err(ScraperError::ParserRegression(
+            "recent JSON prefix did not contain a complete item".into(),
+        ));
+    };
+    let mut completed = bytes[..end].to_vec();
+    if !complete_array {
+        completed.push(b']');
+    }
+    String::from_utf8(completed).map_err(|error| {
+        ScraperError::ParserRegression(format!("recent JSON prefix is not UTF-8: {error}"))
+    })
 }
 
 fn is_mnd_tls_fallback_host(url: &str) -> bool {
@@ -201,7 +287,12 @@ fn is_detail_fast_fail_host(url: &str) -> bool {
     url::Url::parse(url)
         .ok()
         .and_then(|value| value.host_str().map(str::to_ascii_lowercase))
-        .is_some_and(|host| matches!(host.as_str(), "www.moj.gov.tw" | "www.nps.gov.tw"))
+        .is_some_and(|host| {
+            matches!(
+                host.as_str(),
+                "www.moj.gov.tw" | "www.nps.gov.tw" | "www.moa.gov.tw"
+            )
+        })
 }
 
 #[cfg(test)]
@@ -248,6 +339,21 @@ mod tests {
         assert!(is_detail_fast_fail_host(
             "https://www.nps.gov.tw/ch/titlelist/parknews/1"
         ));
+        assert!(is_detail_fast_fail_host(
+            "https://www.moa.gov.tw/theme_data.php?theme=news&sub_theme=agri&id=1"
+        ));
         assert!(!is_detail_fast_fail_host("https://www.mof.gov.tw/"));
+    }
+
+    #[test]
+    fn completes_a_truncated_json_array_at_the_last_whole_item() {
+        let body = br#"[{"id":1,"text":"brace } and escaped \" quote"},{"id":2},{"id":3"#;
+        let completed = complete_json_array_prefix(body).expect("complete prefix");
+        assert_eq!(
+            completed,
+            r#"[{"id":1,"text":"brace } and escaped \" quote"},{"id":2}]"#
+        );
+        let parsed: serde_json::Value = serde_json::from_str(&completed).expect("valid JSON");
+        assert_eq!(parsed.as_array().map(Vec::len), Some(2));
     }
 }
