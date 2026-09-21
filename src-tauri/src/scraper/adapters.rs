@@ -267,11 +267,25 @@ pub fn parse_route(
         "中選會" => return special::parse_cec(source, body, &route.url),
         "疾管署" => return special::parse_cdc(source, body, &route.url),
         "國家資通安全研究院" => return special::parse_nics(source, body, &route.url),
-        "經濟部" => return special::parse_moea(source, body, &route.url),
+        "經濟部" if route.parser == "moea-html" => {
+            return special::parse_moea(source, body, &route.url)
+        }
         _ => {}
     }
     if route.kind == "rss" || looks_like_feed(&route.url, body) {
-        return rss::parse_feed(source, body);
+        let mut items = rss::parse_feed(source, body)?;
+        if source == "經濟部" && route.parser == "moea-rss-full-text" {
+            for item in &mut items {
+                item.full_text = item.summary.clone();
+                if let Some(department) = item.department.strip_prefix(source) {
+                    let department = department.trim_start_matches(['／', '/', ' ']).trim();
+                    if !department.is_empty() {
+                        item.department = format!("{source}／{department}");
+                    }
+                }
+            }
+        }
+        return Ok(items);
     }
 
     if let Some(profile) = html_profile(source) {
@@ -466,5 +480,26 @@ mod tests {
         assert!(full_text.starts_with("新聞內容"));
         assert!(full_text.ends_with("全文結尾"));
         assert!(!full_text.contains("導覽"));
+    }
+
+    #[test]
+    fn moea_official_rss_description_is_complete_full_text() {
+        let mut rss_route = route("moea-rss-full-text");
+        rss_route.kind = "rss".into();
+        rss_route.url =
+            "https://www.moea.gov.tw/Mns/populace/news/NewsRSSdetail.aspx?Kind=1".into();
+        let items = parse_route(
+            "經濟部",
+            &rss_route,
+            r#"<rss><channel><item><title>經濟部新聞</title><link>https://www.moea.gov.tw/news/1</link><description><![CDATA[第一段完整內文。
+
+第二段完整內文。]]></description><pubDate>Thu, 17 Sep 2026 09:15:00 GMT</pubDate><dc:rights xmlns:dc="urn:dc">版權來自：經濟部產業技術司</dc:rights></item></channel></rss>"#,
+        )
+        .unwrap();
+
+        assert_eq!(items.len(), 1);
+        assert_eq!(items[0].summary, "第一段完整內文。 第二段完整內文。");
+        assert_eq!(items[0].full_text, items[0].summary);
+        assert_eq!(items[0].department, "經濟部／產業技術司");
     }
 }

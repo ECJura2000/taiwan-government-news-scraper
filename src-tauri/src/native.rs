@@ -667,7 +667,7 @@ async fn enrich_detail_full_text(client: &HttpClient, items: Vec<NewsItem>) -> V
         .map(|mut item| {
             let client = client.clone();
             async move {
-                if !item.link.is_empty() {
+                if item.full_text.is_empty() && !item.link.is_empty() {
                     if let Ok(body) = client.fetch_text(&item.link).await {
                         let full_text = adapters::parse_detail_full_text(&item.source, &body);
                         if !full_text.is_empty() {
@@ -800,7 +800,7 @@ fn excel_row(item: &NewsItem, result: &serde_json::Value) -> (Vec<String>, u32, 
         .unwrap_or_default();
     let values = vec![
         parent_source,
-        item.date.clone(),
+        excel_date(&item.date),
         department_path,
         item.title.clone(),
         if item.link.starts_with("http://") || item.link.starts_with("https://") {
@@ -858,11 +858,17 @@ fn extract_http_url(value: &str) -> Option<&str> {
 fn roc_date(value: &str) -> Option<String> {
     let date = parse_date(value)?;
     Some(format!(
-        "{:03}-{:02}-{:02}",
+        "{:03}/{:02}/{:02}",
         date.year() - 1911,
         date.month(),
         date.day()
     ))
+}
+
+fn excel_date(value: &str) -> String {
+    parse_date(value)
+        .map(|date| date.format("%Y/%m/%d").to_string())
+        .unwrap_or_else(|| value.to_owned())
 }
 
 struct ExcelFormats {
@@ -1946,10 +1952,12 @@ mod tests {
             for cap in pattern.captures_iter(&xml) {
                 assert_eq!(&cap[1], "Q");
             }
-            assert!(xml.contains("115-08-31"));
+            assert!(xml.contains("2026/08/31"));
+            assert!(xml.contains("115/08/31"));
             assert!(!xml.contains("民國115"));
         }
-        assert_eq!(roc_date("2026-08-31").unwrap(), "115-08-31");
+        assert_eq!(excel_date("2026-08-31"), "2026/08/31");
+        assert_eq!(roc_date("2026-08-31").unwrap(), "115/08/31");
         if let Some(dir) = std::env::var_os("NEWS_SCRAPER_QA_OUTPUT") {
             std::fs::create_dir_all(&dir).unwrap();
             std::fs::copy(path, PathBuf::from(dir).join("stage1-verification.xlsx")).unwrap();

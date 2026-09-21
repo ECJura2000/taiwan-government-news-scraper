@@ -26,7 +26,7 @@
   {"name":"法務部","urls":["https://www.moj.gov.tw/2204/2795/2796/rss"]},
   {"name":"矯正署","urls":["https://www.mjac.moj.gov.tw/4786/4963/4965/"],"routes":[{"id":"primary-html","url":"https://www.mjac.moj.gov.tw/4786/4963/4965/","kind":"html","parser":"mjac-html","priority":1},{"id":"official-latest-news","url":"https://www.mjac.moj.gov.tw/4786/654264/","kind":"html","parser":"mjac-html","priority":2,"coverage_reduced":true}]},
   {"name":"最高檢察署","urls":["https://www.tps.moj.gov.tw/16314/1140948/"]},
-  {"name":"經濟部","urls":["https://www.moea.gov.tw/Mns/Populace/news/News.aspx?kind=1&menu_id=40"],"routes":[{"id":"official-browser","url":"https://www.moea.gov.tw/Mns/Populace/news/News.aspx?kind=1&menu_id=40","kind":"browser","parser":"moea-html","priority":1}]},
+  {"name":"經濟部","urls":["https://www.moea.gov.tw/Mns/populace/news/NewsRSSdetail.aspx?Kind=1","https://www.moea.gov.tw/Mns/Populace/news/News.aspx?kind=1&menu_id=40"],"routes":[{"id":"official-rss-full-text","url":"https://www.moea.gov.tw/Mns/populace/news/NewsRSSdetail.aspx?Kind=1","kind":"rss","parser":"moea-rss-full-text","priority":1},{"id":"official-browser","url":"https://www.moea.gov.tw/Mns/Populace/news/News.aspx?kind=1&menu_id=40","kind":"browser","parser":"moea-html","priority":2,"coverage_reduced":true}]},
   {"name":"交通部","urls":["https://www.motc.gov.tw/ch/app/news_list/query?module=news&id=14"]},
   {"name":"觀光署","urls":["https://www.taiwan.net.tw/m1.aspx?sNo=0001001"]},
   {"name":"公路局","urls":["https://www.thb.gov.tw/News.aspx?n=12181&sms=14672"],"routes":[{"id":"official-browser","url":"https://www.thb.gov.tw/News.aspx?n=12181&sms=14672","kind":"browser","parser":"thb-html","priority":1}]},
