@@ -20,7 +20,9 @@ struct DevToolsTarget {
 }
 
 static PROFILE_SEQUENCE: AtomicU64 = AtomicU64::new(1);
-static BROWSER_SEMAPHORE: Semaphore = Semaphore::const_new(1);
+// Two independent CDP profiles avoid making a slow fallback route block every
+// other dynamic source, while still keeping Chrome process pressure bounded.
+static BROWSER_SEMAPHORE: Semaphore = Semaphore::const_new(2);
 
 /// Fetch a rendered page through the system Chromium browser DevTools Protocol.
 ///
@@ -51,9 +53,9 @@ async fn fetch_rendered_html_after_with_certificate_policy(
     page_script: Option<&str>,
     allow_invalid_certificates: bool,
 ) -> Result<String, String> {
-    // GitHub-hosted Linux runners only provide two CPU cores. Starting several
-    // Chrome instances at once can starve all of them before their CDP endpoint
-    // is ready, so browser routes share one process slot per application.
+    // Keep browser work bounded: two independent profiles let a slow fallback
+    // run alongside another dynamic source without starting an unbounded number
+    // of Chrome processes on low-resource runners.
     let _browser_permit = BROWSER_SEMAPHORE
         .acquire()
         .await

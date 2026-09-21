@@ -587,6 +587,7 @@ fn should_retry_browser_route(
     attempt_number: u32,
 ) -> bool {
     route.kind == "browser"
+        && route.priority > 1
         && attempt_number == 1
         && matches!(
             error,
@@ -681,7 +682,7 @@ async fn enrich_detail_full_text(client: &HttpClient, items: Vec<NewsItem>) -> V
             let client = client.clone();
             async move {
                 if item.full_text.is_empty() && !item.link.is_empty() {
-                    if let Ok(body) = client.fetch_text(&item.link).await {
+                    if let Ok(body) = client.fetch_detail_text(&item.link).await {
                         let full_text = adapters::parse_detail_full_text(&item.source, &body);
                         if !full_text.is_empty() {
                             item.summary = full_text.clone();
@@ -1629,12 +1630,12 @@ mod tests {
     #[test]
     fn browser_retry_policy_is_narrow_and_single_attempt() {
         let route = browser_route("vghtpe-html");
-        assert!(should_retry_browser_route(
+        assert!(!should_retry_browser_route(
             &route,
             &ScraperError::BrowserRuntime("timeout".into()),
             1
         ));
-        assert!(should_retry_browser_route(
+        assert!(!should_retry_browser_route(
             &route,
             &ScraperError::ParserRegression("not rendered".into()),
             1
@@ -1652,6 +1653,13 @@ mod tests {
         assert!(!should_retry_browser_route(
             &route,
             &ScraperError::Unknown("unknown".into()),
+            1
+        ));
+        let mut fallback_route = route.clone();
+        fallback_route.priority = 2;
+        assert!(should_retry_browser_route(
+            &fallback_route,
+            &ScraperError::BrowserRuntime("timeout".into()),
             1
         ));
         let mut html_route = route;
