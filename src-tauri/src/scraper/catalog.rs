@@ -134,6 +134,12 @@ mod tests {
 
         let correction = routes_for(find_source("矯正署").unwrap());
         assert!(correction.iter().any(|route| route.coverage_reduced));
+
+        let economy = routes_for(find_source("經濟部").unwrap());
+        assert_eq!(economy[0].id, "official-rss-full-text");
+        assert_eq!(economy[0].kind, "rss");
+        assert_eq!(economy[0].parser, "moea-rss-full-text");
+        assert!(economy[1].coverage_reduced);
     }
 
     #[test]

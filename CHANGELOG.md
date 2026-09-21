@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.1.15 - 2026-09-21
+
+- Display Excel news dates with slash separators for both Gregorian and ROC formats.
+- Read Ministry of Economic Affairs articles from its official full-text RSS feed, while retaining the browser list as a reduced-coverage fallback.
+
 ## 2.1.14 - 2026-09-14
 
 - Export the Excel news-content column as full article text, with per-run full-text coverage diagnostics and summary fallback counts.
