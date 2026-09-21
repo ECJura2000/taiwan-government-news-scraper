@@ -36,11 +36,11 @@ jobs:
       - run: cargo fmt --all -- --check
       - run: cargo test --workspace --all-targets
       - run: cargo clippy --workspace --all-targets --all-features -- -D warnings
-      - name: Verify all 72 sources are catalogued
+      - name: Verify all 73 sources are catalogued
         shell: bash
         run: |
           cargo run --quiet --bin news-scraper -- list-sources > sources.txt
-          test "$(wc -l < sources.txt | tr -d ' ')" = 72
+          test "$(wc -l < sources.txt | tr -d ' ')" = 73
       - name: Reject legacy Python runtime and scraper code
         shell: bash
         run: |

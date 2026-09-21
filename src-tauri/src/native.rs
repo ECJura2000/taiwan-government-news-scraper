@@ -446,12 +446,19 @@ async fn fetch_source(
         for attempt_number in 1..=2 {
             let started = Instant::now();
             let fetched = if route.kind == "browser" {
-                crate::browser::fetch_rendered_html_after(
-                    url,
-                    browser_page_script(route.parser.as_str()),
-                )
-                .await
-                .map_err(ScraperError::BrowserRuntime)
+                let page_script = browser_page_script(route.parser.as_str());
+                if route.parser == "mnd-browser-tls-fallback" {
+                    crate::browser::fetch_rendered_html_after_allow_invalid_certificates(
+                        url,
+                        page_script,
+                    )
+                    .await
+                    .map_err(ScraperError::BrowserRuntime)
+                } else {
+                    crate::browser::fetch_rendered_html_after(url, page_script)
+                        .await
+                        .map_err(ScraperError::BrowserRuntime)
+                }
             } else {
                 client.fetch_text(url).await
             };
@@ -564,6 +571,12 @@ fn browser_page_script(parser: &str) -> Option<&'static str> {
         "moea-html" => Some(
             "(async () => { const deadline = Date.now() + 20000; while (Date.now() < deadline) { if (document.querySelector('#holderContent_grdNews tbody tr')) return true; await new Promise(resolve => setTimeout(resolve, 250)); } return false; })()",
         ),
+        "taicca-html" => Some(
+            "(async () => { const deadline = Date.now() + 20000; while (Date.now() < deadline) { const item = document.querySelector('div.right-card-area > ul > li a.maintitle'); const date = document.querySelector('div.right-card-area > ul > li div.topbox div.date'); if (item && date && date.textContent.trim()) return true; await new Promise(resolve => setTimeout(resolve, 250)); } return false; })()",
+        ),
+        "mnd-browser-tls-fallback" => Some(
+            "(async () => { const deadline = Date.now() + 20000; while (Date.now() < deadline) { const item = document.querySelector('div.news_list_box a.news_list'); if (item) return true; await new Promise(resolve => setTimeout(resolve, 250)); } return false; })()",
+        ),
         _ => None,
     }
 }
@@ -574,6 +587,7 @@ fn should_retry_browser_route(
     attempt_number: u32,
 ) -> bool {
     route.kind == "browser"
+        && route.priority > 1
         && attempt_number == 1
         && matches!(
             error,
@@ -668,7 +682,7 @@ async fn enrich_detail_full_text(client: &HttpClient, items: Vec<NewsItem>) -> V
             let client = client.clone();
             async move {
                 if item.full_text.is_empty() && !item.link.is_empty() {
-                    if let Ok(body) = client.fetch_text(&item.link).await {
+                    if let Ok(body) = client.fetch_detail_text(&item.link).await {
                         let full_text = adapters::parse_detail_full_text(&item.source, &body);
                         if !full_text.is_empty() {
                             item.summary = full_text.clone();
@@ -1616,12 +1630,12 @@ mod tests {
     #[test]
     fn browser_retry_policy_is_narrow_and_single_attempt() {
         let route = browser_route("vghtpe-html");
-        assert!(should_retry_browser_route(
+        assert!(!should_retry_browser_route(
             &route,
             &ScraperError::BrowserRuntime("timeout".into()),
             1
         ));
-        assert!(should_retry_browser_route(
+        assert!(!should_retry_browser_route(
             &route,
             &ScraperError::ParserRegression("not rendered".into()),
             1
@@ -1639,6 +1653,13 @@ mod tests {
         assert!(!should_retry_browser_route(
             &route,
             &ScraperError::Unknown("unknown".into()),
+            1
+        ));
+        let mut fallback_route = route.clone();
+        fallback_route.priority = 2;
+        assert!(should_retry_browser_route(
+            &fallback_route,
+            &ScraperError::BrowserRuntime("timeout".into()),
             1
         ));
         let mut html_route = route;

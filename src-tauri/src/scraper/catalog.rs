@@ -96,9 +96,10 @@ mod tests {
 
     #[test]
     fn catalog_contains_all_registered_sources() {
-        assert_eq!(all_sources().len(), 72);
+        assert_eq!(all_sources().len(), 73);
         assert!(find_source("行政院").is_some());
         assert!(find_source("中選會").is_some());
+        assert!(find_source("文策院").is_some());
     }
 
     #[test]
@@ -131,6 +132,10 @@ mod tests {
         let culture = routes_for(find_source("文化部").unwrap());
         assert_eq!(culture[0].kind, "html");
         assert_eq!(culture[1].kind, "browser");
+
+        let nics = routes_for(find_source("國家資通安全研究院").unwrap());
+        assert_eq!(nics[0].kind, "html");
+        assert_eq!(nics[1].kind, "browser");
 
         let correction = routes_for(find_source("矯正署").unwrap());
         assert!(correction.iter().any(|route| route.coverage_reduced));

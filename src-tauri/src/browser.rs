@@ -20,7 +20,9 @@ struct DevToolsTarget {
 }
 
 static PROFILE_SEQUENCE: AtomicU64 = AtomicU64::new(1);
-static BROWSER_SEMAPHORE: Semaphore = Semaphore::const_new(1);
+// Two independent CDP profiles avoid making a slow fallback route block every
+// other dynamic source, while still keeping Chrome process pressure bounded.
+static BROWSER_SEMAPHORE: Semaphore = Semaphore::const_new(2);
 
 /// Fetch a rendered page through the system Chromium browser DevTools Protocol.
 ///
@@ -34,21 +36,40 @@ pub async fn fetch_rendered_html_after(
     url: &str,
     page_script: Option<&str>,
 ) -> Result<String, String> {
-    // GitHub-hosted Linux runners only provide two CPU cores. Starting several
-    // Chrome instances at once can starve all of them before their CDP endpoint
-    // is ready, so browser routes share one process slot per application.
+    fetch_rendered_html_after_with_certificate_policy(url, page_script, false).await
+}
+
+/// Fetch a rendered page while accepting an invalid certificate for the single
+/// caller that has an explicit source-specific TLS fallback route.
+pub async fn fetch_rendered_html_after_allow_invalid_certificates(
+    url: &str,
+    page_script: Option<&str>,
+) -> Result<String, String> {
+    fetch_rendered_html_after_with_certificate_policy(url, page_script, true).await
+}
+
+async fn fetch_rendered_html_after_with_certificate_policy(
+    url: &str,
+    page_script: Option<&str>,
+    allow_invalid_certificates: bool,
+) -> Result<String, String> {
+    // Keep browser work bounded: two independent profiles let a slow fallback
+    // run alongside another dynamic source without starting an unbounded number
+    // of Chrome processes on low-resource runners.
     let _browser_permit = BROWSER_SEMAPHORE
         .acquire()
         .await
         .map_err(|_| "Chrome CDP 執行序列已關閉".to_owned())?;
-    let (mut child, profile_dir, endpoint) = launch_browser().await?;
+    let (mut child, profile_dir, endpoint) = launch_browser(allow_invalid_certificates).await?;
     let result = fetch_from_target(&endpoint, url, page_script).await;
     let _ = child.kill().await;
     let _ = tokio::fs::remove_dir_all(profile_dir).await;
     result
 }
 
-async fn launch_browser() -> Result<(Child, PathBuf, String), String> {
+async fn launch_browser(
+    allow_invalid_certificates: bool,
+) -> Result<(Child, PathBuf, String), String> {
     let program = find_browser().ok_or_else(|| {
         "找不到系統 Chrome/Chromium/Edge；browser route 需要可執行的 Chromium 瀏覽器".to_owned()
     })?;
@@ -60,7 +81,8 @@ async fn launch_browser() -> Result<(Child, PathBuf, String), String> {
     tokio::fs::create_dir_all(&profile_dir)
         .await
         .map_err(|error| format!("CDP profile 建立失敗：{error}"))?;
-    let child = Command::new(program)
+    let mut command = Command::new(program);
+    command
         .args([
             "--allow-pre-commit-input",
             "--headless=new",
@@ -88,7 +110,11 @@ async fn launch_browser() -> Result<(Child, PathBuf, String), String> {
             "--use-mock-keychain",
             "--window-size=1920,1080",
             "--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36",
-        ])
+        ]);
+    if allow_invalid_certificates {
+        command.arg("--ignore-certificate-errors");
+    }
+    let child = command
         .arg("--remote-debugging-port=0")
         .arg(format!("--user-data-dir={}", profile_dir.display()))
         .arg("data:,")
