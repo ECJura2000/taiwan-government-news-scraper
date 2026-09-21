@@ -6,10 +6,12 @@ use reqwest::{
 use std::time::Duration;
 
 const DEFAULT_TIMEOUT: Duration = Duration::from_secs(60);
+const WDA_TIMEOUT: Duration = Duration::from_secs(25);
 
 #[derive(Clone)]
 pub struct HttpClient {
     client: Client,
+    wda_client: Client,
     mnd_tls_fallback_client: Client,
 }
 
@@ -44,23 +46,41 @@ impl HttpClient {
             .user_agent(
                 "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36",
             )
-            .default_headers(headers)
+            .default_headers(headers.clone())
             .gzip(true)
             .danger_accept_invalid_certs(true)
             .build()
             .map_err(|error| {
                 ScraperError::Unknown(format!("MND TLS fallback client initialization failed: {error}"))
             })?;
+        let wda_client = Client::builder()
+            .timeout(WDA_TIMEOUT)
+            .user_agent(
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36",
+            )
+            .default_headers(headers.clone())
+            .gzip(true)
+            .build()
+            .map_err(|error| {
+                ScraperError::Unknown(format!("WDA fast-fail client initialization failed: {error}"))
+            })?;
         Ok(Self {
             client,
+            wda_client,
             mnd_tls_fallback_client,
         })
     }
 
     pub async fn fetch_text(&self, url: &str) -> Result<String, ScraperError> {
         let mut last_error = None;
-        for attempt in 0..3 {
-            match self.fetch_once(&self.client, url).await {
+        let attempts = if is_wda_fast_fail_host(url) { 1 } else { 3 };
+        let client = if is_wda_fast_fail_host(url) {
+            &self.wda_client
+        } else {
+            &self.client
+        };
+        for attempt in 0..attempts {
+            match self.fetch_once(client, url).await {
                 Ok(body) => return Ok(body),
                 Err(error)
                     if is_mnd_tls_fallback_host(url)
@@ -71,7 +91,7 @@ impl HttpClient {
                 {
                     return self.fetch_once(&self.mnd_tls_fallback_client, url).await;
                 }
-                Err(error) if error.retryable() && attempt < 2 => {
+                Err(error) if error.retryable() && attempt + 1 < attempts => {
                     last_error = Some(error);
                     tokio::time::sleep(Duration::from_millis(200 * (attempt + 1))).await;
                 }
@@ -119,6 +139,14 @@ fn is_mnd_tls_fallback_host(url: &str) -> bool {
         == Some("www.mnd.gov.tw")
 }
 
+fn is_wda_fast_fail_host(url: &str) -> bool {
+    url::Url::parse(url)
+        .ok()
+        .and_then(|value| value.host_str().map(str::to_ascii_lowercase))
+        .as_deref()
+        == Some("www.wda.gov.tw")
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -137,5 +165,13 @@ mod tests {
             "https://mnd.gov.tw/news/pressreleaselist"
         ));
         assert!(!is_mnd_tls_fallback_host("https://example.test/"));
+    }
+
+    #[test]
+    fn fast_fail_timeout_is_limited_to_wda_host() {
+        assert!(is_wda_fast_fail_host(
+            "https://www.wda.gov.tw/OpenData.aspx?SN=8C4FEB29449A1601"
+        ));
+        assert!(!is_wda_fast_fail_host("https://www.mol.gov.tw/"));
     }
 }
