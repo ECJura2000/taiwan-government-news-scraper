@@ -446,12 +446,19 @@ async fn fetch_source(
         for attempt_number in 1..=2 {
             let started = Instant::now();
             let fetched = if route.kind == "browser" {
-                crate::browser::fetch_rendered_html_after(
-                    url,
-                    browser_page_script(route.parser.as_str()),
-                )
-                .await
-                .map_err(ScraperError::BrowserRuntime)
+                let page_script = browser_page_script(route.parser.as_str());
+                if route.parser == "mnd-browser-tls-fallback" {
+                    crate::browser::fetch_rendered_html_after_allow_invalid_certificates(
+                        url,
+                        page_script,
+                    )
+                    .await
+                    .map_err(ScraperError::BrowserRuntime)
+                } else {
+                    crate::browser::fetch_rendered_html_after(url, page_script)
+                        .await
+                        .map_err(ScraperError::BrowserRuntime)
+                }
             } else {
                 client.fetch_text(url).await
             };
@@ -563,6 +570,12 @@ fn browser_page_script(parser: &str) -> Option<&'static str> {
         ),
         "moea-html" => Some(
             "(async () => { const deadline = Date.now() + 20000; while (Date.now() < deadline) { if (document.querySelector('#holderContent_grdNews tbody tr')) return true; await new Promise(resolve => setTimeout(resolve, 250)); } return false; })()",
+        ),
+        "taicca-html" => Some(
+            "(async () => { const deadline = Date.now() + 20000; while (Date.now() < deadline) { const item = document.querySelector('div.right-card-area > ul > li a.maintitle'); const date = document.querySelector('div.right-card-area > ul > li div.topbox div.date'); if (item && date && date.textContent.trim()) return true; await new Promise(resolve => setTimeout(resolve, 250)); } return false; })()",
+        ),
+        "mnd-browser-tls-fallback" => Some(
+            "(async () => { const deadline = Date.now() + 20000; while (Date.now() < deadline) { const item = document.querySelector('div.news_list_box a.news_list'); if (item) return true; await new Promise(resolve => setTimeout(resolve, 250)); } return false; })()",
         ),
         _ => None,
     }

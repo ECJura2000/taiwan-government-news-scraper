@@ -36,6 +36,15 @@ fn html_profile(source: &str) -> Option<DatedListSelectors<'static>> {
             department: None,
             category: Some("div.category.body-2"),
         },
+        "文策院" => DatedListSelectors {
+            item: "div.right-card-area > ul > li",
+            link: "a.maintitle[href]",
+            title: "a.maintitle",
+            date: "div.topbox div.date",
+            summary: None,
+            department: None,
+            category: Some("div.classtag p"),
+        },
         "中科院" => DatedListSelectors {
             item: "div.newsNavArea ul",
             link: "li.newsTit03 a[href]",

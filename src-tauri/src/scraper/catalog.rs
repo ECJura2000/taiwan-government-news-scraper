@@ -96,9 +96,10 @@ mod tests {
 
     #[test]
     fn catalog_contains_all_registered_sources() {
-        assert_eq!(all_sources().len(), 72);
+        assert_eq!(all_sources().len(), 73);
         assert!(find_source("行政院").is_some());
         assert!(find_source("中選會").is_some());
+        assert!(find_source("文策院").is_some());
     }
 
     #[test]

@@ -136,7 +136,7 @@ jobs:
         shell: bash
         run: |
           "$CLI_PATH" --version
-          test "$("$CLI_PATH" list-sources | wc -l | tr -d ' ')" = 72
+          test "$("$CLI_PATH" list-sources | wc -l | tr -d ' ')" = 73
           mkdir -p live-output live-reports
           "$CLI_PATH" collect --sources 財政部 --output-dir live-output --report-dir live-reports --fail-on-source-error | tee live-summary.jsonl
           report="$(find live-reports -name 'news_scraper_run_*.json' -type f | sort | tail -n 1)"

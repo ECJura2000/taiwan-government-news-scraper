@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.1.16 - 2026-09-21
+
+- Add the Taiwan Creative Content Agency (文策院) official news route, using a Chrome CDP readiness check to pass its Cloudflare-protected listing page and collect dated news cards.
+- Add a Ministry of National Defense browser fallback with invalid-certificate handling restricted to its official host; preserve normal TLS verification for every other source.
+- Raise the catalog and release health gate from 72 to 73 official sources.
+
 ## 2.1.15 - 2026-09-21
 
 - Display Excel news dates with slash separators for both Gregorian and ROC formats.

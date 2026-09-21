@@ -39,7 +39,7 @@ jobs:
           echo "version=$version" >> "$GITHUB_OUTPUT"
 
   source-health:
-    name: Gate all 72 live sources
+    name: Gate all 73 live sources
     needs: validate
     runs-on: ubuntu-22.04
     timeout-minutes: 90
@@ -67,7 +67,7 @@ jobs:
             --report-dir source-health/reports \
             --max-workers 8 | tee source-health/summary.jsonl
           report="$(find source-health/reports -name 'news_scraper_run_*.json' -type f | sort | tail -n 1)"
-          jq -e '.report_schema_version == 4 and .selected_source_count == 72 and (.news_count > 0) and (.quality.alert_reasons | length == 0)' "$report"
+          jq -e '.report_schema_version == 4 and .selected_source_count == 73 and (.news_count > 0) and (.quality.alert_reasons | length == 0)' "$report"
           jq -e '[.source_diagnostics[] | select(.status == "failed") | .failure_class] | all(. == "source_outage" or . == "runner_network" or . == "tls_certificate")' "$report"
           cp "$report" source-health/source-health-report.json
           mkdir -p source-health/retries
@@ -160,7 +160,7 @@ jobs:
             codesign --verify --deep --strict --verbose=2 "$app_bundle"
           fi
           "target/release/${{ matrix.cli }}" --version
-          test "$("target/release/${{ matrix.cli }}" list-sources | wc -l | tr -d ' ')" = 72
+          test "$("target/release/${{ matrix.cli }}" list-sources | wc -l | tr -d ' ')" = 73
           if [[ "${{ runner.os }}" == "Windows" ]]; then
             test -s target/release/taiwan-government-news.exe
           fi

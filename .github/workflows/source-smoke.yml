@@ -40,7 +40,7 @@ jobs:
           test -n "$report"
           jq -e '.report_schema_version == 4 and (.news_count | type == "number") and .news_count > 0' "$report"
           jq '{status, news_count, failed_sources, source_health, quality: {alert_reasons: .quality.alert_reasons}}' "$report" | tee source-smoke/source-health-summary.json
-          test "$(jq '.selected_source_count' "$report")" = 72
+          test "$(jq '.selected_source_count' "$report")" = 73
           test "$(jq '.quality.alert_reasons | length' "$report")" = 0
           jq -e '[.source_diagnostics[] | select(.status == "failed") | .failure_class] | all(. == "source_outage" or . == "runner_network" or . == "tls_certificate")' "$report"
           mkdir -p source-smoke/retries
