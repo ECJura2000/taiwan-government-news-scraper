@@ -839,16 +839,17 @@ fn excel_row(item: &NewsItem, result: &serde_json::Value) -> (Vec<String>, u32, 
                 .join("；")
         })
         .unwrap_or_default();
+    let source_link = if item.link.starts_with("http://") || item.link.starts_with("https://") {
+        format!("{}官網：{}", item.source, item.link)
+    } else {
+        item.link.clone()
+    };
     let values = vec![
         parent_source,
         excel_date(&item.date),
         department_path,
         item.title.clone(),
-        if item.link.starts_with("http://") || item.link.starts_with("https://") {
-            format!("{}官網：{}", item.source, item.link)
-        } else {
-            item.link.clone()
-        },
+        source_link.clone(),
         item.full_text.clone(),
         item.date_source.clone(),
         strings("topics"),
@@ -860,7 +861,7 @@ fn excel_row(item: &NewsItem, result: &serde_json::Value) -> (Vec<String>, u32, 
         strings("excluded_keywords"),
         topic_scores,
         result["bm25_score"].as_f64().unwrap_or(0.0).to_string(),
-        item.link.clone(),
+        source_link,
     ];
     (values, score, relevance)
 }
@@ -889,6 +890,8 @@ fn excel_agency_path(source: &str, department: &str) -> (String, String) {
 
 fn extract_http_url(value: &str) -> Option<&str> {
     let value = value.trim();
+    let start = value.find("https://").or_else(|| value.find("http://"))?;
+    let value = &value[start..];
     let parsed = url::Url::parse(value).ok()?;
     (matches!(parsed.scheme(), "http" | "https")
         && parsed.host_str().is_some()
@@ -1232,7 +1235,7 @@ fn write_news_sheet(
             if column == 16 && extract_http_url(value).is_some() {
                 let url = extract_http_url(value).expect("URL checked");
                 worksheet
-                    .write_url_with_text(row, column as u16, url, "開啟原文")
+                    .write_url_with_text(row, column as u16, url, &bounded_value)
                     .map_err(|error| error.to_string())?;
                 worksheet
                     .set_cell_format(row, column as u16, cell_format)
@@ -1868,6 +1871,15 @@ mod tests {
     }
 
     #[test]
+    fn excel_source_label_keeps_the_clickable_url_visible() {
+        let label = "數位發展部官網：https://moda.gov.tw/press/123";
+        assert_eq!(
+            extract_http_url(label),
+            Some("https://moda.gov.tw/press/123")
+        );
+    }
+
+    #[test]
     fn excel_agency_paths_match_affiliated_python_export() {
         assert_eq!(
             excel_agency_path("國土管理署", "國土管理署／都市基礎工程組"),
@@ -2008,7 +2020,20 @@ mod tests {
         assert!(!strings.contains("應完全移除"));
         assert!(strings.contains("乙保留"));
         assert!(strings.contains("開啟原文"));
+        let source_label = "國發會官網：https://www.ndc.gov.tw/";
+        let label_position = strings
+            .find(source_label)
+            .expect("missing source link label");
+        let label_index = strings[..label_position]
+            .matches("<si>")
+            .count()
+            .checked_sub(1)
+            .expect("source link label must be inside a shared string");
         let pattern = Regex::new(r#"<hyperlink ref="([A-Z]+)[0-9]+""#).unwrap();
+        let labeled_cell_pattern = Regex::new(&format!(
+            r#"<c r="(Q[0-9]+)"[^>]*><v>{label_index}</v></c>"#
+        ))
+        .unwrap();
         for name in [
             "xl/worksheets/sheet1.xml",
             "xl/worksheets/sheet2.xml",
@@ -2025,6 +2050,10 @@ mod tests {
             for cap in pattern.captures_iter(&xml) {
                 assert_eq!(&cap[1], "Q");
             }
+            let labeled_cell = labeled_cell_pattern
+                .captures(&xml)
+                .expect("source label is not written in the hyperlink column");
+            assert!(xml.contains(&format!(r#"<hyperlink ref="{}" "#, &labeled_cell[1])));
             assert!(xml.contains("2026/08/31"));
             assert!(xml.contains("115/08/31"));
             assert!(!xml.contains("民國115"));

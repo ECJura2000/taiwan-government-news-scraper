@@ -33,6 +33,6 @@ cargo clippy --workspace --all-targets --all-features -- -D warnings
 cargo run --quiet --bin news-scraper -- list-sources
 ```
 
-The source count must remain 72. Do not commit generated Excel files, JSON run reports, credentials, browser profiles, `target/`, or `node_modules/`.
+The source count must remain 73. Do not commit generated Excel files, JSON run reports, credentials, browser profiles, `target/`, or `node_modules/`.
 
 Only `scripts/python_compat.py` may be a Python file. It is a command bridge to the Rust executable and must not contain scraper logic or import another project module.
