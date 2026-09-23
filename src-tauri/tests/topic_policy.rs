@@ -318,6 +318,60 @@ fn distant_or_generic_words_do_not_create_formal_topics() {
 }
 
 #[test]
+fn real_release_sample_does_not_promote_incidental_mentions_to_topics() {
+    let p = Profile::embedded();
+    let cases = [
+        news(
+            "22縣市資訊主管齊聚宜蘭 數發部攜手地方加速推動智慧政府",
+            "本次會議以自主智慧應用、提升行政效能為主題，透過地方AI應用案例分享、AI工具實作示範及政策討論，共同打造智慧政府。此外，現場宣導多項業務，包括臺灣主權AI訓練語料庫。",
+        ),
+        news(
+            "海關直撥退還押（稅）款便利又安全 歡迎多加利用",
+            "商民辦理退還押金或稅款，可申請將退款直接撥入指定帳戶，簡化行政流程，實現節能減碳與智慧政府的目標。",
+        ),
+        news(
+            "食藥署舉辦2026國際醫療器材法規研討會",
+            "講題包含各國法規更新、人工智慧及數位健康領域之管理、數位醫療產品專法，以及驗證機構實務經驗。",
+        ),
+        news(
+            "DevDays Asia 2026 匯聚全球 AI 創新能量，共創Agentic新時代",
+            "數位發展部次長表示，主權AI的核心不僅在於算力建設或GPU數量，更重要的是持續累積國家智慧與產業Know-how。",
+        ),
+        news(
+            "深度節能標竿高雄長庚醫院，帶動ESCO產業",
+            "醫院透過中央智慧監控、空調節能控制及智慧藥品倉儲打造節能醫院。能源署提供節能診斷、設備改善補助及ESCO服務，協助業者降低節能投資與技術導入門檻。",
+        ),
+        news(
+            "數發部次長於台巴科技論壇分享AI時代國家布局",
+            "政府以能源、晶片、算力、資料、模型與應用六層架構推動主權AI；臺灣主權AI訓練語料庫自去年12月上線，已有200多個機關參與、累計超過22億Tokens。",
+        ),
+    ];
+    let results = ranking::rank(&p, &cases).results;
+    assert_eq!(results[0]["topics"], json!(["智慧政府與資料治理"]));
+    assert!(results[1]["topics"].as_array().unwrap().is_empty());
+    assert!(results[2]["topics"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .all(|topic| topic == "待人工判讀"));
+    assert!(results[3]["topics"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .all(|topic| topic != "主權AI及算力建設"));
+    assert!(results[4]["topics"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .all(|topic| topic != "千億資金驅動創新"));
+    assert!(results[5]["topics"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|topic| topic == "主權AI及算力建設"));
+}
+
+#[test]
 fn later_body_mentions_do_not_add_a_second_topic() {
     let p = Profile::embedded();
     let summary = format!(

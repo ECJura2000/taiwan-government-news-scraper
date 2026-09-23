@@ -104,25 +104,106 @@ fn has_government_context(sentence: &str) -> bool {
 }
 
 fn topic_evidence_allowed(topic: &Initiative, sentence: &str) -> bool {
-    // Health-data governance belongs to the medical application unless the
-    // article also describes a government data/administrative service.
-    if topic.name == "智慧政府與資料治理"
-        && (sentence.contains("資料治理") || sentence.contains("數據治理"))
-        && ![
-            "智慧政府",
-            "跨機關",
-            "政府資料",
-            "行政服務",
-            "資料匯流",
-            "資料標準",
-            "開放資料",
-        ]
-        .iter()
-        .any(|word| sentence.contains(word))
-    {
-        return false;
+    let sentence = normalize(sentence);
+    let has_any = |words: &[&str]| words.iter().any(|word| sentence.contains(word));
+    match topic.name.as_str() {
+        "智慧政府與資料治理" => {
+            let explicit_application = has_any(&[
+                "智慧稽查",
+                "公務ai應用",
+                "通關智慧特助",
+                "貨物分類智慧助理",
+                "業務助手",
+                "服務型智慧政府",
+            ]);
+            let ai_application = has_government_context(&sentence)
+                && has_any(&["ai", "人工智慧"])
+                && has_any(&[
+                    "ai應用",
+                    "ai工具",
+                    "ai導入",
+                    "智慧服務",
+                    "決策輔助",
+                    "行政助手",
+                    "資料匯流",
+                    "共用模組",
+                ]);
+            let public_data_action = has_any(&["跨機關資料", "政府資料", "資料匯流"])
+                && has_any(&["流通", "介接", "串接", "整合", "開放", "建置"]);
+            let launched_data_program =
+                sentence.contains("智慧政府2.0") && has_any(&["啟動", "推出", "資料治理"]);
+            explicit_application || ai_application || public_data_action || launched_data_program
+        }
+        "全民智慧生活圈" => {
+            let medical_application = has_any(&[
+                "醫療服務",
+                "健康照護",
+                "疾病早篩",
+                "遠距診療",
+                "ai醫療",
+                "ai藥物研發",
+                "智慧醫療",
+                "數位醫療",
+                "遠距醫療",
+                "健康資料治理",
+                "醫療資料互通",
+            ]);
+            let healthcare_technology = has_any(&[
+                "ai",
+                "人工智慧",
+                "醫療資料",
+                "健康資料",
+                "數位醫療",
+                "遠距醫療",
+            ]);
+            let service_action = has_any(&[
+                "服務", "導入", "應用", "建置", "開發", "診斷", "治療", "照護", "早篩", "互通",
+                "臨床",
+            ]);
+            healthcare_technology && medical_application && service_action
+        }
+        "主權AI及算力建設" => {
+            let concrete_asset = has_any(&[
+                "主權ai訓練語料",
+                "訓練語料庫",
+                "國家算力",
+                "算力中心",
+                "ai模型訓練",
+                "模型訓練",
+            ]);
+            let implementation = has_any(&[
+                "建置", "建構", "上線", "開發", "部署", "擴增", "推出", "開放",
+            ]);
+            sentence.contains("主權ai") && concrete_asset && implementation
+        }
+        "千億資金驅動創新" => {
+            let fund_or_program = has_any(&[
+                "國發基金",
+                "ai新創",
+                "新創ai",
+                "ai創業",
+                "創業團隊",
+                "ai新十大建設",
+                "加強投資ai新創實施方案",
+                "百億投資方案",
+                "百億投資平台",
+                "千億資金",
+            ]);
+            let investment_action = has_any(&[
+                "國發基金投資",
+                "新創投資",
+                "投資平台",
+                "資金媒合",
+                "創業投資",
+                "投資方案",
+                "融資方案",
+                "募資",
+                "天使投資",
+            ]);
+            fund_or_program && investment_action
+        }
+        _ => true,
     }
-    true
 }
 
 fn strongest_evidence(profile: &Profile, title: &str, summary: &str) -> Value {
@@ -361,6 +442,7 @@ pub fn rank(profile: &Profile, items: &[NewsItem]) -> RankedBatch {
             if score < profile.thresholds.possible
                 && std::iter::once(item.title.as_str())
                     .chain(evidence_sentences(&item.summary))
+                    .filter(|sentence| topic_evidence_allowed(topic, sentence))
                     .any(|sentence| domain_application(topic, sentence))
             {
                 score = profile.thresholds.possible;
