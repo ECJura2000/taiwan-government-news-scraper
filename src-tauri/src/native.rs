@@ -852,7 +852,14 @@ fn excel_row(item: &NewsItem, result: &serde_json::Value) -> (Vec<String>, u32, 
         source_link.clone(),
         item.full_text.clone(),
         item.date_source.clone(),
-        strings("topics"),
+        if result["topics"]
+            .as_array()
+            .is_some_and(|topics| topics.len() >= 2)
+        {
+            format!("綜整性、{}", strings("topics"))
+        } else {
+            strings("topics")
+        },
         strings("priority_sources"),
         relevance.clone(),
         score.to_string(),
@@ -2064,6 +2071,32 @@ mod tests {
             std::fs::create_dir_all(&dir).unwrap();
             std::fs::copy(path, PathBuf::from(dir).join("stage1-verification.xlsx")).unwrap();
         }
+    }
+
+    #[test]
+    fn excel_overview_label_preserves_seventeen_columns_and_formal_topics() {
+        let item = NewsItem {
+            source: "國科會".into(),
+            date: "2026-08-26".into(),
+            title: "醫療與農業 AI 應用".into(),
+            summary: String::new(),
+            full_text: String::new(),
+            link: "https://www.nstc.gov.tw/".into(),
+            department: String::new(),
+            category: String::new(),
+            date_source: "published".into(),
+        };
+        let result = json!({
+            "topics": ["全民智慧生活圈", "百工百業智慧應用"],
+            "score": 60,
+            "relevance": "可能相關",
+            "reasons": ["政策間接關聯"]
+        });
+        let (row, _, _) = excel_row(&item, &result);
+        assert_eq!(row.len(), EXCEL_HEADERS.len());
+        assert_eq!(row[7], "綜整性、全民智慧生活圈、百工百業智慧應用");
+        assert_eq!(row[11], "政策間接關聯");
+        assert_eq!(result["topics"].as_array().unwrap().len(), 2);
     }
     #[test]
     fn topic_sheet_names_are_unique_and_valid() {

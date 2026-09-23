@@ -71,6 +71,176 @@ fn keyword_pairs(t: &Initiative) -> Vec<(String, f64)> {
         .chain(std::iter::once((t.name.clone(), 3.0)))
         .collect()
 }
+
+// A long article may mention many initiatives in unrelated paragraphs. Only the
+// opening evidence is allowed to establish membership; the full text still ranks it.
+fn evidence_sentences(summary: &str) -> Vec<&str> {
+    let end = summary
+        .char_indices()
+        .nth(900)
+        .map(|(index, _)| index)
+        .unwrap_or(summary.len());
+    summary[..end]
+        .split(['。', '！', '？', '!', '?', '\n', '\r'])
+        .map(str::trim)
+        .filter(|sentence| !sentence.is_empty())
+        .take(8)
+        .collect()
+}
+
+fn has_government_context(sentence: &str) -> bool {
+    [
+        "政府",
+        "機關",
+        "行政",
+        "公務",
+        "跨機關",
+        "公共服務",
+        "通關",
+        "稽查",
+    ]
+    .iter()
+    .any(|word| sentence.contains(word))
+}
+
+fn topic_evidence_allowed(topic: &Initiative, sentence: &str) -> bool {
+    // Health-data governance belongs to the medical application unless the
+    // article also describes a government data/administrative service.
+    if topic.name == "智慧政府與資料治理"
+        && (sentence.contains("資料治理") || sentence.contains("數據治理"))
+        && ![
+            "智慧政府",
+            "跨機關",
+            "政府資料",
+            "行政服務",
+            "資料匯流",
+            "資料標準",
+            "開放資料",
+        ]
+        .iter()
+        .any(|word| sentence.contains(word))
+    {
+        return false;
+    }
+    true
+}
+
+fn strongest_evidence(profile: &Profile, title: &str, summary: &str) -> Value {
+    let topic = &profile.initiatives[0];
+    let mut best = if topic_evidence_allowed(topic, title) {
+        classify_with_profile(profile, title, "", "")
+    } else {
+        classify_with_profile(profile, "", "", "")
+    };
+    for sentence in evidence_sentences(summary) {
+        if !topic_evidence_allowed(topic, sentence) {
+            continue;
+        }
+        let result = classify_with_profile(profile, "", "", sentence);
+        if result["score"].as_u64().unwrap_or(0) > best["score"].as_u64().unwrap_or(0) {
+            best = result;
+        }
+    }
+    best
+}
+
+fn nearby_core_tokens(sentence: &str, tokens: &BTreeSet<String>) -> bool {
+    let sentence = normalize(sentence);
+    let positions: Vec<_> = tokens
+        .iter()
+        .map(|token| {
+            sentence
+                .match_indices(token)
+                .map(|(byte, _)| sentence[..byte].chars().count())
+                .collect::<Vec<_>>()
+        })
+        .collect();
+    if positions.iter().any(Vec::is_empty) {
+        return false;
+    }
+    // All pieces must occur in the same short span, not anywhere in one body.
+    let span = tokens.iter().map(|t| t.chars().count()).sum::<usize>() + 12;
+    positions.iter().flatten().any(|start| {
+        positions.iter().zip(tokens).all(|(matches, token)| {
+            matches.iter().any(|position| {
+                *position >= *start && *position + token.chars().count() <= *start + span
+            })
+        })
+    })
+}
+
+fn directly_linked_to_policy(
+    title: &str,
+    summary: &str,
+    accepted: &[&Value],
+    general_keywords: &[String],
+) -> bool {
+    let specific_terms: BTreeSet<String> = accepted
+        .iter()
+        .flat_map(|topic| {
+            topic["matched_keywords"]
+                .as_array()
+                .into_iter()
+                .flatten()
+                .filter_map(Value::as_str)
+        })
+        .filter(|word| {
+            !general_keywords
+                .iter()
+                .any(|general| normalize(general) == normalize(word))
+        })
+        .map(normalize)
+        .collect();
+    std::iter::once(title)
+        .chain(evidence_sentences(summary))
+        .map(normalize)
+        .any(|sentence| {
+            sentence.contains("ai新十大建設")
+                && ["配合", "納入", "屬於", "項下", "列為", "落實"]
+                    .iter()
+                    .any(|word| sentence.contains(word))
+                && specific_terms.iter().any(|term| sentence.contains(term))
+        })
+}
+
+fn domain_application(topic: &Initiative, sentence: &str) -> bool {
+    let sentence = normalize(sentence);
+    match topic.name.as_str() {
+        "百工百業智慧應用" => {
+            ["農業", "農民", "農漁", "農業生產"]
+                .iter()
+                .any(|word| sentence.contains(word))
+                && ["ai", "人工智慧"]
+                    .iter()
+                    .any(|word| sentence.contains(word))
+                && ["感測", "自動化", "資料分析", "生產管理", "精準農業"]
+                    .iter()
+                    .any(|word| sentence.contains(word))
+        }
+        "智慧政府與資料治理" => {
+            has_government_context(&sentence)
+                && ["ai", "人工智慧"]
+                    .iter()
+                    .any(|word| sentence.contains(word))
+                && ["決策輔助", "業務助手", "智慧服務", "資料匯流", "共用模組"]
+                    .iter()
+                    .any(|word| sentence.contains(word))
+        }
+        "全球量子能力登頂" => {
+            sentence.contains("量子")
+                && ["光電元件", "晶片", "運算", "通訊", "密碼"]
+                    .iter()
+                    .any(|word| sentence.contains(word))
+        }
+        "千億資金驅動創新" => {
+            sentence.contains("國發基金")
+                && ["投資", "融資", "創投", "募資"]
+                    .iter()
+                    .any(|word| sentence.contains(word))
+        }
+        _ => false,
+    }
+}
 pub fn rank(profile: &Profile, items: &[NewsItem]) -> RankedBatch {
     let mut recall_jieba = Jieba::new();
     for word in include_str!("../resources/policy-dictionary.txt")
@@ -139,10 +309,8 @@ pub fn rank(profile: &Profile, items: &[NewsItem]) -> RankedBatch {
     for (i, item) in items.iter().enumerate() {
         let mut topic_matches = vec![];
         let mut any_hard = false;
-        let recall_title = terms(&recall_jieba, &item.title);
-        let recall_summary = terms(&recall_jieba, &item.summary);
         for (topic, query, one) in &queries {
-            let mut result = classify_with_profile(one, &item.title, &item.source, &item.summary);
+            let mut result = strongest_evidence(one, &item.title, &item.summary);
             let mut score = result["score"].as_u64().unwrap_or(0) as u32;
             let mut matched = result["matched_keywords"]
                 .as_array()
@@ -168,19 +336,36 @@ pub fn rank(profile: &Profile, items: &[NewsItem]) -> RankedBatch {
                 ) {
                     let tokens: BTreeSet<_> = terms(&recall_jieba, word)
                         .keys()
-                        .filter(|&w| !profile.general_keywords.iter().any(|g| normalize(g) == *w))
+                        .filter(|&w| {
+                            !profile.general_keywords.iter().any(|g| normalize(g) == *w)
+                                && ![
+                                    "智慧", "數位", "產業", "技術", "服務", "應用", "資料", "治理",
+                                    "政府", "發展", "建設", "平台", "平臺", "人工",
+                                ]
+                                .contains(&w.as_str())
+                        })
                         .cloned()
                         .collect();
                     if tokens.len() >= 2
-                        && [&recall_title, &recall_summary]
-                            .iter()
-                            .any(|doc| tokens.iter().all(|w| doc.contains_key(w)))
+                        && std::iter::once(item.title.as_str())
+                            .chain(evidence_sentences(&item.summary))
+                            .filter(|sentence| topic_evidence_allowed(topic, sentence))
+                            .any(|sentence| nearby_core_tokens(sentence, &tokens))
                     {
                         score = profile.thresholds.possible;
                         matched.push(json!(word));
                         reasons.push(json!("核心片語斷詞全部命中，列入可能相關"));
                     }
                 }
+            }
+            if score < profile.thresholds.possible
+                && std::iter::once(item.title.as_str())
+                    .chain(evidence_sentences(&item.summary))
+                    .any(|sentence| domain_application(topic, sentence))
+            {
+                score = profile.thresholds.possible;
+                matched.push(json!("領域、AI 與具體應用同句命中"));
+                reasons.push(json!("領域與具體 AI 應用同句，列入可能相關"));
             }
             if score == 0 {
                 continue;
@@ -280,7 +465,12 @@ pub fn rank(profile: &Profile, items: &[NewsItem]) -> RankedBatch {
             .filter_map(|v| v["bm25_score"].as_f64())
             .fold(0.0, f64::max);
         let mut result = if topic_matches.is_empty() {
-            classify_with_profile(profile, &item.title, &item.source, &item.summary)
+            // Preserve the existing manual-review lane for general AI news,
+            // without inventing membership in any of the ten initiatives.
+            let mut generic_profile = profile.clone();
+            generic_profile.initiatives.clear();
+            let lead = item.summary.chars().take(900).collect::<String>();
+            classify_with_profile(&generic_profile, &item.title, &item.source, &lead)
         } else {
             let flatten = |key: &str| {
                 display_matches
@@ -295,6 +485,22 @@ pub fn rank(profile: &Profile, items: &[NewsItem]) -> RankedBatch {
         result["topic_matches"] = json!(topic_matches);
         result["bm25_score"] = json!(bm25);
         result["hard_excluded"] = json!(hard_excluded);
+        if !accepted.is_empty() {
+            let reason = if directly_linked_to_policy(
+                &item.title,
+                &item.summary,
+                &accepted,
+                &profile.general_keywords,
+            ) {
+                "政策直接關聯"
+            } else {
+                "政策間接關聯"
+            };
+            result["reasons"]
+                .as_array_mut()
+                .unwrap()
+                .push(json!(reason));
+        }
         batch.results.push(result);
     }
     batch

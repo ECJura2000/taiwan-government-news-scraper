@@ -1,5 +1,5 @@
 {
-  "version": "115.01-stage1",
+  "version": "115.01-stage2",
   "initiatives": [
     {
       "name": "全民智慧生活圈",
@@ -107,6 +107,34 @@
               ]
             }
           ]
+        },
+        {
+          "text": "健康資料治理",
+          "weight": 3,
+          "enabled": true,
+          "origin": "news-synonym",
+          "references": [{"url":"https://www.mohw.gov.tw/cp-16-86614-1.html","chapter":"全民智慧生活圈","note":"衛福部新聞用語；醫療資料用途，非 PDF 原詞"}]
+        },
+        {
+          "text": "醫療資料互通",
+          "weight": 3,
+          "enabled": true,
+          "origin": "news-synonym",
+          "references": [{"url":"https://www.mohw.gov.tw/cp-16-86614-1.html","chapter":"全民智慧生活圈","note":"衛福部新聞用語；非 PDF 原詞"}]
+        },
+        {
+          "text": "數位醫療",
+          "weight": 1,
+          "enabled": true,
+          "origin": "news-synonym",
+          "references": [{"url":"https://www.ey.gov.tw/Page/9277F759E41CCD91/1a9eb86f-0208-461d-9be9-128d79c1467e","chapter":"全民智慧生活圈","note":"行政院新聞用語；非 PDF 原詞"}]
+        },
+        {
+          "text": "遠距醫療",
+          "weight": 1,
+          "enabled": true,
+          "origin": "news-synonym",
+          "references": [{"url":"https://www.ey.gov.tw/Page/9277F759E41CCD91/1a9eb86f-0208-461d-9be9-128d79c1467e","chapter":"全民智慧生活圈","note":"行政院新聞用語；非 PDF 原詞"}]
         },
         {
           "text": "智慧醫療",
@@ -526,6 +554,20 @@
       ],
       "exclude_keywords": [],
       "weighted_keywords": [
+        {
+          "text": "智慧農業2.0",
+          "weight": 3,
+          "enabled": true,
+          "origin": "news-synonym",
+          "references": [{"url":"https://www.moa.gov.tw/theme_data.php?theme=news&sub_theme=agri&id=10255","chapter":"百工百業智慧應用","note":"農業部新聞用語；非 PDF 原詞"}]
+        },
+        {
+          "text": "智慧農業",
+          "weight": 1,
+          "enabled": true,
+          "origin": "news-synonym",
+          "references": [{"url":"https://www.moa.gov.tw/theme_data.php?theme=news&sub_theme=agri&id=10255","chapter":"百工百業智慧應用","note":"農業部新聞用語；非 PDF 原詞"}]
+        },
         {
           "text": "產業AI化",
           "weight": 3,
@@ -2627,6 +2669,41 @@
       ],
       "exclude_keywords": [],
       "weighted_keywords": [
+        {
+          "text": "智慧稽查",
+          "weight": 1,
+          "enabled": true,
+          "origin": "news-synonym",
+          "references": [{"url":"https://enews.moenv.gov.tw/moenv-news/zh-tw/News/14003","chapter":"智慧政府與資料治理","note":"環境部新聞用語；非 PDF 原詞"}]
+        },
+        {
+          "text": "業務助手",
+          "weight": 1,
+          "enabled": true,
+          "origin": "news-synonym",
+          "references": [{"url":"https://enews.moenv.gov.tw/moenv-news/zh-tw/News/14003","chapter":"智慧政府與資料治理","note":"環境部新聞用語；非 PDF 原詞"}]
+        },
+        {
+          "text": "公務AI應用",
+          "weight": 3,
+          "enabled": true,
+          "origin": "news-synonym",
+          "references": [{"url":"https://www.mof.gov.tw/singlehtml/384fb3077bb349ea973e7fc6f13b6974?cntId=6b0ffeb419c74c89a8ba1ca891b44d39","chapter":"智慧政府與資料治理","note":"財政部新聞用語；非 PDF 原詞"}]
+        },
+        {
+          "text": "通關智慧特助",
+          "weight": 3,
+          "enabled": true,
+          "origin": "news-synonym",
+          "references": [{"url":"https://www.mof.gov.tw/singlehtml/384fb3077bb349ea973e7fc6f13b6974?cntId=6b0ffeb419c74c89a8ba1ca891b44d39","chapter":"智慧政府與資料治理","note":"財政部新聞用語；非 PDF 原詞"}]
+        },
+        {
+          "text": "貨物分類智慧助理",
+          "weight": 3,
+          "enabled": true,
+          "origin": "news-synonym",
+          "references": [{"url":"https://www.mof.gov.tw/singlehtml/384fb3077bb349ea973e7fc6f13b6974?cntId=6b0ffeb419c74c89a8ba1ca891b44d39","chapter":"智慧政府與資料治理","note":"財政部新聞用語；非 PDF 原詞"}]
+        },
         {
           "text": "智慧政府",
           "weight": 3,
