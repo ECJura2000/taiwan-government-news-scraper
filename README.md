@@ -3,14 +3,14 @@
 [![Rust quality](https://github.com/ECJura2000/taiwan-government-news-scraper/actions/workflows/test.yml/badge.svg)](https://github.com/ECJura2000/taiwan-government-news-scraper/actions/workflows/test.yml)
 [![Tauri v2](https://github.com/ECJura2000/taiwan-government-news-scraper/actions/workflows/tauri-v2.yml/badge.svg)](https://github.com/ECJura2000/taiwan-government-news-scraper/actions/workflows/tauri-v2.yml)
 
-v2.1.18 是完整 Rust 版：73 個政府來源、CLI、Tauri GUI、RSS／HTML／JSON、Chrome CDP、品質檢查、相關性規則、JSON schema v4 與 Excel 都由同一個 Rust application service 執行。Excel 新聞日期使用斜線格式，新聞全文欄位會優先寫入官方完整內容；「開啟原文」欄會顯示「機關官網：完整網址」，並以同一網址建立可點擊的 Excel 超連結。經濟部改用官方 RSS 全文並保留瀏覽器列表頁備援；文策院採官方 Chrome CDP 路由，國防部僅在官方主機的 TLS 問題下使用瀏覽器備援。JSON 報告會記錄全文覆蓋率與摘要 fallback 數；入選新聞排序採關聯等級、規則分數、BM25、日期的穩定順序。v2.0.0 保留在 GitHub Releases 作為 rollback。
+v2.1.21 是完整 Rust 版：73 個政府來源、CLI、Tauri GUI、RSS／HTML／JSON、Chrome CDP、品質檢查、相關性規則、JSON schema v4 與 Excel 都由同一個 Rust application service 執行。Excel 新聞日期使用斜線格式，新聞全文欄位會優先寫入官方完整內容；「開啟原文」欄會顯示「機關官網：完整網址」，並以同一網址建立可點擊的 Excel 超連結。經濟部改用官方 RSS 全文並保留瀏覽器列表頁備援；文策院採官方 Chrome CDP 路由，國防部僅在官方主機的 TLS 問題下使用瀏覽器備援。JSON 報告會記錄全文覆蓋率與摘要 fallback 數；入選新聞排序採關聯等級、規則分數、BM25、日期的穩定順序。v2.0.0 保留在 GitHub Releases 作為 rollback。
 
 ## 下載
 
-從 [GitHub Releases](https://github.com/ECJura2000/taiwan-government-news-scraper/releases) 下載 `v2.1.18`，並先用 `SHA256SUMS.txt` 驗證。
+從 [GitHub Releases](https://github.com/ECJura2000/taiwan-government-news-scraper/releases) 下載 `v2.1.21`，並先用 `SHA256SUMS.txt` 驗證。
 
-- Windows 一般使用者：下載 `TaiwanGovernmentNews-Setup-v2.1.18.exe`。
-- Windows 免安裝版：下載 `taiwan-government-news-v2.1.18-windows-portable.zip`，完整解壓後雙擊頂層的 `各機關新聞整理.exe`；進階 CLI 位於 `cli/news-scraper.exe`。
+- Windows 一般使用者：下載 `TaiwanGovernmentNews-Setup-v2.1.21.exe`。
+- Windows 免安裝版：下載 `taiwan-government-news-v2.1.21-windows-portable.zip`，完整解壓後雙擊頂層的 `各機關新聞整理.exe`；進階 CLI 位於 `cli/news-scraper.exe`。
 - macOS：下載 `macos-arm64`（Apple Silicon）或 `macos-x64`（Intel）ZIP；解壓縮後頂層會有 `各機關新聞整理.app`、`解除封鎖並開啟.command` 與 CLI `news-scraper`。
 - Linux：下載對應平台 ZIP；CLI 在 ZIP 頂層，GUI installer 位於 `installers/`。
 
@@ -41,6 +41,8 @@ news-scraper collect --fail-on-source-error
 
 判讀執行結果時必須同時查看 `status`、`failed_sources`、`anomalies`、`error_counts`、`quality.alert_reasons`、`source_health` 與 `relevance_policy.ruleset_hash`，不可只看 exit code。
 
+v2.1.21 起另記錄各來源分類前篇數、內文補抓成功／失敗原因；連續三個可比週次後，來源量明顯下降會列入 `anomalies`。同站 HTTP 請求最多同時兩筆，遇到 429 會依 `Retry-After` 節制重試，列表頁支援本機 ETag／修改時間快取；超過 60 秒的等待要求會停止本次重試並保留診斷。Excel 仍維持原有 17 欄與十項政策主題。
+
 ## Python command bridge
 
 唯一保留的 Python 檔案是 `scripts/python_compat.py`。它只把參數轉交給 Rust CLI，不 import scraper，也不執行任意 Python 程式：
@@ -68,13 +70,13 @@ cargo build --release --bin news-scraper
 npm run tauri build
 ```
 
-來源 catalog 在 `src-tauri/resources/sources.json`；Rust adapters 在 `src-tauri/src/scraper/`；CDP 在 `src-tauri/src/browser.rs`；共用 application service 與 Excel／JSON 匯出在 `src-tauri/src/native.rs`。
+來源 catalog 在 `src-tauri/resources/sources.json`；Rust adapters 在 `src-tauri/src/scraper/`；CDP 在 `src-tauri/src/browser.rs`；共用執行流程在 `src-tauri/src/native.rs`，Excel 與報告診斷分別位於 `src-tauri/src/native/excel.rs`、`src-tauri/src/native/report.rs`。
 
 更多操作契約見 [AGENTS.md](AGENTS.md)、[AI 自動化](docs/AI_AUTOMATION.md) 與 [發布流程](docs/RELEASING.md)。
 
 ## 政策主題與介面設定
 
-「搜尋主題」支援 JSON 匯入預覽、同名取代、清空後匯入、逐項刪除、啟停及規則編輯。目前內建十大主題的 184 個加權詞，保留政策來源頁碼及補充新聞詞的官網依據，首次啟動即可使用。請參閱 [主題 JSON 範例與格式](examples/topics/README.md)。
+「搜尋主題」支援 JSON 匯入預覽、同名取代、清空後匯入、逐項刪除、啟停及規則編輯。目前內建十大主題的 201 個加權詞，保留政策來源頁碼及補充新聞詞的官網依據，首次啟動即可使用。請參閱 [主題 JSON 範例與格式](examples/topics/README.md)。
 
 新聞依規則判斷相關性，再以中文斷詞及標題加權 BM25 排序。扣分詞及完全排除詞各自適用於所屬主題；甲排除、乙符合時仍可由乙收錄。各啟用主題產製獨立 Excel 工作表，JSON 報告保存實際設定雜湊、各主題筆數與排除統計。
 
