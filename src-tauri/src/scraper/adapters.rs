@@ -501,6 +501,16 @@ mod tests {
     }
 
     #[test]
+    fn moda_official_detail_fixture_keeps_article_body_not_page_chrome() {
+        let body = include_str!("../../tests/fixtures/moda_detail_20640.html");
+        let text = parse_detail_full_text("數位發展部", body);
+        assert!(text.contains("臺灣主權AI訓練語料庫"));
+        assert!(text.contains("22億Tokens"));
+        assert!(!text.contains("附件下載"));
+        assert!(!text.contains("公告訊息"));
+    }
+
+    #[test]
     fn extracts_generic_article_text_for_sources_without_a_custom_selector() {
         let body = format!(
             "<html><body><nav>導覽</nav><article><p>{}</p><p>全文結尾</p></article></body></html>",
