@@ -4,7 +4,7 @@ For every source change:
 
 1. Update the declarative route or the smallest relevant Rust adapter.
 2. Add a fixture or parser regression test.
-3. Run formatting, all Rust tests, clippy, Svelte checks and the 73-source catalog assertion.
+3. Run formatting, all Rust tests, clippy, Svelte checks and the 88-source catalog assertion.
 4. Run the affected source live with a fixed `--date` and inspect JSON diagnostics plus workbook fields.
 5. Run all sources before release; retain fallback and quality warnings in evidence.
 
