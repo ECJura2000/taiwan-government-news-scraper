@@ -279,6 +279,9 @@ pub fn parse_route(
         "經濟部" if route.parser == "moea-html" => {
             return special::parse_moea(source, body, &route.url)
         }
+        "二二八事件紀念基金會" => {
+            return special::parse_228_announcements(source, body, &route.url)
+        }
         _ => {}
     }
     if route.kind == "rss" || looks_like_feed(&route.url, body) {
@@ -297,6 +300,40 @@ pub fn parse_route(
                         item.department = format!("{source}／{department}");
                     }
                 }
+            }
+        }
+        return Ok(items);
+    }
+
+    if let Some(selectors) = &route.selectors {
+        let profile = DatedListSelectors {
+            item: &selectors.item,
+            link: &selectors.link,
+            title: &selectors.title,
+            date: &selectors.date,
+            summary: selectors.summary.as_deref(),
+            department: selectors.department.as_deref(),
+            category: selectors.category.as_deref(),
+        };
+        let mut items = html::parse_dated_list(source, body, &route.url, &profile)?;
+        items.retain(|item| {
+            !selectors
+                .exclude_title_prefixes
+                .iter()
+                .any(|prefix| item.title.starts_with(prefix))
+        });
+        if let Some(label) = &selectors.category_label {
+            for item in &mut items {
+                if item.category.is_empty() {
+                    item.category = label.clone();
+                }
+            }
+        }
+        if selectors.strip_leading_date {
+            let leading_date = regex::Regex::new(r"^\d{2,4}[-/.年]\d{1,2}[-/.月]\d{1,2}(?:日)?\s*")
+                .expect("valid leading date regex");
+            for item in &mut items {
+                item.title = leading_date.replace(&item.title, "").trim().to_owned();
             }
         }
         return Ok(items);
@@ -398,6 +435,104 @@ pub fn parse_detail_full_text(source: &str, body: &str) -> String {
 mod tests {
     use super::*;
 
+    #[test]
+    fn declared_foundation_selectors_parse_date_title_and_link() {
+        let route = SourceRoute {
+            id: "test".into(),
+            url: "https://example.test/news".into(),
+            kind: "html".into(),
+            parser: "standard".into(),
+            priority: 1,
+            official: true,
+            coverage_reduced: false,
+            selectors: Some(crate::scraper::catalog::RouteSelectors {
+                item: "article".into(),
+                link: "a".into(),
+                title: "h2".into(),
+                date: "time".into(),
+                summary: None,
+                department: None,
+                category: None,
+                exclude_title_prefixes: Vec::new(),
+                category_label: None,
+                strip_leading_date: false,
+            }),
+        };
+        let body =
+            r#"<article><a href="/n/1"><h2>公告標題</h2><time>2026/09/28</time></a></article>"#;
+        let items = parse_route("測試法人", &route, body).expect("fixture parses");
+        assert_eq!(items[0].title, "公告標題");
+        assert_eq!(items[0].date, "2026-09-28");
+        assert_eq!(items[0].link, "https://example.test/n/1");
+    }
+
+    #[test]
+    fn official_foundation_card_samples_keep_original_links_and_categories() {
+        let samples = [
+            (
+                "金門酒廠胡璉文化藝術基金會",
+                r#"<li class="elementor-icon-list-item"><a href="/notice"><span class="elementor-icon-list-text">2026/08/28 【公告】胡璉獎助學金開放申請</span></a></li>"#,
+                "【公告】胡璉獎助學金開放申請",
+                "https://kkl-hulien.org.tw/notice",
+                "機構公告",
+            ),
+            (
+                "國家文化藝術基金會",
+                r#"<div class="newsCard"><a href="/news_detail.html?sid=874"><span class="date">2026/09/16</span><span class="type">一般公告</span><div class="title">慎防冒名詐騙訊息</div></a></div>"#,
+                "慎防冒名詐騙訊息",
+                "https://www.ncafroc.org.tw/news_detail.html?sid=874",
+                "一般公告",
+            ),
+            (
+                "威權統治時期國家不法行為被害者權利回復基金會",
+                r#"<div class="thumbnail"><span class="label-category">新聞稿</span><span class="date">2026/09/24 (四)</span><a class="doc-title" href="/presses/222">權利回復基金會9月通過賠償案</a></div>"#,
+                "權利回復基金會9月通過賠償案",
+                "https://www.rrf.org.tw/presses/222",
+                "新聞稿",
+            ),
+            (
+                "賑災基金會",
+                r#"<article><a href="/posts/339"><time>2026/08/26</time><h1>豪雨賑助核給說明表</h1></a></article>"#,
+                "豪雨賑助核給說明表",
+                "https://www.tf4dr.org/posts/339",
+                "機構公告",
+            ),
+        ];
+        for (source, body, title, link, category) in samples {
+            let route = crate::scraper::catalog::routes_for(
+                crate::scraper::catalog::find_source(source).unwrap(),
+            )
+            .remove(0);
+            let items = parse_route(source, &route, body).unwrap();
+            assert_eq!(items.len(), 1, "{source}");
+            assert_eq!(items[0].title, title);
+            assert_eq!(items[0].link, link);
+            assert_eq!(items[0].category, category);
+        }
+    }
+
+    #[test]
+    fn museum_hiring_is_excluded_and_228_notice_is_classified() {
+        let museum = crate::scraper::catalog::routes_for(
+            crate::scraper::catalog::find_source("臺灣博物館文教基金會").unwrap(),
+        )
+        .remove(0);
+        let museum_body = r#"<li class="item reveal-list"><a href="/job"><time>2026/09/24</time><h3>【徵才】本會招募會計人員</h3></a></li><li class="item reveal-list"><a href="/event"><time>2026/09/23</time><h3>博物館國際交流活動</h3></a></li>"#;
+        let items = parse_route("臺灣博物館文教基金會", &museum, museum_body).unwrap();
+        assert_eq!(items.len(), 1);
+        assert_eq!(items[0].link, "https://www.taiwan-museum.org.tw/event");
+
+        let memorial = crate::scraper::catalog::routes_for(
+            crate::scraper::catalog::find_source("二二八事件紀念基金會").unwrap(),
+        )
+        .remove(0);
+        let memorial_body = r#"<a data-testid="linkElement" aria-label="【公告】中秋節連假開館資訊/2026-09-21" href="/newsimage/2026-09-21"></a><a data-testid="linkElement" aria-label="首頁" href="/"></a>"#;
+        let items = parse_route("二二八事件紀念基金會", &memorial, memorial_body).unwrap();
+        assert_eq!(items.len(), 1);
+        assert_eq!(items[0].title, "【公告】中秋節連假開館資訊");
+        assert_eq!(items[0].category, "機構公告");
+    }
+
     fn route(parser: &str) -> SourceRoute {
         SourceRoute {
             id: "test".into(),
@@ -407,6 +542,7 @@ mod tests {
             priority: 1,
             official: true,
             coverage_reduced: false,
+            selectors: None,
         }
     }
 

@@ -5,6 +5,8 @@ pub struct SourceDefinition {
     pub name: String,
     pub urls: Vec<String>,
     #[serde(default)]
+    pub parent_ministry: Option<String>,
+    #[serde(default)]
     pub aggregate_routes: bool,
     #[serde(default)]
     pub routes: Vec<SourceRoute>,
@@ -24,6 +26,28 @@ pub struct SourceRoute {
     pub official: bool,
     #[serde(default)]
     pub coverage_reduced: bool,
+    #[serde(default)]
+    pub selectors: Option<RouteSelectors>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct RouteSelectors {
+    pub item: String,
+    pub link: String,
+    pub title: String,
+    pub date: String,
+    #[serde(default)]
+    pub summary: Option<String>,
+    #[serde(default)]
+    pub department: Option<String>,
+    #[serde(default)]
+    pub category: Option<String>,
+    #[serde(default)]
+    pub exclude_title_prefixes: Vec<String>,
+    #[serde(default)]
+    pub category_label: Option<String>,
+    #[serde(default)]
+    pub strip_leading_date: bool,
 }
 
 fn default_route_kind() -> String {
@@ -71,6 +95,7 @@ pub fn routes_for(source: &SourceDefinition) -> Vec<SourceRoute> {
             priority: index as u32 + 1,
             official: true,
             coverage_reduced: false,
+            selectors: None,
         })
         .collect()
 }
@@ -96,10 +121,44 @@ mod tests {
 
     #[test]
     fn catalog_contains_all_registered_sources() {
-        assert_eq!(all_sources().len(), 73);
+        assert_eq!(all_sources().len(), 88);
         assert!(find_source("行政院").is_some());
         assert!(find_source("中選會").is_some());
         assert!(find_source("文策院").is_some());
+    }
+
+    #[test]
+    fn approved_foundations_have_matching_ministry_and_affiliation() {
+        let approved = [
+            ("國家文化藝術基金會", "文化部"),
+            ("金門酒廠胡璉文化藝術基金會", "文化部"),
+            ("文化臺灣基金會", "文化部"),
+            ("臺灣美術基金會", "文化部"),
+            ("臺灣博物館文教基金會", "文化部"),
+            ("二二八事件紀念基金會", "內政部"),
+            ("威權統治時期國家不法行為被害者權利回復基金會", "內政部"),
+            ("台灣建築中心", "內政部"),
+            ("藥害救濟基金會", "衛生福利部"),
+            ("國家衛生研究院", "衛生福利部"),
+            ("賑災基金會", "衛生福利部"),
+            ("醫藥品查驗中心", "衛生福利部"),
+            ("器官捐贈移植登錄及病人自主推廣中心", "衛生福利部"),
+            ("婦女權益促進發展基金會", "衛生福利部"),
+            ("醫院評鑑暨醫療品質策進會", "衛生福利部"),
+        ];
+        let registered: Vec<_> = all_sources()
+            .iter()
+            .filter(|source| source.parent_ministry.is_some())
+            .collect();
+        assert_eq!(registered.len(), approved.len());
+        for (name, ministry) in approved {
+            let source = find_source(name).expect("approved foundation must be registered");
+            assert_eq!(source.parent_ministry.as_deref(), Some(ministry));
+            assert_eq!(
+                crate::scraper::quality::affiliated_path(name),
+                &[ministry, name]
+            );
+        }
     }
 
     #[test]

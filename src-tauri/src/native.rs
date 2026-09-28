@@ -912,6 +912,7 @@ mod tests {
             priority: 1,
             official: true,
             coverage_reduced: false,
+            selectors: None,
         }
     }
 

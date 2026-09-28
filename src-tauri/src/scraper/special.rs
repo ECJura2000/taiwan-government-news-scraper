@@ -46,6 +46,43 @@ fn require_rows<'a>(
     }
 }
 
+pub fn parse_228_announcements(
+    source: &str,
+    body: &str,
+    base: &str,
+) -> Result<Vec<NewsItem>, ScraperError> {
+    let document = Html::parse_document(body);
+    let rows = require_rows(
+        source,
+        &document,
+        "a[data-testid='linkElement'][aria-label][href]",
+    )?;
+    let dated_title = Regex::new(r"(?s)^(.+?)[/／]\s*(\d{4}-\d{1,2}-\d{1,2})\s*$")
+        .expect("valid 228 announcement date regex");
+    let mut items = Vec::new();
+    for row in rows {
+        let Some(label) = row.value().attr("aria-label") else {
+            continue;
+        };
+        let Some(captures) = dated_title.captures(label) else {
+            continue;
+        };
+        let Some(date) = parse_list_date(&captures[2]) else {
+            continue;
+        };
+        let title = captures[1].replace('\0', "").trim().to_owned();
+        let Some(link) = row.value().attr("href") else {
+            continue;
+        };
+        if !title.is_empty() {
+            let mut announcement = item(source, date, title, resolve(base, link));
+            announcement.category = "機構公告".to_owned();
+            items.push(announcement);
+        }
+    }
+    Ok(items)
+}
+
 pub fn parse_mofa(source: &str, body: &str, base: &str) -> Result<Vec<NewsItem>, ScraperError> {
     let document = Html::parse_document(body);
     let rows = require_rows(source, &document, "table tbody tr")?;
