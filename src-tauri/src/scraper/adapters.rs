@@ -457,6 +457,7 @@ mod tests {
                 category_label: None,
                 strip_leading_date: false,
             }),
+            transport: None,
         };
         let body =
             r#"<article><a href="/n/1"><h2>公告標題</h2><time>2026/09/28</time></a></article>"#;
@@ -543,6 +544,7 @@ mod tests {
             official: true,
             coverage_reduced: false,
             selectors: None,
+            transport: None,
         }
     }
 

@@ -60,8 +60,18 @@ async fn fetch_rendered_html_after_with_certificate_policy(
         .acquire()
         .await
         .map_err(|_| "Chrome CDP 執行序列已關閉".to_owned())?;
+    let expected_host = if allow_invalid_certificates {
+        Some(
+            url::Url::parse(url)
+                .ok()
+                .and_then(|parsed| parsed.host_str().map(str::to_owned))
+                .ok_or_else(|| "TLS fallback route URL 缺少有效主機".to_owned())?,
+        )
+    } else {
+        None
+    };
     let (mut child, profile_dir, endpoint) = launch_browser(allow_invalid_certificates).await?;
-    let result = fetch_from_target(&endpoint, url, page_script).await;
+    let result = fetch_from_target(&endpoint, url, page_script, expected_host.as_deref()).await;
     let _ = child.kill().await;
     let _ = tokio::fs::remove_dir_all(profile_dir).await;
     result
@@ -162,6 +172,7 @@ async fn fetch_from_target(
     endpoint: &str,
     url: &str,
     page_script: Option<&str>,
+    expected_host: Option<&str>,
 ) -> Result<String, String> {
     let (mut socket, _) = connect_async(endpoint)
         .await
@@ -224,6 +235,23 @@ async fn fetch_from_target(
         let blocked =
             html.contains("Request unsuccessful") || html.contains("incapsula incident id");
         if !blocked {
+            if let Some(expected_host) = expected_host {
+                send_command(
+                    &mut socket,
+                    id + 1_000,
+                    "Runtime.evaluate",
+                    json!({"expression":"location.hostname", "returnByValue":true}),
+                )
+                .await?;
+                let location = wait_for_response(&mut socket, id + 1_000).await?;
+                let actual_host = location
+                    .pointer("/result/result/value")
+                    .and_then(Value::as_str)
+                    .unwrap_or_default();
+                if actual_host != expected_host {
+                    return Err(format!("TLS fallback 跳轉至未授權主機：{actual_host}"));
+                }
+            }
             let _ = socket.close(None).await;
             return Ok(html.to_owned());
         }

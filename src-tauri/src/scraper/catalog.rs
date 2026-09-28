@@ -1,3 +1,4 @@
+use super::transport::{PolicyOverrides, TransportConfig};
 use serde::Deserialize;
 
 #[derive(Debug, Clone, Deserialize)]
@@ -10,6 +11,8 @@ pub struct SourceDefinition {
     pub aggregate_routes: bool,
     #[serde(default)]
     pub routes: Vec<SourceRoute>,
+    #[serde(default)]
+    pub transport: Option<TransportConfig>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -28,6 +31,8 @@ pub struct SourceRoute {
     pub coverage_reduced: bool,
     #[serde(default)]
     pub selectors: Option<RouteSelectors>,
+    #[serde(default)]
+    pub transport: Option<PolicyOverrides>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -96,6 +101,7 @@ pub fn routes_for(source: &SourceDefinition) -> Vec<SourceRoute> {
             official: true,
             coverage_reduced: false,
             selectors: None,
+            transport: None,
         })
         .collect()
 }

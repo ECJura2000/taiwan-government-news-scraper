@@ -1,22 +1,30 @@
-use crate::scraper::adapters;
-use crate::scraper::catalog::{all_sources, find_source, routes_for, SourceRoute};
+use crate::scraper::catalog::all_sources;
 use crate::scraper::http::HttpClient;
 use crate::scraper::{NewsItem, ScraperError};
 use chrono::{Datelike, Local, NaiveDate, Utc, Weekday};
 use chrono_tz::Asia::Taipei;
 use futures::stream::{self, StreamExt};
-use regex::Regex;
 use rust_xlsxwriter::{Color, DataValidation, Format, FormatAlign, Workbook};
 use serde_json::json;
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
-use std::time::Instant;
 
 mod excel;
 mod report;
+mod source;
+#[cfg(test)]
+use crate::scraper::catalog::SourceRoute;
 use excel::*;
+#[cfg(test)]
+use regex::Regex;
+#[cfg(test)]
+use source::{
+    browser_page_script, enrich_detail_full_text, items_cover_date_range,
+    should_retry_browser_route,
+};
+use source::{fetch_source, parse_date, source_diagnostic, DetailDiagnostics, SourceResult};
 
 const DEFAULT_OUTPUT_DIR: &str = "新聞搜集區";
 
@@ -26,23 +34,6 @@ pub type ProgressCallback = Arc<dyn Fn(crate::ProgressEvent) + Send + Sync + 'st
 pub struct DateRange {
     pub start: NaiveDate,
     pub end: NaiveDate,
-}
-
-#[derive(Debug)]
-struct SourceResult {
-    source: String,
-    items: Vec<NewsItem>,
-    error: Option<ScraperError>,
-    attempts: Vec<serde_json::Value>,
-    final_route: Option<serde_json::Value>,
-    detail: DetailDiagnostics,
-}
-
-#[derive(Debug, Default, Clone)]
-struct DetailDiagnostics {
-    attempted: usize,
-    recovered: usize,
-    issues: Vec<serde_json::Value>,
 }
 
 pub async fn run(
@@ -489,384 +480,6 @@ fn parse_date_argument(value: &str) -> Result<NaiveDate, String> {
         .map_err(|_| format!("日期格式必須是 YYYY-MM-DD：{value}"))
 }
 
-async fn fetch_source(
-    client: &HttpClient,
-    source: &str,
-    date_range: DateRange,
-    progress: Option<&ProgressCallback>,
-    total: u32,
-) -> SourceResult {
-    let Some(definition) = find_source(source) else {
-        return SourceResult {
-            source: source.to_owned(),
-            items: Vec::new(),
-            error: Some(ScraperError::Unknown("來源未在 Rust catalog 註冊".into())),
-            attempts: Vec::new(),
-            final_route: None,
-            detail: DetailDiagnostics::default(),
-        };
-    };
-    let mut last_error = None;
-    let mut attempts = Vec::new();
-    let mut aggregated_items = Vec::new();
-    let mut successful_routes = 0usize;
-    let mut aggregate_final_route = None;
-    let mut detail = DetailDiagnostics::default();
-    'routes: for route in routes_for(definition) {
-        let index = route.priority.saturating_sub(1) as usize;
-        let url = &route.url;
-        let host = url::Url::parse(url)
-            .ok()
-            .and_then(|value| value.host_str().map(str::to_ascii_lowercase))
-            .unwrap_or_default();
-        for attempt_number in 1..=2 {
-            let started = Instant::now();
-            let recent_nps_window =
-                Local::now().with_timezone(&Taipei).date_naive() - chrono::Duration::days(180);
-            let uses_recent_nps_prefix = source == "國家公園署"
-                && route.parser == "nps-json"
-                && date_range.end >= recent_nps_window;
-            let fetched = if route.kind == "browser" {
-                let page_script = browser_page_script(route.parser.as_str());
-                if route.parser == "mnd-browser-tls-fallback" {
-                    crate::browser::fetch_rendered_html_after_allow_invalid_certificates(
-                        url,
-                        page_script,
-                    )
-                    .await
-                    .map_err(ScraperError::BrowserRuntime)
-                } else {
-                    crate::browser::fetch_rendered_html_after(url, page_script)
-                        .await
-                        .map_err(ScraperError::BrowserRuntime)
-                }
-            } else {
-                if uses_recent_nps_prefix {
-                    client.fetch_recent_json_array(url).await
-                } else {
-                    client.fetch_text(url).await
-                }
-            };
-            let mut outcome = fetched.and_then(|body| adapters::parse_route(source, &route, &body));
-            if uses_recent_nps_prefix
-                && outcome
-                    .as_ref()
-                    .is_ok_and(|items| !items_cover_date_range(items, date_range))
-            {
-                outcome = client
-                    .fetch_text(url)
-                    .await
-                    .and_then(|body| adapters::parse_route(source, &route, &body));
-            }
-            match outcome {
-                Ok(items) => {
-                    let parsed_item_count = items.len();
-                    let filtered_items = filter_to_date_range(items, date_range);
-                    let (filtered_items, route_detail) =
-                        enrich_detail_full_text(client, filtered_items).await;
-                    detail.attempted += route_detail.attempted;
-                    detail.recovered += route_detail.recovered;
-                    detail.issues.extend(route_detail.issues);
-                    attempts.push(json!({
-                        "source": source,
-                        "route_id": route.id,
-                        "url": url,
-                        "url_host": host,
-                        "route_kind": route.kind.as_str(),
-                        "parser": route.parser.as_str(),
-                        "attempt_number": attempt_number,
-                        "status": "success",
-                        "elapsed_seconds": elapsed_seconds(started),
-                        "item_count": parsed_item_count,
-                        "failure_class": "",
-                        "error_category": "",
-                        "failure_evidence": {},
-                    }));
-                    if definition.aggregate_routes {
-                        successful_routes += 1;
-                        aggregated_items.extend(filtered_items);
-                        aggregate_final_route = Some(json!({
-                            "route_id": route.id,
-                            "url": url,
-                            "url_host": host,
-                            "used_fallback": false,
-                            "coverage_reduced": route.coverage_reduced,
-                            "aggregated": true,
-                        }));
-                        continue 'routes;
-                    }
-                    return SourceResult {
-                        source: source.to_owned(),
-                        items: filtered_items,
-                        error: None,
-                        final_route: Some(json!({
-                            "route_id": route.id,
-                            "url": url,
-                            "url_host": host,
-                            "used_fallback": index > 0,
-                            "coverage_reduced": route.coverage_reduced,
-                        })),
-                        attempts,
-                        detail,
-                    };
-                }
-                Err(error) => {
-                    let should_retry = should_retry_browser_route(&route, &error, attempt_number);
-                    attempts.push(attempt_json(
-                        source,
-                        &route,
-                        &host,
-                        started,
-                        attempt_number,
-                        &error,
-                    ));
-                    last_error = Some(error);
-                    if should_retry {
-                        if let Some(progress) = progress {
-                            progress(crate::ProgressEvent {
-                                kind: "retry".into(),
-                                source: Some(source.to_owned()),
-                                completed: None,
-                                total: Some(total),
-                                message: Some(format!("頁面第一次載入未完成，正在重試：{source}")),
-                            });
-                        }
-                        tokio::time::sleep(std::time::Duration::from_millis(750)).await;
-                        continue;
-                    }
-                    break;
-                }
-            }
-        }
-    }
-    if successful_routes > 0 {
-        return SourceResult {
-            source: source.to_owned(),
-            items: aggregated_items,
-            error: None,
-            attempts,
-            detail,
-            final_route: aggregate_final_route,
-        };
-    }
-    SourceResult {
-        source: source.to_owned(),
-        items: Vec::new(),
-        error: last_error.or_else(|| Some(ScraperError::SourceOutage("沒有可用來源入口".into()))),
-        attempts,
-        detail,
-        final_route: None,
-    }
-}
-
-fn browser_page_script(parser: &str) -> Option<&'static str> {
-    match parser {
-        "sports-html" => Some(
-            "(async () => { const select = document.querySelector('#InputPageSize'); if (select) { select.value = '500'; select.dispatchEvent(new Event('change', { bubbles: true })); } const deadline = Date.now() + 20000; while (Date.now() < deadline) { const date = document.querySelector(\"tbody tr td[data-title='發布日期'] div.in, tbody tr td[data-title='上版日期'] div.in\"); if (date && date.textContent.trim()) return true; await new Promise(resolve => setTimeout(resolve, 250)); } return false; })()",
-        ),
-        "vghtpe-html" => Some(
-            "(async () => { const deadline = Date.now() + 20000; while (Date.now() < deadline) { if (document.querySelector('table.stackedTable tbody tr, table tbody tr')) return true; await new Promise(resolve => setTimeout(resolve, 250)); } return false; })()",
-        ),
-        "moenv-html" => Some(
-            "(async () => { const deadline = Date.now() + 20000; while (Date.now() < deadline) { if (document.querySelector('ul.list_group li, article.idx-news-card')) return true; await new Promise(resolve => setTimeout(resolve, 250)); } return false; })()",
-        ),
-        "moea-html" => Some(
-            "(async () => { const deadline = Date.now() + 20000; while (Date.now() < deadline) { if (document.querySelector('#holderContent_grdNews tbody tr')) return true; await new Promise(resolve => setTimeout(resolve, 250)); } return false; })()",
-        ),
-        "taicca-html" => Some(
-            "(async () => { const deadline = Date.now() + 20000; while (Date.now() < deadline) { const item = document.querySelector('div.right-card-area > ul > li a.maintitle'); const date = document.querySelector('div.right-card-area > ul > li div.topbox div.date'); if (item && date && date.textContent.trim()) return true; await new Promise(resolve => setTimeout(resolve, 250)); } return false; })()",
-        ),
-        "mnd-browser-tls-fallback" => Some(
-            "(async () => { const deadline = Date.now() + 20000; while (Date.now() < deadline) { const item = document.querySelector('div.news_list_box a.news_list'); if (item) return true; await new Promise(resolve => setTimeout(resolve, 250)); } return false; })()",
-        ),
-        _ => None,
-    }
-}
-
-fn should_retry_browser_route(
-    route: &SourceRoute,
-    error: &ScraperError,
-    attempt_number: u32,
-) -> bool {
-    route.kind == "browser"
-        && route.priority > 1
-        && attempt_number == 1
-        && matches!(
-            error,
-            ScraperError::BrowserRuntime(_) | ScraperError::ParserRegression(_)
-        )
-}
-
-fn source_diagnostic(result: &SourceResult) -> serde_json::Value {
-    let failed_attempts: Vec<&serde_json::Value> = result
-        .attempts
-        .iter()
-        .filter(|attempt| attempt.get("status").and_then(|value| value.as_str()) == Some("failed"))
-        .collect();
-    let final_attempt = result.attempts.last().cloned().unwrap_or_else(|| json!({}));
-    let last_failure = failed_attempts
-        .last()
-        .cloned()
-        .cloned()
-        .unwrap_or_else(|| json!({}));
-    let unstable = result.error.is_none() && !failed_attempts.is_empty();
-    json!({
-        "source": result.source,
-        "status": if result.error.is_some() { "failed" } else { "success" },
-        "unstable": unstable,
-        "item_count": result.items.len(),
-        "attempt_count": result.attempts.len(),
-        "failure_class": if result.error.is_some() { final_attempt.get("failure_class").cloned().unwrap_or(json!("unknown")) } else { json!("") },
-        "last_failure_class": last_failure.get("failure_class").cloned().unwrap_or(json!("")),
-        "error_category": if result.error.is_some() { final_attempt.get("error_category").cloned().unwrap_or(json!("unexpected")) } else { json!("") },
-        "failure_evidence": last_failure.get("failure_evidence").cloned().unwrap_or(json!({})),
-        "elapsed_seconds": result.attempts.iter().filter_map(|attempt| attempt.get("elapsed_seconds").and_then(|value| value.as_f64())).sum::<f64>(),
-        "final_route": result.final_route.clone().unwrap_or_else(|| json!({})),
-        "route_attempt_count": result.attempts.len(),
-        "route_failure_classes": failed_attempts.iter().filter_map(|attempt| attempt.get("failure_class").and_then(|value| value.as_str())).collect::<Vec<_>>(),
-        "detail_fetch": {
-            "attempted": result.detail.attempted,
-            "recovered": result.detail.recovered,
-            "failed_or_empty": result.detail.issues.len(),
-            "issues": result.detail.issues,
-        },
-    })
-}
-
-fn elapsed_seconds(started: Instant) -> f64 {
-    (started.elapsed().as_millis() as f64 / 1000.0 * 1000.0).round() / 1000.0
-}
-
-fn attempt_json(
-    source: &str,
-    route: &crate::scraper::catalog::SourceRoute,
-    host: &str,
-    started: Instant,
-    attempt_number: u32,
-    error: &ScraperError,
-) -> serde_json::Value {
-    json!({
-        "source": source,
-        "route_id": route.id,
-        "url": route.url,
-        "url_host": host,
-        "route_kind": route.kind,
-        "parser": route.parser,
-        "attempt_number": attempt_number,
-        "status": "failed",
-        "elapsed_seconds": elapsed_seconds(started),
-        "item_count": 0,
-        "failure_class": error.failure_class().as_str(),
-        "error_category": error.error_category(),
-        "failure_evidence": {
-            "url_host": host,
-            "message": error.to_string(),
-        },
-    })
-}
-
-fn filter_to_date_range(items: Vec<NewsItem>, date_range: DateRange) -> Vec<NewsItem> {
-    items
-        .into_iter()
-        .filter_map(|mut item| {
-            if item.date.is_empty() {
-                return None;
-            }
-            parse_date(&item.date).and_then(|date| {
-                if date >= date_range.start && date <= date_range.end {
-                    item.date = date.to_string();
-                    Some(item)
-                } else {
-                    None
-                }
-            })
-        })
-        .collect()
-}
-
-fn items_cover_date_range(items: &[NewsItem], date_range: DateRange) -> bool {
-    items
-        .iter()
-        .filter_map(|item| parse_date(&item.date))
-        .min()
-        .is_some_and(|oldest| oldest <= date_range.start)
-}
-
-async fn enrich_detail_full_text(
-    client: &HttpClient,
-    items: Vec<NewsItem>,
-) -> (Vec<NewsItem>, DetailDiagnostics) {
-    let outcomes: Vec<_> = stream::iter(items)
-        .map(|mut item| {
-            let client = client.clone();
-            async move {
-                if item.full_text.is_empty() && !item.link.is_empty() {
-                    let issue = match client.fetch_detail_text(&item.link).await {
-                        Ok(body) => {
-                            let full_text = adapters::parse_detail_full_text(&item.source, &body);
-                            if full_text.is_empty() {
-                                Some(json!({"source": item.source, "url": item.link, "reason": "empty_detail_text"}))
-                            } else {
-                                item.summary = full_text.clone();
-                                item.full_text = full_text;
-                                None
-                            }
-                        }
-                        Err(error) => Some(json!({"source": item.source, "url": item.link, "reason": error.failure_class().as_str()})),
-                    };
-                    (item, true, issue)
-                } else {
-                    (item, false, None)
-                }
-            }
-        })
-        .buffered(4)
-        .collect()
-        .await;
-    let mut detail = DetailDiagnostics::default();
-    let mut items = Vec::with_capacity(outcomes.len());
-    for (item, attempted, issue) in outcomes {
-        if attempted {
-            detail.attempted += 1;
-            if let Some(issue) = issue {
-                detail.issues.push(issue);
-            } else {
-                detail.recovered += 1;
-            }
-        }
-        items.push(item);
-    }
-    (items, detail)
-}
-
-fn parse_date(value: &str) -> Option<NaiveDate> {
-    for format in ["%Y-%m-%d", "%Y/%m/%d", "%Y年%m月%d日"] {
-        if let Ok(date) = NaiveDate::parse_from_str(value, format) {
-            return Some(date);
-        }
-    }
-    chrono::DateTime::parse_from_rfc3339(value)
-        .ok()
-        .map(|value| value.with_timezone(&Taipei).date_naive())
-        .or_else(|| {
-            chrono::DateTime::parse_from_rfc2822(value)
-                .ok()
-                .map(|value| value.with_timezone(&Taipei).date_naive())
-        })
-        .or_else(|| {
-            Regex::new(r"(20\d{2})[-/]([01]?\d)[-/]([0-3]?\d)")
-                .ok()?
-                .captures(value)
-                .and_then(|capture| {
-                    NaiveDate::from_ymd_opt(
-                        capture.get(1)?.as_str().parse().ok()?,
-                        capture.get(2)?.as_str().parse().ok()?,
-                        capture.get(3)?.as_str().parse().ok()?,
-                    )
-                })
-        })
-}
-
 fn roc_compact(date: NaiveDate) -> String {
     format!(
         "{:03}{:02}{:02}",
@@ -913,6 +526,7 @@ mod tests {
             official: true,
             coverage_reduced: false,
             selectors: None,
+            transport: None,
         }
     }
 

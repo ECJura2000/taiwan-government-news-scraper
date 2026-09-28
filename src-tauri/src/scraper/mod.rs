@@ -6,6 +6,7 @@ pub mod quality;
 pub mod rss;
 pub mod scheduler;
 pub mod special;
+pub mod transport;
 
 use crate::core::FailureClass;
 use thiserror::Error;
