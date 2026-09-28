@@ -22,6 +22,8 @@ GUI 與 Excel 採用同一套字體策略：中文內容使用標楷體，英文
 
 ## CLI
 
+來源執行與 HTTP 傳輸政策的邊界、重構前基準及驗收方式見[來源與傳輸邊界](docs/SOURCE_TRANSPORT_BOUNDARIES.md)。
+
 ```bash
 news-scraper list-sources
 news-scraper collect

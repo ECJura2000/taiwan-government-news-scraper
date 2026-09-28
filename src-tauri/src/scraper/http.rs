@@ -1,3 +1,4 @@
+use super::transport::TransportPolicy;
 use super::ScraperError;
 use reqwest::{
     header::{
@@ -15,22 +16,13 @@ use std::{
     collections::{HashMap, HashSet},
     sync::Arc,
 };
-use tokio::sync::{Mutex, OwnedSemaphorePermit, Semaphore};
-
-const DEFAULT_TIMEOUT: Duration = Duration::from_secs(60);
-const WDA_TIMEOUT: Duration = Duration::from_secs(25);
-const NICS_PRIMARY_TIMEOUT: Duration = Duration::from_secs(8);
-const DETAIL_FAST_FAIL_TIMEOUT: Duration = Duration::from_secs(8);
-const RECENT_JSON_PREFIX_END: usize = 262_143;
+use tokio::sync::{Mutex, Notify};
 
 #[derive(Clone)]
 pub struct HttpClient {
     client: Client,
-    wda_client: Client,
-    nics_primary_client: Client,
-    detail_fast_fail_client: Client,
-    mnd_tls_fallback_client: Client,
-    host_limits: Arc<Mutex<HashMap<String, Arc<Semaphore>>>>,
+    insecure_tls_client: Client,
+    host_limits: Arc<Mutex<HashMap<String, Arc<HostGate>>>>,
     cache_dir: Option<PathBuf>,
     tls_fallback_hosts: Arc<Mutex<HashSet<String>>>,
 }
@@ -41,6 +33,28 @@ struct CachedResponse {
     etag: Option<String>,
     last_modified: Option<String>,
     body: String,
+}
+
+#[derive(Default)]
+struct HostGate {
+    active_limits: std::sync::Mutex<Vec<usize>>,
+    notify: Notify,
+}
+
+struct HostPermit {
+    gate: Arc<HostGate>,
+    limit: usize,
+}
+
+impl Drop for HostPermit {
+    fn drop(&mut self) {
+        if let Ok(mut active) = self.gate.active_limits.lock() {
+            if let Some(index) = active.iter().position(|limit| *limit == self.limit) {
+                active.swap_remove(index);
+            }
+        }
+        self.gate.notify.notify_one();
+    }
 }
 
 impl HttpClient {
@@ -59,7 +73,7 @@ impl HttpClient {
         headers.insert(CACHE_CONTROL, HeaderValue::from_static("no-cache"));
         headers.insert(PRAGMA, HeaderValue::from_static("no-cache"));
         let client = Client::builder()
-            .timeout(DEFAULT_TIMEOUT)
+            .timeout(Duration::from_secs(60))
             .user_agent(
                 "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36",
             )
@@ -69,8 +83,9 @@ impl HttpClient {
             .map_err(|error| {
                 ScraperError::Unknown(format!("HTTP client initialization failed: {error}"))
             })?;
-        let mnd_tls_fallback_client = Client::builder()
-            .timeout(DEFAULT_TIMEOUT)
+        let insecure_tls_client = Client::builder()
+            .timeout(Duration::from_secs(60))
+            .redirect(reqwest::redirect::Policy::none())
             .user_agent(
                 "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36",
             )
@@ -79,47 +94,11 @@ impl HttpClient {
             .danger_accept_invalid_certs(true)
             .build()
             .map_err(|error| {
-                ScraperError::Unknown(format!("MND TLS fallback client initialization failed: {error}"))
-            })?;
-        let wda_client = Client::builder()
-            .timeout(WDA_TIMEOUT)
-            .user_agent(
-                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36",
-            )
-            .default_headers(headers.clone())
-            .gzip(true)
-            .build()
-            .map_err(|error| {
-                ScraperError::Unknown(format!("WDA fast-fail client initialization failed: {error}"))
-            })?;
-        let nics_primary_client = Client::builder()
-            .timeout(NICS_PRIMARY_TIMEOUT)
-            .user_agent(
-                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36",
-            )
-            .default_headers(headers.clone())
-            .gzip(true)
-            .build()
-            .map_err(|error| {
-                ScraperError::Unknown(format!("NICS primary client initialization failed: {error}"))
-            })?;
-        let detail_fast_fail_client = Client::builder()
-            .timeout(DETAIL_FAST_FAIL_TIMEOUT)
-            .user_agent(
-                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36",
-            )
-            .default_headers(headers.clone())
-            .gzip(true)
-            .build()
-            .map_err(|error| {
-                ScraperError::Unknown(format!("Detail fast-fail client initialization failed: {error}"))
+                ScraperError::Unknown(format!("TLS fallback client initialization failed: {error}"))
             })?;
         Ok(Self {
             client,
-            wda_client,
-            nics_primary_client,
-            detail_fast_fail_client,
-            mnd_tls_fallback_client,
+            insecure_tls_client,
             host_limits: Arc::new(Mutex::new(HashMap::new())),
             cache_dir: None,
             tls_fallback_hosts: Arc::new(Mutex::new(HashSet::new())),
@@ -143,42 +122,36 @@ impl HttpClient {
         hosts
     }
 
-    pub async fn fetch_text(&self, url: &str) -> Result<String, ScraperError> {
+    pub async fn fetch_text(
+        &self,
+        url: &str,
+        policy: &TransportPolicy,
+    ) -> Result<String, ScraperError> {
         let mut last_error = None;
-        let attempts = if is_wda_fast_fail_host(url) || is_nics_primary_host(url) {
-            1
-        } else {
-            3
-        };
-        let client = if is_wda_fast_fail_host(url) {
-            &self.wda_client
-        } else if is_nics_primary_host(url) {
-            &self.nics_primary_client
-        } else {
-            &self.client
-        };
-        for attempt in 0..attempts {
-            match self.fetch_once(client, url, true).await {
+        for attempt in 0..policy.retry_attempts {
+            match self.fetch_once(&self.client, url, policy).await {
                 Ok(body) => return Ok(body),
                 Err(error)
-                    if is_mnd_tls_fallback_host(url)
+                    if policy.allows_tls_fallback_for(url)
                         && matches!(
                             error,
                             ScraperError::TlsCertificate(_) | ScraperError::RunnerNetwork(_)
                         ) =>
                 {
                     let result = self
-                        .fetch_once(&self.mnd_tls_fallback_client, url, true)
+                        .fetch_once(&self.insecure_tls_client, url, policy)
                         .await;
                     if result.is_ok() {
-                        self.tls_fallback_hosts
-                            .lock()
-                            .await
-                            .insert("www.mnd.gov.tw".into());
+                        if let Some(host) = url::Url::parse(url)
+                            .ok()
+                            .and_then(|parsed| parsed.host_str().map(str::to_owned))
+                        {
+                            self.tls_fallback_hosts.lock().await.insert(host);
+                        }
                     }
                     return result;
                 }
-                Err(error) if error.retryable() && attempt + 1 < attempts => {
+                Err(error) if error.retryable() && attempt + 1 < policy.retry_attempts => {
                     last_error = Some(error);
                     tokio::time::sleep(retry_delay(attempt)).await;
                 }
@@ -188,44 +161,46 @@ impl HttpClient {
         Err(last_error.unwrap_or_else(|| ScraperError::Unknown("HTTP retry exhausted".into())))
     }
 
-    pub async fn fetch_detail_text(&self, url: &str) -> Result<String, ScraperError> {
-        if is_detail_fast_fail_host(url) {
-            self.fetch_once(&self.detail_fast_fail_client, url, false)
-                .await
-        } else {
-            for attempt in 0..3 {
-                match self.fetch_once(&self.client, url, false).await {
-                    Ok(body) => return Ok(body),
-                    Err(error) if error.retryable() && attempt < 2 => {
-                        tokio::time::sleep(retry_delay(attempt)).await;
-                    }
-                    Err(error) => return Err(error),
-                }
-            }
-            Err(ScraperError::Unknown("detail retry exhausted".into()))
-        }
+    pub async fn fetch_detail_text(
+        &self,
+        url: &str,
+        policy: &TransportPolicy,
+    ) -> Result<String, ScraperError> {
+        self.fetch_text(url, policy).await
     }
 
-    pub async fn fetch_recent_json_array(&self, url: &str) -> Result<String, ScraperError> {
-        for attempt in 0..3 {
-            match self.fetch_recent_json_once(url).await {
+    pub async fn fetch_range_prefix(
+        &self,
+        url: &str,
+        policy: &TransportPolicy,
+        end_byte: usize,
+    ) -> Result<Vec<u8>, ScraperError> {
+        for attempt in 0..policy.retry_attempts {
+            match self.fetch_range_once(url, policy, end_byte).await {
                 Ok(body) => return Ok(body),
-                Err(error) if error.retryable() && attempt < 2 => {
+                Err(error) if error.retryable() && attempt + 1 < policy.retry_attempts => {
                     tokio::time::sleep(retry_delay(attempt)).await;
                 }
                 Err(error) => return Err(error),
             }
         }
-        Err(ScraperError::Unknown("recent JSON retry exhausted".into()))
+        Err(ScraperError::Unknown(
+            "range request retry exhausted".into(),
+        ))
     }
-
-    async fn fetch_recent_json_once(&self, url: &str) -> Result<String, ScraperError> {
-        let permit = self.acquire_host(url).await?;
+    async fn fetch_range_once(
+        &self,
+        url: &str,
+        policy: &TransportPolicy,
+        end_byte: usize,
+    ) -> Result<Vec<u8>, ScraperError> {
+        let permit = self.acquire_host(url, policy.host_concurrency).await?;
         let response = self
             .client
             .get(url)
-            .header(RANGE, format!("bytes=0-{RECENT_JSON_PREFIX_END}"))
+            .header(RANGE, format!("bytes=0-{end_byte}"))
             .header(ACCEPT_ENCODING, "identity")
+            .timeout(policy.timeout)
             .send()
             .await
             .map_err(classify_request_error)?;
@@ -251,26 +226,23 @@ impl HttpClient {
             }
         }
         validate_status(status)?;
-        let bytes = response
-            .bytes()
-            .await
-            .map_err(|error| ScraperError::SourceOutage(format!("response body: {error:?}")))?;
-        complete_json_array_prefix(&bytes)
+        read_response_bytes(response, policy.max_response_bytes).await
     }
 
     async fn fetch_once(
         &self,
         client: &Client,
         url: &str,
-        cacheable: bool,
+        policy: &TransportPolicy,
     ) -> Result<String, ScraperError> {
-        let permit = self.acquire_host(url).await?;
-        let cached = if cacheable {
+        let permit = self.acquire_host(url, policy.host_concurrency).await?;
+        let cached = if policy.cache {
             self.read_cache(url)
+                .filter(|entry| entry.body.len() <= policy.max_response_bytes)
         } else {
             None
         };
-        let mut request = client.get(url);
+        let mut request = client.get(url).timeout(policy.timeout);
         if let Some(cached) = &cached {
             if let Some(etag) = &cached.etag {
                 request = request.header(IF_NONE_MATCH, etag);
@@ -318,11 +290,9 @@ impl HttpClient {
             ));
         }
         validate_status(status)?;
-        let body = response
-            .text()
-            .await
-            .map_err(|error| ScraperError::SourceOutage(format!("response body: {error:?}")))?;
-        if cacheable && (etag.is_some() || last_modified.is_some()) && body.len() <= 2_000_000 {
+        let bytes = read_response_bytes(response, policy.max_response_bytes).await?;
+        let body = String::from_utf8_lossy(&bytes).into_owned();
+        if policy.cache && (etag.is_some() || last_modified.is_some()) && body.len() <= 2_000_000 {
             self.write_cache(&CachedResponse {
                 url: url.to_owned(),
                 etag,
@@ -333,22 +303,40 @@ impl HttpClient {
         Ok(body)
     }
 
-    async fn acquire_host(&self, url: &str) -> Result<OwnedSemaphorePermit, ScraperError> {
+    async fn acquire_host(
+        &self,
+        url: &str,
+        concurrency: usize,
+    ) -> Result<HostPermit, ScraperError> {
+        let concurrency = concurrency.max(1);
         let host = url::Url::parse(url)
             .ok()
             .and_then(|parsed| parsed.host_str().map(str::to_owned))
             .ok_or_else(|| ScraperError::Unknown(format!("invalid fetch URL: {url}")))?;
-        let limit = {
+        let gate = {
             let mut limits = self.host_limits.lock().await;
             limits
                 .entry(host)
-                .or_insert_with(|| Arc::new(Semaphore::new(2)))
+                .or_insert_with(|| Arc::new(HostGate::default()))
                 .clone()
         };
-        limit
-            .acquire_owned()
-            .await
-            .map_err(|error| ScraperError::Unknown(format!("host request limiter closed: {error}")))
+        loop {
+            let notified = gate.notify.notified();
+            {
+                let mut active = gate.active_limits.lock().map_err(|error| {
+                    ScraperError::Unknown(format!("host request limiter poisoned: {error}"))
+                })?;
+                let current_limit = active.iter().copied().min().unwrap_or(usize::MAX);
+                if active.len() < concurrency && active.len() < current_limit {
+                    active.push(concurrency);
+                    return Ok(HostPermit {
+                        gate: gate.clone(),
+                        limit: concurrency,
+                    });
+                }
+            }
+            notified.await;
+        }
     }
 
     fn read_cache(&self, url: &str) -> Option<CachedResponse> {
@@ -374,6 +362,34 @@ impl HttpClient {
             }
         }
     }
+}
+
+async fn read_response_bytes(
+    mut response: reqwest::Response,
+    max_bytes: usize,
+) -> Result<Vec<u8>, ScraperError> {
+    if response
+        .content_length()
+        .is_some_and(|length| length > max_bytes as u64)
+    {
+        return Err(ScraperError::AccessBlocked(format!(
+            "response exceeds configured limit of {max_bytes} bytes"
+        )));
+    }
+    let mut body = Vec::new();
+    while let Some(chunk) = response
+        .chunk()
+        .await
+        .map_err(|error| ScraperError::SourceOutage(format!("response body: {error:?}")))?
+    {
+        if chunk.len() > max_bytes.saturating_sub(body.len()) {
+            return Err(ScraperError::AccessBlocked(format!(
+                "response exceeds configured limit of {max_bytes} bytes"
+            )));
+        }
+        body.extend_from_slice(&chunk);
+    }
+    Ok(body)
 }
 
 fn cache_path(directory: &Path, url: &str) -> PathBuf {
@@ -428,95 +444,6 @@ fn validate_status(status: StatusCode) -> Result<(), ScraperError> {
     Ok(())
 }
 
-fn complete_json_array_prefix(bytes: &[u8]) -> Result<String, ScraperError> {
-    let mut depth = 0_u32;
-    let mut in_string = false;
-    let mut escaped = false;
-    let mut last_complete = None;
-    let mut complete_array = false;
-
-    for (index, byte) in bytes.iter().copied().enumerate() {
-        if in_string {
-            if escaped {
-                escaped = false;
-            } else if byte == b'\\' {
-                escaped = true;
-            } else if byte == b'"' {
-                in_string = false;
-            }
-            continue;
-        }
-        match byte {
-            b'"' => in_string = true,
-            b'[' | b'{' => depth += 1,
-            b'}' => {
-                depth = depth.saturating_sub(1);
-                if depth == 1 {
-                    last_complete = Some(index + 1);
-                }
-            }
-            b']' => {
-                depth = depth.saturating_sub(1);
-                if depth == 0 {
-                    complete_array = true;
-                    last_complete = Some(index + 1);
-                    break;
-                }
-            }
-            _ => {}
-        }
-    }
-
-    let Some(end) = last_complete else {
-        return Err(ScraperError::ParserRegression(
-            "recent JSON prefix did not contain a complete item".into(),
-        ));
-    };
-    let mut completed = bytes[..end].to_vec();
-    if !complete_array {
-        completed.push(b']');
-    }
-    String::from_utf8(completed).map_err(|error| {
-        ScraperError::ParserRegression(format!("recent JSON prefix is not UTF-8: {error}"))
-    })
-}
-
-fn is_mnd_tls_fallback_host(url: &str) -> bool {
-    url::Url::parse(url)
-        .ok()
-        .and_then(|value| value.host_str().map(str::to_ascii_lowercase))
-        .as_deref()
-        == Some("www.mnd.gov.tw")
-}
-
-fn is_wda_fast_fail_host(url: &str) -> bool {
-    url::Url::parse(url)
-        .ok()
-        .and_then(|value| value.host_str().map(str::to_ascii_lowercase))
-        .as_deref()
-        == Some("www.wda.gov.tw")
-}
-
-fn is_nics_primary_host(url: &str) -> bool {
-    url::Url::parse(url)
-        .ok()
-        .and_then(|value| value.host_str().map(str::to_ascii_lowercase))
-        .as_deref()
-        == Some("www.nics.nat.gov.tw")
-}
-
-fn is_detail_fast_fail_host(url: &str) -> bool {
-    url::Url::parse(url)
-        .ok()
-        .and_then(|value| value.host_str().map(str::to_ascii_lowercase))
-        .is_some_and(|host| {
-            matches!(
-                host.as_str(),
-                "www.moj.gov.tw" | "www.nps.gov.tw" | "www.moa.gov.tw"
-            )
-        })
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -569,9 +496,10 @@ mod tests {
         let client = HttpClient::new()
             .unwrap()
             .with_cache_dir(directory.path().to_path_buf());
-        assert_eq!(client.fetch_text(&url).await.unwrap(), "news");
-        assert_eq!(client.fetch_text(&url).await.unwrap(), "news");
-        assert_eq!(client.fetch_text(&url).await.unwrap(), "updated");
+        let policy = TransportPolicy::list_default();
+        assert_eq!(client.fetch_text(&url, &policy).await.unwrap(), "news");
+        assert_eq!(client.fetch_text(&url, &policy).await.unwrap(), "news");
+        assert_eq!(client.fetch_text(&url, &policy).await.unwrap(), "updated");
         let requests = server.join().unwrap();
         assert!(requests[1].contains("if-none-match: \"version-1\""));
     }
@@ -588,63 +516,235 @@ mod tests {
             socket.write_all(b"HTTP/1.1 429 Too Many Requests\r\nRetry-After: 120\r\nContent-Length: 0\r\nConnection: close\r\n\r\n").unwrap();
         });
         let client = HttpClient::new().unwrap();
-        let result = tokio::time::timeout(Duration::from_secs(3), client.fetch_text(&url))
-            .await
-            .unwrap();
+        let result = tokio::time::timeout(
+            Duration::from_secs(3),
+            client.fetch_text(&url, &TransportPolicy::list_default()),
+        )
+        .await
+        .unwrap();
         server.join().unwrap();
         assert!(matches!(result, Err(ScraperError::AccessBlocked(_))));
     }
 
-    #[test]
-    fn tls_fallback_is_limited_to_mnd_host() {
-        assert!(is_mnd_tls_fallback_host(
-            "https://www.mnd.gov.tw/news/pressreleaselist"
-        ));
-        assert!(!is_mnd_tls_fallback_host(
-            "https://mnd.gov.tw/news/pressreleaselist"
-        ));
-        assert!(!is_mnd_tls_fallback_host("https://example.test/"));
-    }
-
-    #[test]
-    fn fast_fail_timeout_is_limited_to_wda_host() {
-        assert!(is_wda_fast_fail_host(
-            "https://www.wda.gov.tw/OpenData.aspx?SN=8C4FEB29449A1601"
-        ));
-        assert!(!is_wda_fast_fail_host("https://www.mol.gov.tw/"));
-    }
-
-    #[test]
-    fn fast_primary_timeout_is_limited_to_nics_host() {
-        assert!(is_nics_primary_host(
-            "https://www.nics.nat.gov.tw/latest_news/announcements/Latest_Announcement/"
-        ));
-        assert!(!is_nics_primary_host("https://www.nat.gov.tw/"));
-    }
-
-    #[test]
-    fn detail_fast_fail_is_limited_to_slow_full_text_hosts() {
-        assert!(is_detail_fast_fail_host(
-            "https://www.moj.gov.tw/2204/2205/2206/"
-        ));
-        assert!(is_detail_fast_fail_host(
-            "https://www.nps.gov.tw/ch/titlelist/parknews/1"
-        ));
-        assert!(is_detail_fast_fail_host(
-            "https://www.moa.gov.tw/theme_data.php?theme=news&sub_theme=agri&id=1"
-        ));
-        assert!(!is_detail_fast_fail_host("https://www.mof.gov.tw/"));
-    }
-
-    #[test]
-    fn completes_a_truncated_json_array_at_the_last_whole_item() {
-        let body = br#"[{"id":1,"text":"brace } and escaped \" quote"},{"id":2},{"id":3"#;
-        let completed = complete_json_array_prefix(body).expect("complete prefix");
+    #[tokio::test]
+    async fn configured_retry_recovers_a_transient_server_error() {
+        use std::io::{Read, Write};
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let url = format!("http://{}/news", listener.local_addr().unwrap());
+        let server = std::thread::spawn(move || {
+            for (status, body) in [("503 Service Unavailable", ""), ("200 OK", "ready")] {
+                let (mut socket, _) = listener.accept().unwrap();
+                let mut request = [0_u8; 1024];
+                let _ = socket.read(&mut request);
+                write!(
+                    socket,
+                    "HTTP/1.1 {status}\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
+                    body.len()
+                )
+                .unwrap();
+            }
+        });
+        let policy = TransportPolicy {
+            retry_attempts: 2,
+            ..TransportPolicy::list_default()
+        };
         assert_eq!(
-            completed,
-            r#"[{"id":1,"text":"brace } and escaped \" quote"},{"id":2}]"#
+            HttpClient::new()
+                .unwrap()
+                .fetch_text(&url, &policy)
+                .await
+                .unwrap(),
+            "ready"
         );
-        let parsed: serde_json::Value = serde_json::from_str(&completed).expect("valid JSON");
-        assert_eq!(parsed.as_array().map(Vec::len), Some(2));
+        server.join().unwrap();
+    }
+
+    #[tokio::test]
+    async fn short_retry_after_is_honored_then_retried() {
+        use std::io::{Read, Write};
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let url = format!("http://{}/news", listener.local_addr().unwrap());
+        let server = std::thread::spawn(move || {
+            for response in [
+                "HTTP/1.1 429 Too Many Requests\r\nRetry-After: 0\r\nContent-Length: 0\r\nConnection: close\r\n\r\n",
+                "HTTP/1.1 200 OK\r\nContent-Length: 2\r\nConnection: close\r\n\r\nok",
+            ] {
+                let (mut socket, _) = listener.accept().unwrap();
+                let mut request = [0_u8; 1024];
+                let _ = socket.read(&mut request);
+                socket.write_all(response.as_bytes()).unwrap();
+            }
+        });
+        let policy = TransportPolicy {
+            retry_attempts: 2,
+            ..TransportPolicy::list_default()
+        };
+        assert_eq!(
+            HttpClient::new()
+                .unwrap()
+                .fetch_text(&url, &policy)
+                .await
+                .unwrap(),
+            "ok"
+        );
+        server.join().unwrap();
+    }
+
+    #[tokio::test]
+    async fn configured_host_limit_serializes_requests() {
+        use std::io::{Read, Write};
+        use std::sync::atomic::{AtomicUsize, Ordering};
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let url = format!("http://{}/news", listener.local_addr().unwrap());
+        let active = Arc::new(AtomicUsize::new(0));
+        let peak = Arc::new(AtomicUsize::new(0));
+        let server = {
+            let active = active.clone();
+            let peak = peak.clone();
+            std::thread::spawn(move || {
+                let mut handlers = Vec::new();
+                for _ in 0..2 {
+                    let (mut socket, _) = listener.accept().unwrap();
+                    let active = active.clone();
+                    let peak = peak.clone();
+                    handlers.push(std::thread::spawn(move || {
+                        let mut request = [0_u8; 1024];
+                        let _ = socket.read(&mut request);
+                        let current = active.fetch_add(1, Ordering::SeqCst) + 1;
+                        peak.fetch_max(current, Ordering::SeqCst);
+                        std::thread::sleep(Duration::from_millis(100));
+                        socket.write_all(b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\nConnection: close\r\n\r\nok").unwrap();
+                        active.fetch_sub(1, Ordering::SeqCst);
+                    }));
+                }
+                for handler in handlers {
+                    handler.join().unwrap();
+                }
+            })
+        };
+        let client = HttpClient::new().unwrap();
+        let policy = TransportPolicy {
+            host_concurrency: 1,
+            ..TransportPolicy::list_default()
+        };
+        let (first, second) = tokio::join!(
+            client.fetch_text(&url, &policy),
+            client.fetch_text(&url, &policy)
+        );
+        assert_eq!(first.unwrap(), "ok");
+        assert_eq!(second.unwrap(), "ok");
+        server.join().unwrap();
+        assert_eq!(peak.load(Ordering::SeqCst), 1);
+    }
+
+    #[tokio::test]
+    async fn stricter_policy_waits_for_existing_same_host_requests() {
+        let client = HttpClient::new().unwrap();
+        let url = "https://example.test/news";
+        let first = client.acquire_host(url, 2).await.unwrap();
+        let second = client.acquire_host(url, 2).await.unwrap();
+        let strict = client.acquire_host(url, 1);
+        tokio::pin!(strict);
+        assert!(tokio::time::timeout(Duration::from_millis(20), &mut strict)
+            .await
+            .is_err());
+        drop(first);
+        assert!(tokio::time::timeout(Duration::from_millis(20), &mut strict)
+            .await
+            .is_err());
+        drop(second);
+        let strict_permit = tokio::time::timeout(Duration::from_secs(1), &mut strict)
+            .await
+            .unwrap()
+            .unwrap();
+        drop(strict_permit);
+    }
+
+    #[tokio::test]
+    async fn configured_response_limit_rejects_instead_of_truncating() {
+        use std::io::{Read, Write};
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let url = format!("http://{}/news", listener.local_addr().unwrap());
+        let server = std::thread::spawn(move || {
+            for _ in 0..2 {
+                let (mut socket, _) = listener.accept().unwrap();
+                let mut request = [0_u8; 1024];
+                let _ = socket.read(&mut request);
+                socket
+                    .write_all(
+                        b"HTTP/1.1 200 OK\r\nContent-Length: 5\r\nConnection: close\r\n\r\nhello",
+                    )
+                    .unwrap();
+            }
+        });
+        let strict = TransportPolicy {
+            max_response_bytes: 4,
+            ..TransportPolicy::list_default()
+        };
+        assert!(matches!(
+            HttpClient::new().unwrap().fetch_text(&url, &strict).await,
+            Err(ScraperError::AccessBlocked(_))
+        ));
+        let exact = TransportPolicy {
+            max_response_bytes: 5,
+            ..TransportPolicy::list_default()
+        };
+        assert_eq!(
+            HttpClient::new()
+                .unwrap()
+                .fetch_text(&url, &exact)
+                .await
+                .unwrap(),
+            "hello"
+        );
+        server.join().unwrap();
+    }
+
+    #[tokio::test]
+    async fn streamed_response_without_content_length_obeys_limit() {
+        use std::io::{Read, Write};
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let url = format!("http://{}/stream", listener.local_addr().unwrap());
+        let server = std::thread::spawn(move || {
+            let (mut socket, _) = listener.accept().unwrap();
+            let mut request = [0_u8; 1024];
+            let _ = socket.read(&mut request);
+            socket.write_all(b"HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\nConnection: close\r\n\r\n5\r\nhello\r\n0\r\n\r\n").unwrap();
+        });
+        let policy = TransportPolicy {
+            max_response_bytes: 4,
+            ..TransportPolicy::list_default()
+        };
+        assert!(matches!(
+            HttpClient::new().unwrap().fetch_text(&url, &policy).await,
+            Err(ScraperError::AccessBlocked(_))
+        ));
+        server.join().unwrap();
+    }
+
+    #[tokio::test]
+    async fn configured_timeout_stops_a_slow_response() {
+        use std::io::{Read, Write};
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let url = format!("http://{}/slow", listener.local_addr().unwrap());
+        let server = std::thread::spawn(move || {
+            let (mut socket, _) = listener.accept().unwrap();
+            let mut request = [0_u8; 1024];
+            let _ = socket.read(&mut request);
+            std::thread::sleep(Duration::from_millis(1500));
+            let _ = socket.write_all(
+                b"HTTP/1.1 200 OK\r\nContent-Length: 4\r\nConnection: close\r\n\r\nlate",
+            );
+        });
+        let policy = TransportPolicy {
+            timeout: Duration::from_secs(1),
+            retry_attempts: 1,
+            ..TransportPolicy::list_default()
+        };
+        assert!(matches!(
+            HttpClient::new().unwrap().fetch_text(&url, &policy).await,
+            Err(ScraperError::RunnerNetwork(_))
+        ));
+        server.join().unwrap();
     }
 }
