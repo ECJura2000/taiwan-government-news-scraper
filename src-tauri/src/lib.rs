@@ -12,6 +12,22 @@ pub mod ranking;
 pub mod relevance;
 pub mod scraper;
 
+#[derive(Debug, Default, Deserialize, Serialize, Clone, Copy, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum ContentMode {
+    #[default]
+    Full,
+    Summary,
+}
+
+#[derive(Debug, Default, Deserialize, Serialize, Clone, Copy, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum PrefilterMode {
+    #[default]
+    Off,
+    Shadow,
+}
+
 #[derive(Debug, Deserialize, Serialize, Clone)]
 #[serde(rename_all = "snake_case")]
 pub struct RunOptions {
@@ -32,6 +48,10 @@ pub struct RunOptions {
     pub dedupe_affiliated: bool,
     #[serde(default)]
     pub fail_on_source_error: bool,
+    #[serde(default)]
+    pub content_mode: ContentMode,
+    #[serde(default)]
+    pub prefilter_mode: PrefilterMode,
 }
 
 fn default_workers() -> u32 {
@@ -40,6 +60,16 @@ fn default_workers() -> u32 {
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct RunSummary {
+    #[serde(default)]
+    pub content_mode: ContentMode,
+    #[serde(default)]
+    pub prefilter_mode: PrefilterMode,
+    #[serde(default)]
+    pub performance: serde_json::Value,
+    #[serde(default)]
+    pub prefilter: serde_json::Value,
+    #[serde(default)]
+    pub news_items: serde_json::Value,
     #[serde(default)]
     pub report_schema_version: u32,
     #[serde(default)]

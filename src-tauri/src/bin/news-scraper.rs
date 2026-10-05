@@ -96,6 +96,8 @@ fn parse_options(args: &[String]) -> Result<RunOptions, String> {
         max_workers: 8,
         dedupe_affiliated: false,
         fail_on_source_error: false,
+        content_mode: Default::default(),
+        prefilter_mode: Default::default(),
     };
     let mut index = 0;
     while index < args.len() {
@@ -103,6 +105,22 @@ fn parse_options(args: &[String]) -> Result<RunOptions, String> {
             "--headless" | "--json-summary" | "--gui" => {}
             "--dedupe-affiliated" => options.dedupe_affiliated = true,
             "--fail-on-source-error" => options.fail_on_source_error = true,
+            "--content-mode" => {
+                index += 1;
+                options.content_mode = match args.get(index).map(String::as_str) {
+                    Some("full") => taiwan_government_news_lib::ContentMode::Full,
+                    Some("summary") => taiwan_government_news_lib::ContentMode::Summary,
+                    _ => return Err("--content-mode 必須是 full 或 summary".into()),
+                };
+            }
+            "--prefilter-mode" => {
+                index += 1;
+                options.prefilter_mode = match args.get(index).map(String::as_str) {
+                    Some("off") => taiwan_government_news_lib::PrefilterMode::Off,
+                    Some("shadow") => taiwan_government_news_lib::PrefilterMode::Shadow,
+                    _ => return Err("--prefilter-mode 必須是 off 或 shadow".into()),
+                };
+            }
             "--max-workers" => {
                 index += 1;
                 let workers: u32 = args
@@ -152,6 +170,11 @@ fn parse_options(args: &[String]) -> Result<RunOptions, String> {
         }
         index += 1;
     }
+    if options.content_mode == taiwan_government_news_lib::ContentMode::Summary
+        && options.prefilter_mode == taiwan_government_news_lib::PrefilterMode::Shadow
+    {
+        return Err("summary 不可與 shadow 同時使用".into());
+    }
     Ok(options)
 }
 
@@ -184,6 +207,40 @@ mod tests {
 
     #[test]
     fn reports_workspace_package_version() {
-        assert_eq!(version_text(), "news-scraper 2.1.23");
+        assert_eq!(version_text(), "news-scraper 2.1.24");
+    }
+
+    #[test]
+    fn content_modes_default_to_full_and_validate_shadow() {
+        use taiwan_government_news_lib::{ContentMode, PrefilterMode};
+        assert_eq!(parse_options(&[]).unwrap().content_mode, ContentMode::Full);
+        assert_eq!(
+            parse_options(&["--content-mode".into(), "full".into()])
+                .unwrap()
+                .prefilter_mode,
+            PrefilterMode::Off
+        );
+        assert_eq!(
+            parse_options(&["--content-mode".into(), "summary".into()])
+                .unwrap()
+                .content_mode,
+            ContentMode::Summary
+        );
+        assert_eq!(
+            parse_options(&["--prefilter-mode".into(), "shadow".into()])
+                .unwrap()
+                .prefilter_mode,
+            PrefilterMode::Shadow
+        );
+        for args in [
+            vec!["--content-mode", "summary", "--prefilter-mode", "shadow"],
+            vec!["--content-mode", "other"],
+            vec!["--prefilter-mode", "on"],
+            vec!["--content-mode"],
+        ] {
+            assert!(
+                parse_options(&args.into_iter().map(String::from).collect::<Vec<_>>()).is_err()
+            );
+        }
     }
 }

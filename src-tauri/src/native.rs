@@ -10,8 +10,10 @@ use std::collections::{BTreeMap, HashMap, HashSet};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
+use std::time::Instant;
 
 mod excel;
+mod pipeline;
 mod report;
 mod source;
 #[cfg(test)]
@@ -24,7 +26,9 @@ use source::{
     browser_page_script, enrich_detail_full_text, items_cover_date_range,
     should_retry_browser_route,
 };
-use source::{fetch_source, parse_date, source_diagnostic, DetailDiagnostics, SourceResult};
+use source::{
+    enrich_source, fetch_source, parse_date, source_diagnostic, DetailDiagnostics, SourceResult,
+};
 
 const DEFAULT_OUTPUT_DIR: &str = "新聞搜集區";
 
@@ -49,6 +53,12 @@ pub async fn run_with_progress(
     progress: Option<ProgressCallback>,
 ) -> Result<crate::RunSummary, String> {
     let started_at = Utc::now();
+    let run_started = Instant::now();
+    if options.content_mode == crate::ContentMode::Summary
+        && options.prefilter_mode == crate::PrefilterMode::Shadow
+    {
+        return Err("summary 不可與 shadow 同時使用".into());
+    }
     if options.topics_json.is_some() && options.topics_policy.is_some() {
         return Err("主題設定不得同時指定檔案與內嵌設定".into());
     }
@@ -100,7 +110,10 @@ pub async fn run_with_progress(
                         message: Some(format!("正在處理：{source}")),
                     });
                 }
-                fetch_source(&client, &source, date_range, progress.as_ref(), total).await
+                let mut result =
+                    fetch_source(&client, &source, date_range, progress.as_ref(), total).await;
+                enrich_source(&client, &mut result, options.content_mode).await;
+                result
             }
         })
         .buffer_unordered(max_workers);
@@ -140,6 +153,7 @@ pub async fn run_with_progress(
         }
     }
     drop(jobs);
+    let collection_wall_seconds = run_started.elapsed().as_secs_f64();
 
     if cancelled.load(Ordering::SeqCst) {
         return Err("執行已取消".into());
@@ -196,6 +210,7 @@ pub async fn run_with_progress(
     }
     let mut insecure_ssl_hosts: Vec<String> = insecure_hosts.into_iter().collect();
     insecure_ssl_hosts.sort();
+    let dedup_started = Instant::now();
     if options.dedupe_affiliated {
         items = crate::scraper::quality::dedupe_affiliated(items);
     }
@@ -206,6 +221,14 @@ pub async fn run_with_progress(
     let excluded_non_news_count = quality_result.excluded_non_news_count;
     let issues = quality_result.issues;
     items = quality_result.items;
+    let dedup_seconds = dedup_started.elapsed().as_secs_f64();
+    if options.content_mode == crate::ContentMode::Summary {
+        items.sort_by(|a, b| {
+            b.date
+                .cmp(&a.date)
+                .then_with(|| pipeline::key(a).cmp(&pipeline::key(b)))
+        });
+    }
     source_counts.clear();
     for source in &selected {
         source_counts.insert(source.clone(), 0);
@@ -223,7 +246,55 @@ pub async fn run_with_progress(
             message: Some("正在計算政策相關性與排序".into()),
         });
     }
-    let batch = crate::ranking::rank(&profile, &items);
+    let ranking_started = Instant::now();
+    let batch = pipeline::rank(&profile, &items, options.content_mode);
+    let ranking_seconds = if options.content_mode == crate::ContentMode::Full {
+        ranking_started.elapsed().as_secs_f64()
+    } else {
+        0.0
+    };
+    let prefilter_started = Instant::now();
+    let discoveries: Vec<_> = results
+        .iter()
+        .flat_map(|result| result.detail.discovery_items.clone())
+        .collect();
+    let prefilter = if options.prefilter_mode == crate::PrefilterMode::Shadow {
+        pipeline::shadow(
+            &profile,
+            &discoveries,
+            &items,
+            &batch.results,
+            options.dedupe_affiliated,
+        )
+    } else {
+        json!({"mode":"off", "detail_requests_avoided":0})
+    };
+    let prefilter_seconds = if options.prefilter_mode == crate::PrefilterMode::Shadow {
+        prefilter_started.elapsed().as_secs_f64()
+    } else {
+        0.0
+    };
+    let mode_comparison = if options.content_mode == crate::ContentMode::Full {
+        pipeline::summary_comparison(
+            &discoveries,
+            &items,
+            &batch.results,
+            options.dedupe_affiliated,
+        )
+    } else {
+        json!({"status":"full_control_not_available", "reason":"summary does not fetch full text or execute final ranking; consult a full run same-discovery simulation"})
+    };
+    let mut item_records = BTreeMap::new();
+    for result in &results {
+        for (item, record) in result
+            .detail
+            .discovery_items
+            .iter()
+            .zip(&result.detail.item_records)
+        {
+            item_records.entry(pipeline::key(item)).or_insert(record);
+        }
+    }
     let classifications: Vec<_> = batch
         .results
         .iter()
@@ -260,7 +331,9 @@ pub async fn run_with_progress(
     if classified.len() != items.len() {
         return Err("分類結果與新聞筆數不一致".into());
     }
+    let excel_started = Instant::now();
     let paths = write_outputs(options, &classified, date_range, &profile)?;
+    let excel_write_seconds = excel_started.elapsed().as_secs_f64();
     let finished_at = Utc::now();
     let duplicate_ratio = duplicate_count as f64 / input_count.max(1) as f64;
     let excluded_ratio = excluded_non_news_count as f64 / input_count.max(1) as f64;
@@ -276,7 +349,7 @@ pub async fn run_with_progress(
     }
     let report_dir = paths.1.parent().ok_or("JSON 報告路徑缺少資料夾")?;
     let mut relevance_policy = profile.summary();
-    let anomalies = report::volume_anomalies(
+    let anomalies = report::volume_anomalies_for_mode(
         report_dir,
         date_range,
         relevance_policy["ruleset_hash"]
@@ -284,6 +357,7 @@ pub async fn run_with_progress(
             .unwrap_or_default(),
         &source_scraped_counts,
         &source_diagnostics,
+        options.content_mode,
     );
     if anomalies.iter().any(|value| value.starts_with("source_")) {
         alert_reasons.push("source_volume_regression");
@@ -305,6 +379,7 @@ pub async fn run_with_progress(
     relevance_policy["excluded_news_count"] = json!(batch.excluded_count);
     relevance_policy["rule_counts"] = json!(batch.rule_counts);
     relevance_policy["topic_counts"] = json!(batch.topic_counts);
+    relevance_policy["evaluated"] = json!(options.content_mode == crate::ContentMode::Full);
     let summary_count = items.iter().filter(|item| !item.summary.is_empty()).count();
     let full_text_count = items
         .iter()
@@ -354,6 +429,34 @@ pub async fn run_with_progress(
         ((full_text_count as f64 / items.len() as f64) * 10_000.0).round() / 10_000.0
     };
     let summary = crate::RunSummary {
+        content_mode: options.content_mode,
+        prefilter_mode: options.prefilter_mode,
+        performance: json!({
+            "timing_semantics":"source stages are summed task durations, may overlap; collection_wall_seconds is wall time",
+            "collection_wall_seconds":collection_wall_seconds,
+            "source_discovery_seconds":results.iter().map(|result| result.detail.discovery_seconds).sum::<f64>(),
+            "date_filter_seconds":results.iter().map(|result| result.detail.date_filter_seconds).sum::<f64>(),
+            "detail_fetch_seconds":results.iter().map(|result| result.detail.fetch_seconds).sum::<f64>(),
+            "dedup_seconds":dedup_seconds, "ranking_seconds":ranking_seconds,
+            "prefilter_seconds":prefilter_seconds, "excel_write_seconds":excel_write_seconds,
+            "list_items":results.iter().map(|result| result.detail.list_items).sum::<usize>(),
+            "date_filtered":results.iter().map(|result| result.detail.date_filtered).sum::<usize>(),
+            "deduplicated":pre_policy_count, "detail_attempted_count":detail_attempted,
+            "final_output_count":items.len()
+        }),
+        prefilter,
+        news_items: json!(items
+            .iter()
+            .zip(&classifications)
+            .map(|(item, classification)| {
+                let record = item_records.get(&pipeline::key(item));
+                json!({"source":item.source, "date":item.date, "title":item.title, "link":item.link,
+                "list_summary":record.and_then(|record| record.get("list_summary")),
+                "detail_status":record.and_then(|record| record.get("detail_status")),
+                "route":record.and_then(|record| record.get("route")),
+                "classification":classification})
+            })
+            .collect::<Vec<_>>()),
         status: status.into(),
         news_count: items.len() as u64,
         failed_sources,
@@ -390,6 +493,8 @@ pub async fn run_with_progress(
             "date_source_counts": date_source_counts,
             "description_fallback_count": description_fallback_count,
             "issues": issues,
+            "collection_decisions": "quality.issues records every invalid, non-news or duplicate removal; summary skips topic exclusions; cross-mode comparisons require matching discovery snapshots",
+            "mode_comparison":mode_comparison,
             "alert_reasons": alert_reasons
         }),
         relevance_policy: relevance_policy.clone(),
@@ -513,7 +618,205 @@ mod tests {
             max_workers: 8,
             dedupe_affiliated: false,
             fail_on_source_error: false,
+            content_mode: Default::default(),
+            prefilter_mode: Default::default(),
         }
+    }
+
+    #[tokio::test]
+    async fn modes_are_backward_compatible_and_invalid_pair_has_no_outputs() {
+        let mut value = serde_json::to_value(options()).unwrap();
+        value.as_object_mut().unwrap().remove("content_mode");
+        value.as_object_mut().unwrap().remove("prefilter_mode");
+        let legacy: crate::RunOptions = serde_json::from_value(value).unwrap();
+        assert_eq!(legacy.content_mode, crate::ContentMode::Full);
+        assert_eq!(legacy.prefilter_mode, crate::PrefilterMode::Off);
+        let dir = tempfile::tempdir().unwrap();
+        let mut opts = options();
+        opts.content_mode = crate::ContentMode::Summary;
+        opts.prefilter_mode = crate::PrefilterMode::Shadow;
+        opts.output_dir = Some(dir.path().join("output").to_string_lossy().into_owned());
+        assert!(run(&opts, Arc::new(AtomicBool::new(false)))
+            .await
+            .unwrap_err()
+            .contains("不可"));
+        assert!(!dir.path().join("output").exists());
+    }
+
+    #[tokio::test]
+    async fn new_reports_preserve_source_failure_evidence_in_all_modes() {
+        for (content_mode, prefilter_mode) in [
+            (crate::ContentMode::Full, crate::PrefilterMode::Off),
+            (crate::ContentMode::Full, crate::PrefilterMode::Shadow),
+            (crate::ContentMode::Summary, crate::PrefilterMode::Off),
+        ] {
+            let dir = tempfile::tempdir().unwrap();
+            let mut opts = options();
+            opts.sources = vec!["未註冊測試來源".into()];
+            opts.content_mode = content_mode;
+            opts.prefilter_mode = prefilter_mode;
+            opts.output_dir = Some(dir.path().to_string_lossy().into_owned());
+            let result = run(&opts, Arc::new(AtomicBool::new(false))).await.unwrap();
+            let report: serde_json::Value =
+                serde_json::from_slice(&std::fs::read(&result.report_file).unwrap()).unwrap();
+            assert_eq!(report["status"], "partial_failure");
+            assert_eq!(report["failed_sources"], json!(["未註冊測試來源"]));
+            assert_eq!(report["performance"]["detail_attempted_count"], 0);
+            assert_eq!(report["report_schema_version"], 4);
+            assert_eq!(report["news_items"], json!([]));
+            assert_eq!(result.content_mode, content_mode);
+            assert!(report["relevance_policy"]["ruleset_hash"].is_string());
+        }
+    }
+
+    #[tokio::test]
+    async fn summary_skips_detail_requests_and_preserves_missing_summary() {
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        listener.set_nonblocking(true).unwrap();
+        let item: NewsItem = serde_json::from_value(json!({"source":"測試機關", "date":"2026-09-21",
+            "department":"內部去重資訊", "title":"測試", "link":format!("http://{}/detail", listener.local_addr().unwrap()),
+            "summary":"", "full_text":"列表已帶入全文"})).unwrap();
+        let mut result = SourceResult {
+            source: item.source.clone(),
+            items: vec![item.clone()],
+            error: None,
+            attempts: vec![],
+            final_route: None,
+            detail: DetailDiagnostics {
+                discovery_items: vec![item.clone()],
+                item_records: vec![json!({"route":{"route_id":"fixture"}})],
+                ..Default::default()
+            },
+        };
+        enrich_source(
+            &HttpClient::new().unwrap(),
+            &mut result,
+            crate::ContentMode::Summary,
+        )
+        .await;
+        assert_eq!(
+            listener.accept().unwrap_err().kind(),
+            std::io::ErrorKind::WouldBlock
+        );
+        assert_eq!(result.items.len(), 1);
+        assert!(result.items[0].full_text.is_empty());
+        assert!(result.items[0].summary.is_empty());
+        assert_eq!(result.items[0].department, item.department);
+        assert_eq!(result.detail.attempted, 0);
+        assert_eq!(result.detail.item_records[0]["detail_status"], "not_needed");
+        assert_eq!(
+            result.detail.item_records[0]["route"]["route_id"],
+            "fixture"
+        );
+    }
+
+    #[test]
+    fn summary_workbook_has_five_fields_and_blank_numeric_cells() {
+        use std::io::Read;
+        let item: NewsItem =
+            serde_json::from_value(json!({"source":"測試機關", "date":"2026-09-21",
+            "department":"不應輸出", "title":"新聞", "link":"https://example.test/news",
+            "summary":"原始列表摘要", "full_text":"不應輸出全文"}))
+            .unwrap();
+        let profile = crate::policy::Profile::embedded();
+        let batch = pipeline::rank(
+            &profile,
+            std::slice::from_ref(&item),
+            crate::ContentMode::Summary,
+        );
+        let row = excel_row(&item, &batch.results[0]).0;
+        assert_eq!(row.iter().filter(|value| !value.is_empty()).count(), 5);
+        assert_eq!(row[5], "原始列表摘要");
+        let temp = tempfile::tempdir().unwrap();
+        let mut options = options();
+        options.content_mode = crate::ContentMode::Summary;
+        options.output_dir = Some(temp.path().to_string_lossy().into_owned());
+        let (path, _) = write_outputs(
+            &options,
+            &[ClassifiedNews {
+                item: &item,
+                classification: &batch.results[0],
+            }],
+            DateRange {
+                start: parse_date("2026-09-21").unwrap(),
+                end: parse_date("2026-09-27").unwrap(),
+            },
+            &profile,
+        )
+        .unwrap();
+        assert!(path.to_string_lossy().ends_with("_摘要.xlsx"));
+        let mut archive = zip::ZipArchive::new(std::fs::File::open(path).unwrap()).unwrap();
+        let mut xml = String::new();
+        archive
+            .by_name("xl/worksheets/sheet1.xml")
+            .unwrap()
+            .read_to_string(&mut xml)
+            .unwrap();
+        let numeric_cells = Regex::new(r#"<c r="(?:K2|P2)"[^>]*(?:/>|>.*?</c>)"#).unwrap();
+        for cell in numeric_cells.find_iter(&xml) {
+            assert!(
+                !cell.as_str().contains("<v>"),
+                "summary score cells must be blank: {}",
+                cell.as_str()
+            );
+        }
+        let mut strings = String::new();
+        archive
+            .by_name("xl/sharedStrings.xml")
+            .unwrap()
+            .read_to_string(&mut strings)
+            .unwrap();
+        assert!(strings.contains("列表摘要"));
+        assert!(strings.contains("原始列表摘要"));
+        assert!(!strings.contains("不應輸出全文"));
+        assert!(!strings.contains("不應輸出</t>"));
+        assert!(xml.contains("Q1"), "17-column header preserved");
+    }
+
+    #[test]
+    fn full_and_shadow_workbook_contents_are_identical() {
+        use std::io::Read;
+        let items: Vec<NewsItem> = serde_json::from_value(json!([
+            {"source":"測試機關", "date":"2026-09-21", "department":"", "title":"人工智慧政策", "link":"https://example.test/a", "summary":"列表摘要", "full_text":"人工智慧政策"},
+            {"source":"測試機關", "date":"2026-09-21", "department":"", "title":"公園活動", "link":"https://example.test/b", "summary":"", "full_text":"公園活動"}
+        ])).unwrap();
+        let profile = crate::policy::Profile::embedded();
+        let batch = pipeline::rank(&profile, &items, crate::ContentMode::Full);
+        let before = items.clone();
+        let _ = pipeline::shadow(&profile, &items, &items, &batch.results, false);
+        assert_eq!(items, before);
+        let entries: Vec<_> = items
+            .iter()
+            .zip(&batch.results)
+            .map(|(item, classification)| ClassifiedNews {
+                item,
+                classification,
+            })
+            .collect();
+        let first = tempfile::tempdir().unwrap();
+        let second = tempfile::tempdir().unwrap();
+        let mut opts = options();
+        opts.output_dir = Some(first.path().to_string_lossy().into_owned());
+        let range = DateRange {
+            start: parse_date("2026-09-21").unwrap(),
+            end: parse_date("2026-09-27").unwrap(),
+        };
+        let (a, _) = write_outputs(&opts, &entries, range, &profile).unwrap();
+        opts.prefilter_mode = crate::PrefilterMode::Shadow;
+        opts.content_mode = crate::ContentMode::Full;
+        opts.output_dir = Some(second.path().to_string_lossy().into_owned());
+        let (b, _) = write_outputs(&opts, &entries, range, &profile).unwrap();
+        let read = |path| {
+            let mut archive = zip::ZipArchive::new(std::fs::File::open(path).unwrap()).unwrap();
+            let mut xml = String::new();
+            archive
+                .by_name("xl/worksheets/sheet1.xml")
+                .unwrap()
+                .read_to_string(&mut xml)
+                .unwrap();
+            xml
+        };
+        assert_eq!(read(a), read(b));
     }
 
     fn browser_route(parser: &str) -> SourceRoute {

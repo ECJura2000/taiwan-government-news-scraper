@@ -48,6 +48,15 @@ fn contains_cjk(value: &str) -> bool {
 }
 
 pub(super) fn excel_row(item: &NewsItem, result: &serde_json::Value) -> (Vec<String>, u32, String) {
+    if result["evaluated"] == false {
+        let mut values = vec![String::new(); EXCEL_HEADERS.len()];
+        values[0] = item.source.clone();
+        values[1] = excel_date(&item.date);
+        values[3] = item.title.clone();
+        values[4] = item.link.clone();
+        values[5] = item.summary.clone();
+        return (values, 0, String::new());
+    }
     let (parent_source, department_path) = excel_agency_path(&item.source, &item.department);
     let strings = |key: &str| {
         result[key]
@@ -174,6 +183,7 @@ pub(super) fn excel_date(value: &str) -> String {
 }
 
 struct ExcelFormats {
+    summary_mode: bool,
     header: Format,
     body: Format,
     latin_body: Format,
@@ -455,8 +465,13 @@ fn write_news_sheet(
         .set_name(name)
         .map_err(|error| error.to_string())?;
     for (column, title) in EXCEL_HEADERS.iter().enumerate() {
+        let title = if column == 5 && formats.summary_mode {
+            "列表摘要"
+        } else {
+            *title
+        };
         worksheet
-            .write_string_with_format(0, column as u16, *title, &formats.header)
+            .write_string_with_format(0, column as u16, title, &formats.header)
             .map_err(|error| error.to_string())?;
     }
     let mut date_cells: BTreeMap<(String, String), Vec<String>> = BTreeMap::new();
@@ -502,7 +517,7 @@ fn write_news_sheet(
                 worksheet
                     .write_string_with_format(row, column as u16, "", cell_format)
                     .map_err(|e| e.to_string())?;
-            } else if column == 15 {
+            } else if column == 15 && !value.is_empty() {
                 worksheet
                     .write_number_with_format(
                         row,
@@ -511,7 +526,7 @@ fn write_news_sheet(
                         cell_format,
                     )
                     .map_err(|e| e.to_string())?;
-            } else if column == 10 {
+            } else if column == 10 && !value.is_empty() {
                 worksheet
                     .write_number_with_format(row, column as u16, *score as f64, cell_format)
                     .map_err(|error| error.to_string())?;
@@ -661,9 +676,14 @@ pub(super) fn write_outputs(
         .map_err(|error| format!("無法建立 JSON 報告資料夾 {}：{error}", report_dir.display()))?;
     let stamp = Local::now().format("%Y%m%d_%H%M%S_%6f").to_string();
     let workbook_path = output_dir.join(format!(
-        "本週新聞整理（{}至{}）.xlsx",
+        "本週新聞整理（{}至{}）{}.xlsx",
         roc_compact(date_range.start),
-        roc_compact(date_range.end)
+        roc_compact(date_range.end),
+        if options.content_mode == crate::ContentMode::Summary {
+            "_摘要"
+        } else {
+            ""
+        }
     ));
     let report_path = report_dir.join(format!("news_scraper_run_{stamp}.json"));
 
@@ -672,7 +692,17 @@ pub(super) fn write_outputs(
         .iter()
         .map(|entry| excel_row(entry.item, entry.classification))
         .collect();
-    sort_news_rows(&mut rows);
+    if options.content_mode == crate::ContentMode::Summary {
+        rows.sort_by(|a, b| {
+            b.0[1]
+                .cmp(&a.0[1])
+                .then_with(|| a.0[0].cmp(&b.0[0]))
+                .then_with(|| a.0[3].cmp(&b.0[3]))
+                .then_with(|| a.0[4].cmp(&b.0[4]))
+        });
+    } else {
+        sort_news_rows(&mut rows);
+    }
     let mut selected_rows: Vec<(Vec<String>, u32, String)> = rows
         .iter()
         .filter(|(_, _, relevance)| relevance == "高度相關" || relevance == "可能相關")
@@ -680,6 +710,7 @@ pub(super) fn write_outputs(
         .collect();
     sort_news_rows(&mut selected_rows);
     let formats = ExcelFormats {
+        summary_mode: options.content_mode == crate::ContentMode::Summary,
         header: Format::new()
             .set_bold()
             .set_font_name(EXCEL_CJK_FONT)

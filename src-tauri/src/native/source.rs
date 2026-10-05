@@ -28,6 +28,14 @@ pub(super) struct DetailDiagnostics {
     pub(super) attempted: usize,
     pub(super) recovered: usize,
     pub(super) issues: Vec<serde_json::Value>,
+    pub(super) discovery_items: Vec<NewsItem>,
+    pub(super) item_records: Vec<serde_json::Value>,
+    pub(super) list_items: usize,
+    pub(super) date_filtered: usize,
+    pub(super) discovery_seconds: f64,
+    pub(super) date_filter_seconds: f64,
+    pub(super) fetch_seconds: f64,
+    pub(super) browser_fallbacks: Vec<serde_json::Value>,
 }
 
 pub(super) async fn fetch_source(
@@ -91,7 +99,7 @@ async fn fetch_source_definition(
                             page_script,
                         )
                         .await
-                        .map_err(ScraperError::BrowserRuntime)
+                        .map_err(classify_browser_error)
                     } else {
                         Err(ScraperError::AccessBlocked(
                             "undeclared browser TLS fallback route".into(),
@@ -100,7 +108,7 @@ async fn fetch_source_definition(
                 } else {
                     crate::browser::fetch_rendered_html_after(url, page_script)
                         .await
-                        .map_err(ScraperError::BrowserRuntime)
+                        .map_err(classify_browser_error)
                 }
             } else {
                 if uses_recent_nps_prefix {
@@ -113,6 +121,17 @@ async fn fetch_source_definition(
                 }
             };
             let mut outcome = fetched.and_then(|body| adapters::parse_route(source, &route, &body));
+            // An official JSON snapshot can lag behind its corresponding list.
+            // Never silently accept an out-of-date snapshot as an empty week.
+            if route.parser == "thb-json"
+                && outcome
+                    .as_ref()
+                    .is_ok_and(|items| snapshot_predates_week(items, date_range))
+            {
+                outcome = Err(ScraperError::SourceOutage(
+                    "official JSON snapshot predates the requested week; try the live list".into(),
+                ));
+            }
             if uses_recent_nps_prefix
                 && outcome
                     .as_ref()
@@ -125,13 +144,19 @@ async fn fetch_source_definition(
             }
             match outcome {
                 Ok(items) => {
+                    detail.discovery_seconds += started.elapsed().as_secs_f64();
                     let parsed_item_count = items.len();
+                    detail.list_items += parsed_item_count;
+                    let filtering_started = Instant::now();
                     let filtered_items = filter_to_date_range(items, date_range);
-                    let (filtered_items, route_detail) =
-                        enrich_detail_full_text(client, filtered_items).await;
-                    detail.attempted += route_detail.attempted;
-                    detail.recovered += route_detail.recovered;
-                    detail.issues.extend(route_detail.issues);
+                    detail.date_filter_seconds += filtering_started.elapsed().as_secs_f64();
+                    detail.date_filtered += filtered_items.len();
+                    detail.item_records.extend(filtered_items.iter().map(|item| json!({
+                        "source":item.source, "date":item.date, "title":item.title, "link":item.link,
+                        "list_summary":item.summary, "route":{"route_id":route.id, "url":url,
+                            "parser":route.parser, "route_kind":route.kind}
+                    })));
+                    detail.discovery_items.extend(filtered_items.clone());
                     attempts.push(json!({
                         "source": source,
                         "route_id": route.id,
@@ -176,6 +201,7 @@ async fn fetch_source_definition(
                     };
                 }
                 Err(error) => {
+                    detail.discovery_seconds += started.elapsed().as_secs_f64();
                     let should_retry = should_retry_browser_route(&route, &error, attempt_number);
                     attempts.push(attempt_json(
                         source,
@@ -244,8 +270,27 @@ pub(super) fn browser_page_script(parser: &str) -> Option<&'static str> {
         "mnd-browser-tls-fallback" => Some(
             "(async () => { const deadline = Date.now() + 20000; while (Date.now() < deadline) { const item = document.querySelector('div.news_list_box a.news_list'); if (item) return true; await new Promise(resolve => setTimeout(resolve, 250)); } return false; })()",
         ),
+        "hakka-html" => Some(
+            "(async () => { const deadline = Date.now() + 15000; while (Date.now() < deadline) { if (document.querySelector('div.list ul li p.subject')) return true; await new Promise(resolve => setTimeout(resolve, 250)); } return false; })()",
+        ),
         _ => None,
     }
+}
+
+fn classify_browser_error(error: String) -> ScraperError {
+    if error.starts_with("access_blocked:") || error.contains("Incapsula 驗證超過") {
+        ScraperError::AccessBlocked(error)
+    } else {
+        ScraperError::BrowserRuntime(error)
+    }
+}
+
+fn snapshot_predates_week(items: &[NewsItem], range: DateRange) -> bool {
+    items
+        .iter()
+        .filter_map(|item| parse_date(&item.date))
+        .max()
+        .is_none_or(|latest| latest < range.start)
 }
 
 pub(super) fn should_retry_browser_route(
@@ -294,6 +339,14 @@ pub(super) fn source_diagnostic(result: &SourceResult) -> serde_json::Value {
             "recovered": result.detail.recovered,
             "failed_or_empty": result.detail.issues.len(),
             "issues": result.detail.issues,
+            "browser_fallbacks": result.detail.browser_fallbacks,
+        },
+        "discovery": {
+            "list_items":result.detail.list_items, "date_filtered":result.detail.date_filtered,
+            "discovery_seconds":result.detail.discovery_seconds,
+            "date_filter_seconds":result.detail.date_filter_seconds,
+            "detail_fetch_seconds":result.detail.fetch_seconds,
+            "items":result.detail.item_records,
         },
     })
 }
@@ -361,6 +414,7 @@ pub(super) async fn enrich_detail_full_text(
     client: &HttpClient,
     items: Vec<NewsItem>,
 ) -> (Vec<NewsItem>, DetailDiagnostics) {
+    let started = Instant::now();
     let outcomes: Vec<_> = stream::iter(items)
         .map(|mut item| {
             let client = client.clone();
@@ -370,7 +424,18 @@ pub(super) async fn enrich_detail_full_text(
                         .map_or_else(TransportPolicy::detail_default, |source| {
                             TransportPolicy::for_detail(source, &item.link)
                         });
-                    let issue = match client.fetch_detail_text(&item.link, &policy).await {
+                    let mut fetched = client.fetch_detail_text(&item.link, &policy).await;
+                    let mut fallback = None;
+                    if policy.browser_fallback && !fetched.as_ref().is_ok_and(|body| !adapters::parse_detail_full_text(&item.source, body).is_empty()) {
+                        let initial_reason = fetched.as_ref().err().map_or("empty_detail_text", |error| error.failure_class().as_str());
+                        let rendered = crate::browser::fetch_rendered_html_after_with_timeout(&item.link, None, policy.timeout)
+                            .await.map_err(classify_browser_error);
+                        fallback = Some(json!({"source":item.source,"url":item.link,"http_reason":initial_reason,
+                            "browser_status":if rendered.is_ok(){"success"}else{"failed"},
+                            "browser_failure_class":rendered.as_ref().err().map(|error|error.failure_class().as_str())}));
+                        fetched = rendered;
+                    }
+                    let issue = match fetched {
                         Ok(body) => {
                             let full_text = adapters::parse_detail_full_text(&item.source, &body);
                             if full_text.is_empty() {
@@ -383,9 +448,9 @@ pub(super) async fn enrich_detail_full_text(
                         }
                         Err(error) => Some(json!({"source": item.source, "url": item.link, "reason": error.failure_class().as_str()})),
                     };
-                    (item, true, issue)
+                    (item, true, issue, fallback)
                 } else {
-                    (item, false, None)
+                    (item, false, None, None)
                 }
             }
         })
@@ -394,7 +459,10 @@ pub(super) async fn enrich_detail_full_text(
         .await;
     let mut detail = DetailDiagnostics::default();
     let mut items = Vec::with_capacity(outcomes.len());
-    for (item, attempted, issue) in outcomes {
+    for (item, attempted, issue, fallback) in outcomes {
+        if let Some(fallback) = fallback {
+            detail.browser_fallbacks.push(fallback);
+        }
         if attempted {
             detail.attempted += 1;
             if let Some(issue) = issue {
@@ -405,7 +473,50 @@ pub(super) async fn enrich_detail_full_text(
         }
         items.push(item);
     }
+    detail.fetch_seconds = started.elapsed().as_secs_f64();
     (items, detail)
+}
+
+/// Discovery remains independently usable; orchestration chooses whether to enrich.
+pub(super) async fn enrich_source(
+    client: &HttpClient,
+    result: &mut SourceResult,
+    mode: crate::ContentMode,
+) {
+    if mode == crate::ContentMode::Full {
+        let (items, diagnostics) =
+            enrich_detail_full_text(client, std::mem::take(&mut result.items)).await;
+        result.items = items;
+        result.detail.attempted = diagnostics.attempted;
+        result.detail.recovered = diagnostics.recovered;
+        result.detail.issues = diagnostics.issues;
+        result.detail.fetch_seconds = diagnostics.fetch_seconds;
+        result.detail.browser_fallbacks = diagnostics.browser_fallbacks;
+    } else {
+        for item in &mut result.items {
+            item.full_text.clear();
+        }
+    }
+    result.detail.item_records = result
+        .items
+        .iter()
+        .zip(&result.detail.discovery_items)
+        .enumerate()
+        .map(|(index, (item, discovery))| {
+            let status = if mode == crate::ContentMode::Summary {
+                "not_needed"
+            } else if !item.full_text.is_empty() {
+                "fetched"
+            } else if item.link.is_empty() {
+                "not_needed"
+            } else {
+                "failed"
+            };
+            json!({"source": item.source, "date": item.date, "title": item.title,
+            "link": item.link, "list_summary": discovery.summary, "detail_status": status,
+            "route": result.detail.item_records.get(index).and_then(|record| record.get("route"))})
+        })
+        .collect();
 }
 
 pub(super) fn parse_date(value: &str) -> Option<NaiveDate> {
@@ -492,6 +603,36 @@ fn complete_json_array_prefix(bytes: &[u8]) -> Result<String, ScraperError> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn stale_or_empty_official_snapshot_must_not_end_fallbacks() {
+        let range = DateRange {
+            start: NaiveDate::from_ymd_opt(2026, 9, 28).unwrap(),
+            end: NaiveDate::from_ymd_opt(2026, 10, 4).unwrap(),
+        };
+        assert!(snapshot_predates_week(&[], range));
+        for (date, stale) in [
+            ("2026-08-19", true),
+            ("2026-09-28", false),
+            ("2026-10-05", false),
+        ] {
+            let body = format!("<rss><channel><item><title>測試新聞</title><link>https://example.test/1</link><pubDate>{date}</pubDate></item></channel></rss>");
+            let items = crate::scraper::rss::parse_feed("測試", &body).unwrap();
+            assert_eq!(snapshot_predates_week(&items, range), stale);
+        }
+    }
+
+    #[test]
+    fn browser_access_denial_is_not_retryable_browser_runtime() {
+        let route = routes_for(find_source("公路局").unwrap()).pop().unwrap();
+        let error = classify_browser_error("access_blocked: rejected".into());
+        assert!(matches!(error, ScraperError::AccessBlocked(_)));
+        assert!(!should_retry_browser_route(&route, &error, 1));
+        assert!(matches!(
+            classify_browser_error("CDP websocket disconnected".into()),
+            ScraperError::BrowserRuntime(_)
+        ));
+    }
     use crate::scraper::transport::PolicyOverrides;
 
     #[test]

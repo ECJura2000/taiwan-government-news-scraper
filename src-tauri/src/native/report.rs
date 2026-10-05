@@ -8,12 +8,31 @@ use std::path::Path;
 /// Compare a completed week with distinct, successful historical weeks using
 /// the same policy. An empty week is only suspicious when this source normally
 /// publishes several in a comparable window.
+#[cfg(test)]
 pub(super) fn volume_anomalies(
     report_dir: &Path,
     range: DateRange,
     ruleset_hash: &str,
     counts: &HashMap<String, usize>,
     diagnostics: &[Value],
+) -> Vec<String> {
+    volume_anomalies_for_mode(
+        report_dir,
+        range,
+        ruleset_hash,
+        counts,
+        diagnostics,
+        crate::ContentMode::Full,
+    )
+}
+
+pub(super) fn volume_anomalies_for_mode(
+    report_dir: &Path,
+    range: DateRange,
+    ruleset_hash: &str,
+    counts: &HashMap<String, usize>,
+    diagnostics: &[Value],
+    content_mode: crate::ContentMode,
 ) -> Vec<String> {
     let completed_week = range.end < Local::now().with_timezone(&Taipei).date_naive();
     let mut histories: HashMap<String, Vec<usize>> = HashMap::new();
@@ -47,6 +66,11 @@ pub(super) fn volume_anomalies(
         };
         if report["status"] != "success"
             || report["relevance_policy"]["ruleset_hash"] != ruleset_hash
+            || report["content_mode"].as_str().unwrap_or("full")
+                != match content_mode {
+                    crate::ContentMode::Full => "full",
+                    crate::ContentMode::Summary => "summary",
+                }
         {
             continue;
         }
