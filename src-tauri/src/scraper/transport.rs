@@ -28,6 +28,7 @@ pub struct PolicyOverrides {
     pub cache: Option<bool>,
     pub max_response_bytes: Option<usize>,
     pub tls_fallback_host: Option<String>,
+    pub browser_fallback: Option<bool>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -38,6 +39,7 @@ pub struct TransportPolicy {
     pub cache: bool,
     pub max_response_bytes: usize,
     pub tls_fallback_host: Option<String>,
+    pub browser_fallback: bool,
 }
 
 impl TransportPolicy {
@@ -49,6 +51,7 @@ impl TransportPolicy {
             cache: true,
             max_response_bytes: DEFAULT_MAX_RESPONSE_BYTES,
             tls_fallback_host: None,
+            browser_fallback: false,
         }
     }
 
@@ -77,6 +80,9 @@ impl TransportPolicy {
         }
         if let Some(value) = &settings.tls_fallback_host {
             self.tls_fallback_host = Some(value.to_ascii_lowercase());
+        }
+        if let Some(value) = settings.browser_fallback {
+            self.browser_fallback = value;
         }
         self
     }
@@ -171,6 +177,34 @@ mod tests {
         assert!(!policy.allows_tls_fallback_for("http://www.mnd.gov.tw/news"));
         assert!(!policy.allows_tls_fallback_for("https://example.test/news"));
         assert!(!TransportPolicy::list_default().allows_tls_fallback_for(&route.url));
+    }
+
+    #[test]
+    fn unstable_sources_have_bounded_http_and_official_browser_fallbacks() {
+        for (name, seconds) in [("國防部", 12), ("客委會", 8), ("公路局", 8)] {
+            let source = find_source(name).unwrap();
+            let routes = routes_for(source);
+            let policy = TransportPolicy::for_route(source, &routes[0]);
+            assert_eq!(policy.timeout, Duration::from_secs(seconds));
+            assert_eq!(policy.retry_attempts, 1);
+            assert_eq!(routes.last().unwrap().kind, "browser");
+            assert!(routes.iter().all(|route| route.official));
+            if name != "國防部" {
+                assert!(routes
+                    .iter()
+                    .all(|route| TransportPolicy::for_route(source, route)
+                        .tls_fallback_host
+                        .is_none()));
+            }
+        }
+        let hakka = find_source("客委會").unwrap();
+        let detail = TransportPolicy::for_detail(
+            hakka,
+            "https://www.hakka.gov.tw/chhakka/app/data/view?id=25",
+        );
+        assert!(detail.browser_fallback);
+        assert!(detail.tls_fallback_host.is_none());
+        assert!(!TransportPolicy::for_detail(hakka, "https://other.test/news").browser_fallback);
     }
 
     #[test]

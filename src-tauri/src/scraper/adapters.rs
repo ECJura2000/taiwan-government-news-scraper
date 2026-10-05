@@ -3,6 +3,12 @@ use super::html::{self, DatedListSelectors};
 use super::{rss, special, NewsItem, ScraperError};
 use scraper::{Html, Selector};
 
+pub(crate) fn is_access_blocked_document(body: &str) -> bool {
+    let lower = body.to_ascii_lowercase();
+    lower.contains("incapsula incident id")
+        || (lower.contains("request unsuccessful") && lower.contains("_incapsula_resource"))
+}
+
 fn looks_like_feed(url: &str, body: &str) -> bool {
     let lower_url = url.to_ascii_lowercase();
     let trimmed = body
@@ -30,9 +36,9 @@ fn html_profile(source: &str) -> Option<DatedListSelectors<'static>> {
         "國防部" => DatedListSelectors {
             item: "div.news_list_box a.news_list",
             link: "a[href]",
-            title: "div.title.headline-4",
-            date: "div.date span.en",
-            summary: None,
+            title: "div.title.headline-4, div.title.headline-h4",
+            date: "div.date",
+            summary: Some("p.content"),
             department: None,
             category: Some("div.category.body-2"),
         },
@@ -262,6 +268,11 @@ pub fn parse_route(
     route: &SourceRoute,
     body: &str,
 ) -> Result<Vec<NewsItem>, ScraperError> {
+    if is_access_blocked_document(body) {
+        return Err(ScraperError::AccessBlocked(
+            "official endpoint returned an Incapsula access-denied document".into(),
+        ));
+    }
     match source {
         "國家公園署" | "國土管理署" => return special::parse_cms_json(source, body),
         "公路局" if route.parser == "thb-json" => return special::parse_thb_json(source, body),
@@ -341,10 +352,10 @@ pub fn parse_route(
 
     if let Some(profile) = html_profile(source) {
         let mut items = html::parse_dated_list(source, body, &route.url, &profile)?;
-        if source == "運動部" && items.is_empty() {
-            return Err(ScraperError::ParserRegression(
-                "運動部頁面未完成新聞資料渲染".into(),
-            ));
+        if matches!(source, "運動部" | "國防部" | "客委會") && items.is_empty() {
+            return Err(ScraperError::ParserRegression(format!(
+                "{source} 頁面存在列表但無法解析任何新聞日期與標題"
+            )));
         }
         if source == "環境部" {
             let trailing_date = regex::Regex::new(r"\s+\d{2,4}-\d{1,2}-\d{1,2}$")
@@ -382,7 +393,12 @@ pub fn parse_route(
 }
 
 pub fn parse_detail_full_text(source: &str, body: &str) -> String {
+    if is_access_blocked_document(body) {
+        return String::new();
+    }
     let source_selectors: &[&str] = match source {
+        "國防部" => &["div.maincontent"],
+        "客委會" => &["div.d_sub div.sub_list div.editor"],
         "數位發展部" | "數位產業署" | "資通安全署" => {
             &[".article1.cpArticle", ".cpArticle", "article"]
         }
@@ -434,6 +450,64 @@ pub fn parse_detail_full_text(source: &str, body: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn defense_and_hakka_detail_containers_exclude_page_navigation() {
+        for (source, article) in [
+            ("國防部", "<div class='maincontent'><p>第一段內文</p><p>最後一段內文</p></div>"),
+            ("客委會", "<div class='d_sub'><div class='sub_list'><div class='editor'><p>第一段內文</p><p>最後一段內文</p></div></div></div>"),
+        ] {
+            let body = format!("<nav>導覽選單</nav>{article}<footer>頁尾資訊</footer>");
+            let text = parse_detail_full_text(source, &body);
+            assert_eq!(text, "第一段內文 最後一段內文");
+        }
+    }
+
+    #[test]
+    fn defense_current_and_legacy_lists_resolve_root_base_links() {
+        let source = crate::scraper::catalog::find_source("國防部").unwrap();
+        let route = crate::scraper::catalog::routes_for(source).remove(0);
+        for (title_class, date) in [
+            ("headline-h4", "115.10.02"),
+            ("headline-4", "<span class='en'>2026.10.02</span>"),
+        ] {
+            let body = format!("<base href='/'><div class='news_list_box'><a class='news_list' href='news/pressrelease/123'><div class='date'>{date}</div><div class='title {title_class}'>測試新聞</div><p class='content'>列表摘要</p></a></div>");
+            let items = parse_route("國防部", &route, &body).unwrap();
+            assert_eq!(items.len(), 1);
+            assert_eq!(items[0].date, "2026-10-02");
+            assert_eq!(
+                items[0].link,
+                "https://www.mnd.gov.tw/news/pressrelease/123"
+            );
+            assert_eq!(items[0].summary, "列表摘要");
+        }
+        let body = "<div class='news_list_box'><a class='news_list' href='/1'><div class='title headline-h4'>新聞</div><div class='date'>格式已改</div></a></div>";
+        assert!(matches!(
+            parse_route("國防部", &route, body),
+            Err(ScraperError::ParserRegression(_))
+        ));
+    }
+
+    #[test]
+    fn access_denied_is_not_a_parser_failure_or_resource_script_false_positive() {
+        let source = crate::scraper::catalog::find_source("公路局").unwrap();
+        for route in crate::scraper::catalog::routes_for(source) {
+            assert!(matches!(
+                parse_route(
+                    "公路局",
+                    &route,
+                    "<html>Request unsuccessful<iframe src='/_Incapsula_Resource'></iframe></html>"
+                ),
+                Err(ScraperError::AccessBlocked(_))
+            ));
+        }
+        assert!(is_access_blocked_document(
+            "<html>Incapsula incident ID: 123</html>"
+        ));
+        assert!(!is_access_blocked_document(
+            "<script src='/_Incapsula_Resource'></script><main>新聞</main>"
+        ));
+    }
 
     #[test]
     fn declared_foundation_selectors_parse_date_title_and_link() {

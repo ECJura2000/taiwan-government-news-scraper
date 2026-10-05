@@ -3,14 +3,14 @@
 [![Rust quality](https://github.com/ECJura2000/taiwan-government-news-scraper/actions/workflows/test.yml/badge.svg)](https://github.com/ECJura2000/taiwan-government-news-scraper/actions/workflows/test.yml)
 [![Tauri v2](https://github.com/ECJura2000/taiwan-government-news-scraper/actions/workflows/tauri-v2.yml/badge.svg)](https://github.com/ECJura2000/taiwan-government-news-scraper/actions/workflows/tauri-v2.yml)
 
-v2.1.23 是完整 Rust 版；目前來源目錄含 88 個政府機關及主管財團法人來源。CLI、Tauri GUI、RSS／HTML／JSON、Chrome CDP、品質檢查、相關性規則、JSON schema v4 與 Excel 都由同一個 Rust application service 執行。新增法人及官方入口的查核依據見 [主管財團法人來源查核](docs/foundation-source-audit.md)。Excel 新聞日期使用斜線格式，新聞全文欄位會優先寫入官方完整內容；「開啟原文」欄會顯示「機關官網：完整網址」，並以同一網址建立可點擊的 Excel 超連結。經濟部改用官方 RSS 全文並保留瀏覽器列表頁備援；文策院採官方 Chrome CDP 路由，國防部僅在官方主機的 TLS 問題下使用瀏覽器備援。JSON 報告會記錄全文覆蓋率與摘要 fallback 數；入選新聞排序採關聯等級、規則分數、BM25、日期的穩定順序。v2.0.0 保留在 GitHub Releases 作為 rollback。
+v2.1.24 是完整 Rust 版；目前來源目錄含 88 個政府機關及主管財團法人來源。CLI、Tauri GUI、RSS／HTML／JSON、Chrome CDP、品質檢查、相關性規則、JSON schema v4 與 Excel 都由同一個 Rust application service 執行。新增法人及官方入口的查核依據見 [主管財團法人來源查核](docs/foundation-source-audit.md)。Excel 新聞日期使用斜線格式，新聞全文欄位會優先寫入官方完整內容；「開啟原文」欄會顯示「機關官網：完整網址」，並以同一網址建立可點擊的 Excel 超連結。經濟部改用官方 RSS 全文並保留瀏覽器列表頁備援；文策院採官方 Chrome CDP 路由，國防部僅在官方主機的 TLS 問題下使用瀏覽器備援。JSON 報告會記錄全文覆蓋率與摘要 fallback 數；入選新聞排序採關聯等級、規則分數、BM25、日期的穩定順序。v2.0.0 保留在 GitHub Releases 作為 rollback。
 
 ## 下載
 
-從 [GitHub Releases](https://github.com/ECJura2000/taiwan-government-news-scraper/releases) 下載 `v2.1.23`，並先用 `SHA256SUMS.txt` 驗證。
+從 [GitHub Releases](https://github.com/ECJura2000/taiwan-government-news-scraper/releases) 下載 `v2.1.24`，並先用 `SHA256SUMS.txt` 驗證。
 
-- Windows 一般使用者：下載 `TaiwanGovernmentNews-Setup-v2.1.23.exe`。
-- Windows 免安裝版：下載 `taiwan-government-news-v2.1.23-windows-portable.zip`，完整解壓後雙擊頂層的 `各機關新聞整理.exe`；進階 CLI 位於 `cli/news-scraper.exe`。
+- Windows 一般使用者：下載 `TaiwanGovernmentNews-Setup-v2.1.24.exe`。
+- Windows 免安裝版：下載 `taiwan-government-news-v2.1.24-windows-portable.zip`，完整解壓後雙擊頂層的 `各機關新聞整理.exe`；進階 CLI 位於 `cli/news-scraper.exe`。
 - macOS：下載 `macos-arm64`（Apple Silicon）或 `macos-x64`（Intel）ZIP；解壓縮後頂層會有 `各機關新聞整理.app`、`解除封鎖並開啟.command` 與 CLI `news-scraper`。
 - Linux：下載對應平台 ZIP；CLI 在 ZIP 頂層，GUI installer 位於 `installers/`。
 
@@ -32,7 +32,17 @@ news-scraper collect --start-date 2026-08-01 --end-date 2026-08-06
 news-scraper collect --max-workers 8 --dedupe-affiliated
 news-scraper collect --output-dir ./新聞搜集區 --report-dir ./新聞搜集區/執行紀錄
 news-scraper collect --fail-on-source-error
+news-scraper collect --content-mode summary
+news-scraper collect --prefilter-mode shadow
 ```
+
+預設 `--content-mode full` 沿用全文抓取、正式分類及 BM25。`summary` 收錄所有通過日期、新聞品質及去重規則的文章，只輸出來源、日期、標題、連結與列表摘要；不補摘要、不抓全文、不執行主題排除或分類。Excel 維持 17 欄，第六欄改標「列表摘要」，其餘分類／分數欄留空；檔名加 `_摘要`，避免覆蓋全文版本。JSON 的 `news_items` 保留逐篇列表摘要、route、detail_status 與 classification；摘要模式分類欄為 null，`evaluated=false`。
+
+`--prefilter-mode shadow` 僅適用全文模式，仍抓取全部全文並產生正式結果。短於 80 字元或缺少摘要的文章列為 uncertain 並保留候選；政策名稱、核心／脈絡／加權詞及主管機關命中列為 candidate，其餘只作 rejected 預測。報告 `prefilter` 記錄規則雜湊、候選／排除數、逐篇高相關與可能相關漏判及提前去重差異。`detail_requests_avoided=0` 表示本期未真正節流；預估節省另記為 `simulated_detail_requests_avoided`。不提供 `on` 模式；summary 與 shadow 同用會在網路存取前拒絕。
+
+`performance` 保存各階段耗時與漏斗筆數。來源階段時間為並行任務時間加總，不能當作整體 wall time 相加；整體來源處理時間為 `collection_wall_seconds`。`quality.mode_comparison` 在 full 執行用同一份 discovery 模擬摘要收錄結果，逐篇列出主題完全排除或去重所致差異；summary 沒有全文 control 時明確記為 unavailable。歷史來源品質基準按 content_mode 分開，舊報告視為 full。
+
+正式條件式抓全文前須累積 3–5 個正常、可比週次，確認 shadow 高相關零漏判、可能相關漏判逐篇審查，並以同來源、日期與規則的控制組驗證總耗時至少下降 20%、請求量下降且來源失敗／fallback／429／parser regression 未惡化。Shadow 本身不會帶來全文請求節省；快取、並行度與正式節流留待後續階段。
 
 未指定日期時，以 Asia/Taipei 當日計算：週一抓前一個完整週，其餘日期抓當週週一至週日。`--date` 使用指定日期所在週；它不能和 `--start-date/--end-date` 同時使用。
 

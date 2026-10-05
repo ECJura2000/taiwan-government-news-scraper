@@ -36,7 +36,15 @@ pub async fn fetch_rendered_html_after(
     url: &str,
     page_script: Option<&str>,
 ) -> Result<String, String> {
-    fetch_rendered_html_after_with_certificate_policy(url, page_script, false).await
+    fetch_rendered_html_after_with_certificate_policy(url, page_script, false, None).await
+}
+
+pub async fn fetch_rendered_html_after_with_timeout(
+    url: &str,
+    page_script: Option<&str>,
+    timeout: Duration,
+) -> Result<String, String> {
+    fetch_rendered_html_after_with_certificate_policy(url, page_script, false, Some(timeout)).await
 }
 
 /// Fetch a rendered page while accepting an invalid certificate for the single
@@ -45,13 +53,14 @@ pub async fn fetch_rendered_html_after_allow_invalid_certificates(
     url: &str,
     page_script: Option<&str>,
 ) -> Result<String, String> {
-    fetch_rendered_html_after_with_certificate_policy(url, page_script, true).await
+    fetch_rendered_html_after_with_certificate_policy(url, page_script, true, None).await
 }
 
 async fn fetch_rendered_html_after_with_certificate_policy(
     url: &str,
     page_script: Option<&str>,
     allow_invalid_certificates: bool,
+    timeout: Option<Duration>,
 ) -> Result<String, String> {
     // Keep browser work bounded: two independent profiles let a slow fallback
     // run alongside another dynamic source without starting an unbounded number
@@ -71,7 +80,16 @@ async fn fetch_rendered_html_after_with_certificate_policy(
         None
     };
     let (mut child, profile_dir, endpoint) = launch_browser(allow_invalid_certificates).await?;
-    let result = fetch_from_target(&endpoint, url, page_script, expected_host.as_deref()).await;
+    // Scope the deadline inside the owner so timeout still kills Chrome and
+    // removes its profile. Semaphore queueing and browser startup are separate.
+    let fetch = fetch_from_target(&endpoint, url, page_script, expected_host.as_deref());
+    let result = if let Some(timeout) = timeout {
+        tokio::time::timeout(timeout, fetch)
+            .await
+            .unwrap_or_else(|_| Err(format!("Chrome CDP 頁面逾時（{} 秒）", timeout.as_secs())))
+    } else {
+        fetch.await
+    };
     let _ = child.kill().await;
     let _ = tokio::fs::remove_dir_all(profile_dir).await;
     result
@@ -232,8 +250,13 @@ async fn fetch_from_target(
         // `_Incapsula_Resource`; only the actual challenge/error document is
         // a failure. Treating the resource script itself as blocked causes
         // false positives after the browser has passed the challenge.
-        let blocked =
-            html.contains("Request unsuccessful") || html.contains("incapsula incident id");
+        let blocked = crate::scraper::adapters::is_access_blocked_document(html);
+        if blocked && html.to_ascii_lowercase().contains("request unsuccessful") {
+            let _ = socket.close(None).await;
+            return Err(
+                "access_blocked: Incapsula returned an explicit access-denied document".into(),
+            );
+        }
         if !blocked {
             if let Some(expected_host) = expected_host {
                 send_command(

@@ -442,6 +442,8 @@ async fn live_cli_file_and_gui_snapshot_produce_same_news() {
         max_workers: 1,
         dedupe_affiliated: false,
         fail_on_source_error: true,
+        content_mode: Default::default(),
+        prefilter_mode: Default::default(),
     };
     let cli = native::run(&options, Arc::new(AtomicBool::new(false)))
         .await

@@ -67,6 +67,15 @@ pub fn parse_dated_list(
         })?;
     let base = Url::parse(base_url)
         .map_err(|error| ScraperError::ParserRegression(format!("invalid base URL: {error}")))?;
+    // Official lists can publish document-relative URLs under a root base.
+    // Do not allow a supplied base to change the trusted source origin.
+    let base = document
+        .select(&Selector::parse("base[href]").expect("valid base selector"))
+        .next()
+        .and_then(|element| element.value().attr("href"))
+        .and_then(|href| base.join(href).ok())
+        .filter(|candidate| candidate.origin() == base.origin())
+        .unwrap_or(base);
     let rows: Vec<_> = document.select(&item_selector).collect();
     if rows.is_empty() {
         return Err(ScraperError::ParserRegression(format!(
@@ -191,6 +200,14 @@ pub fn parse_link_list(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn dated_list_ignores_cross_origin_document_base() {
+        let items = parse_dated_list("測試", "<base href='https://other.test/'><article><a href='1'>新聞</a><time>2026-10-02</time></article>", "https://example.test/news/list", &DatedListSelectors {
+            item: "article", link: "a", title: "a", date: "time", summary: None, department: None, category: None,
+        }).unwrap();
+        assert_eq!(items[0].link, "https://example.test/news/1");
+    }
 
     #[test]
     fn parses_and_resolves_links() {

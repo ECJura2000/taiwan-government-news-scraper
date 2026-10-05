@@ -24,6 +24,17 @@
 
 驗收時以固定 mock HTTP 案例檢查重試、429 `Retry-After`、快取、逾時、主機並行與大小限制；即時 smoke 的網路故障須和解析／輸出回歸分開記錄。來源數驗收依現行核准目錄為 **88**，不是舊計畫的 73。
 
+## 列表穩定性修正（2026-10-05）
+
+- 國防部第一個 HTTP route 為 12 秒／1 次，避免首次連線拖滿通用 60 秒。解析相容 `headline-h4`／`headline-4` 與民國／西元日期，保留列表摘要；同來源的 `<base href>` 用於解析相對新聞連結，跨來源 base 不採用。列表存在卻無法解析日期與標題時，明確回報解析異常並嘗試備援。
+- 客委會 HTTP route 為 8 秒／1 次，失敗後使用同一官方網址的系統瀏覽器 route；不擴大不安全 TLS 例外。詳細頁另以精確主機 `www.hakka.gov.tw` 宣告 `browser_fallback: true`，HTTP 失敗或解析不到內文時才補用 Chrome，並在 `source_diagnostics[].detail_fetch.browser_fallbacks` 保留原因與結果。其他主機不啟用此備援，摘要模式也不執行。HTTP 與瀏覽器頁面處理均採詳細頁政策的 8 秒期限；瀏覽器佇列及啟動時間另計，逾時後仍由擁有者清理程序與 profile。
+- 公路局依序嘗試官方 HTML、列表所連結的官方 JSON、系統瀏覽器。兩個 HTTP route 均為 8 秒／1 次；JSON 最新日期早於查詢週時不接受為成功空集合，而改試下一路由。JSON 與瀏覽器備援的覆蓋仍受官方當下公布的列表範圍限制。
+- 真正的 Incapsula 拒絕頁回報 `access_blocked`，不是 `parser_regression`。僅出現防護資源 script 不視為阻擋；瀏覽器遇到明確 `Request unsuccessful` 拒絕頁即停止，不再等 30 秒或重試該拒絕頁。不繞過 CAPTCHA 或存取控制。
+
+以上改動不保證遠端網站永不拒絕連線。實測必須檢查 JSON 的各次 route、最終失敗來源與品質警示，不以程序 exit code 判定全數恢復。
+
+國防部全文使用新版 `div.maincontent`；客委會全文使用 `div.d_sub div.sub_list div.editor`，避免把導覽列與頁尾當成新聞內文。列表成功不代表全文補取成功，應另外檢查 `detail_fetch.recovered`／`failed_or_empty`。
+
 重構後於 2026-09-21 週以 Rust CLI 限定六個特殊來源（國防部、國家資通安全研究院、勞動力發展署、國家公園署、法務部、農業部）驗證：`status=success`、7 則新聞、無失敗來源／異常／品質警示，Excel 正常產生。國家資通安全研究院第一個 HTTP route 遇到 `runner_network`，官方瀏覽器 route 接續成功；`error_counts.connection=1`、`source_health.unstable_count=1`。國防部的受限 TLS fallback 使用記錄使 `ssl_fallback_host_count=1`。這些恢復紀錄不能誤述成「無錯誤」。
 
 在 NPS 前綴解析移入來源元件後，再以國家公園署與國防部重跑同一固定週：兩次報告均為 `success`、2 則新聞、無失敗／異常／品質警示，來源嘗試的 route、篇數與分類相同（完成順序可因並行而變）。兩份 Excel 的第一工作表 XML 與 workbook XML SHA-256 相同；整個 ZIP 的位元組雜湊不同，不應據此誤判內容回歸。
