@@ -116,7 +116,6 @@ pub fn parse_dated_list(
             .unwrap_or_default();
         let selected_label = selectors
             .department
-            .or(selectors.category)
             .and_then(|selector| Selector::parse(selector).ok())
             .and_then(|selector| row.select(&selector).next())
             .map(clean_text)

@@ -1124,6 +1124,12 @@ mod tests {
 
     #[test]
     fn excel_agency_paths_match_affiliated_python_export() {
+        for source in ["偵防分署", "艦隊分署"] {
+            assert_eq!(
+                excel_agency_path(source, "海洋委員會海巡署"),
+                ("海委會".into(), format!("海巡署 / {source}"))
+            );
+        }
         assert_eq!(
             excel_agency_path("國土管理署", "國土管理署／都市基礎工程組"),
             ("內政部".into(), "國土管理署 / 都市基礎工程組".into())

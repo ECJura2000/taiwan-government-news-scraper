@@ -134,6 +134,13 @@ fn normalize_department(value: &str) -> String {
         }
         normalized = updated;
     }
+    // Site-wide copyright notices identify ownership, not the publishing unit.
+    // Keep structured rights metadata such as "版權來自：經濟部產業技術司".
+    let copyright_notice = Regex::new(r"版權所有|(?i:copyright|all\s+rights\s+reserved)|©|&copy;")
+        .expect("valid copyright notice regex");
+    if copyright_notice.is_match(&normalized) {
+        return String::new();
+    }
     let compact = normalized.split_whitespace().collect::<String>();
     if internal_code.is_match(&normalized)
         || compact.starts_with("http://")
@@ -300,6 +307,26 @@ mod tests {
     }
 
     #[test]
+    fn copyright_notices_do_not_mask_a_later_publishing_unit() {
+        for notice in [
+            "交通部高速公路局全球資訊網 版權所有;Copyright&amp;copy; 2018 Freeway Bureau,MOTC All rights reserved.",
+            "Copyright © 2018 Freeway Bureau",
+            "ALL RIGHTS RESERVED",
+        ] {
+            let xml = format!(
+                "<rss><channel><item><title>公路新聞</title><link>https://example.test/news</link><rights>{notice}</rights><publisher>南區養護工程分局</publisher></item></channel></rss>"
+            );
+            let items = parse_feed("高速公路局", &xml).unwrap();
+            assert_eq!(items[0].department, "南區養護工程分局");
+        }
+        let xml = "<rss><channel><item><title>經濟新聞</title><link>https://example.test/news</link><rights>版權來自：經濟部產業技術司</rights></item></channel></rss>";
+        assert_eq!(
+            parse_feed("經濟部", xml).unwrap()[0].department,
+            "經濟部產業技術司"
+        );
+    }
+
+    #[test]
     fn normalizes_summary_department_and_url_metadata() {
         let items = parse_feed(
             "金管會",
@@ -318,6 +345,6 @@ mod tests {
             r#"<rss><channel><item><title>公路新聞</title><link>https://example.test/1</link><rights>交通部高速公路局全球資訊網 版權所有</rights><pubDate>2026-08-06</pubDate></item></channel></rss>"#,
         )
         .unwrap();
-        assert_eq!(rights[0].department, "交通部高速公路局全球資訊網 版權所有");
+        assert_eq!(rights[0].department, "高速公路局");
     }
 }

@@ -146,6 +146,12 @@ pub(super) fn excel_agency_path(source: &str, department: &str) -> (String, Stri
         .map(str::trim)
         .filter(|value| !value.is_empty())
     {
+        let part = if part == "海洋委員會海巡署" && path.iter().any(|unit| unit == "海巡署")
+        {
+            "海巡署"
+        } else {
+            part
+        };
         if !path.iter().any(|existing| existing == part) {
             path.push(part.to_owned());
         }

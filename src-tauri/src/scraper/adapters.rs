@@ -583,6 +583,7 @@ mod tests {
             assert_eq!(items[0].title, title);
             assert_eq!(items[0].link, link);
             assert_eq!(items[0].category, category);
+            assert_eq!(items[0].department, source);
         }
     }
 
