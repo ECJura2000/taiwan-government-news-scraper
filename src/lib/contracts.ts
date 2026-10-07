@@ -18,6 +18,10 @@ export interface QualitySummary {
   summary_coverage_rate?: number;
   full_text_count?: number;
   full_text_coverage_rate?: number;
+  description_fallback_count?: number;
+  detail_fetch_attempted_count?: number;
+  detail_fetch_failed_or_empty_count?: number;
+  content_warnings?: string[];
   alert_reasons?: string[];
   source_counts?: Record<string, number>;
 }
@@ -69,6 +73,7 @@ export interface SourceDiagnostic {
 }
 
 export interface RunSummary {
+  content_mode?: "full" | "summary";
   status: RunStatus;
   report_schema_version?: number;
   started_at?: string;

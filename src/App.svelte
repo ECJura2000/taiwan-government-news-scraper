@@ -390,7 +390,17 @@
           <div class="metric-card"><span>失敗來源</span><strong>{summary.source_health.failed_count}</strong></div>
         {/if}
         <div class="metric-card"><span>品質告警</span><strong>{summary.quality.alert_reasons?.length ?? 0}</strong></div>
+        {#if summary.content_mode !== "summary" && summary.quality.full_text_count !== undefined}
+          <div class="metric-card"><span>取得全文</span><strong>{summary.quality.full_text_count} / {summary.news_count}</strong><small>覆蓋率 {((summary.quality.full_text_coverage_rate ?? 0) * 100).toFixed(1)}%</small></div>
+          <div class="metric-card"><span>以摘要補位</span><strong>{summary.quality.description_fallback_count ?? 0}</strong></div>
+          <div class="metric-card"><span>全文補取失敗或空白</span><strong>{summary.quality.detail_fetch_failed_or_empty_count ?? 0} / {summary.quality.detail_fetch_attempted_count ?? 0}</strong></div>
+        {/if}
       </div>
+      {#if summary.content_mode === "summary"}
+        <p>本次使用摘要模式，未補取全文。</p>
+      {:else if summary.quality.content_warnings?.includes("low_full_text_coverage")}
+        <p role="status">全文覆蓋率低於 50%；Excel 已標示以列表摘要補位及未取得內容的新聞。來源列表成功不代表全文取得成功。</p>
+      {/if}
       {#if activeHealthPanel && activeHealthDetails.length > 0}
         <section class="health-details" id="source-health-details" aria-live="polite">
           <div class="health-details-heading">

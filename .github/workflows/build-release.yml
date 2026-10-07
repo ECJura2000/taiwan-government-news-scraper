@@ -45,6 +45,9 @@ jobs:
     timeout-minutes: 90
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
       - name: Install Linux Tauri and browser dependencies
         run: |
           sudo apt-get update
@@ -68,7 +71,6 @@ jobs:
             --max-workers 8 | tee source-health/summary.jsonl
           report="$(find source-health/reports -name 'news_scraper_run_*.json' -type f | sort | tail -n 1)"
           jq -e '.report_schema_version == 4 and .selected_source_count == 88 and (.news_count > 0) and (.quality.alert_reasons | length == 0)' "$report"
-          jq -e '[.source_diagnostics[] | select(.status == "failed") | .failure_class] | all(. == "source_outage" or . == "runner_network" or . == "tls_certificate")' "$report"
           cp "$report" source-health/source-health-report.json
           mkdir -p source-health/retries
           jq -r '.failed_sources[]' "$report" | while IFS= read -r source; do
@@ -85,7 +87,6 @@ jobs:
             retry_report="$(find "source-health/retries/$safe_name/reports" -name 'news_scraper_run_*.json' -type f | sort | tail -n 1)"
             test -n "$retry_report"
             jq -e '.selected_source_count == 1 and (.quality.alert_reasons | length == 0)' "$retry_report"
-            jq -e '[.source_diagnostics[] | select(.status == "failed") | .failure_class] | all(. == "source_outage" or . == "runner_network" or . == "tls_certificate")' "$retry_report"
             jq -n \
               --arg source "$source" \
               --argjson exit_code "$retry_exit" \
@@ -93,6 +94,7 @@ jobs:
               '{source: $source, exit_code: $exit_code, retry_status: $report[0].status, failed_sources: $report[0].failed_sources, failure_class_counts: $report[0].failure_class_counts}' \
               > "source-health/retries/$safe_name/retry-evidence.json"
           done
+          node scripts/release-source-gate.mjs "$report" source-health/retries source-health/final-gate.json
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: always()
         with:

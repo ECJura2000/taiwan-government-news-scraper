@@ -33,6 +33,9 @@ jobs:
     runs-on: ${{ matrix.os }}
     timeout-minutes: 90
     steps:
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
       - name: Download and verify published Windows archive
         if: runner.os == 'Windows'
         shell: pwsh
@@ -134,13 +137,30 @@ jobs:
           }
       - name: Run Rust CLI smoke
         shell: bash
+        env:
+          RELEASE_TAG: ${{ inputs.tag }}
         run: |
-          "$CLI_PATH" --version
+          test "$("$CLI_PATH" --version)" = "news-scraper ${RELEASE_TAG#v}"
           test "$("$CLI_PATH" list-sources | wc -l | tr -d ' ')" = 88
           mkdir -p live-output live-reports
           "$CLI_PATH" collect --sources 財政部 --output-dir live-output --report-dir live-reports --fail-on-source-error | tee live-summary.jsonl
           report="$(find live-reports -name 'news_scraper_run_*.json' -type f | sort | tail -n 1)"
           jq -e '.report_schema_version == 4 and .selected_source_count == 1 and (.failed_sources | length == 0)' "$report"
+          node --input-type=module - "$report" <<'JS'
+          import fs from 'node:fs';
+          import path from 'node:path';
+          import crypto from 'node:crypto';
+          const reportPath = process.argv[2];
+          const report = JSON.parse(fs.readFileSync(reportPath, 'utf8'));
+          const latest = JSON.parse(fs.readFileSync(path.join(path.dirname(reportPath), 'latest_run.json'), 'utf8'));
+          const complete = JSON.parse(fs.readFileSync(report.completion_file, 'utf8'));
+          if (JSON.stringify(latest) !== JSON.stringify(complete) || report.run_id !== latest.run_id || path.resolve(reportPath) !== path.resolve(latest.report_file) || report.output_file !== latest.output_file) throw Error('Run pair mismatch');
+          for (const [file, hash] of [['output_file', 'excel_sha256'], ['report_file', 'report_sha256']]) {
+            const actual = crypto.createHash('sha256').update(fs.readFileSync(latest[file])).digest('hex');
+            if (actual !== latest[hash]) throw Error(`Checksum mismatch: ${file}`);
+          }
+          console.log(`Verified completed run ${report.run_id}`);
+          JS
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: always()
         with:

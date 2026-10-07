@@ -1,5 +1,14 @@
 # Changelog
 
+## 2.1.26 - 2026-10-07
+
+- Save each Excel/JSON run with a shared unique ID, completion manifest, SHA-256 hashes and separate full/summary latest pointers; roll back owned files on publication failure or cancellation.
+- Show full-text coverage in the GUI and label list-summary substitution or missing content in Excel, preserving the existing relevance colors and 17 columns.
+- Retry failed release sources before classifying them, enforce final failure count/rate ceilings and require critical sources to recover.
+- Validate catalog and transport settings on load, including numeric ranges, routes, parsers, selectors, URLs, host names and the restricted Ministry of National Defense TLS exception.
+- Add parser-to-JSON-to-Excel and actual CLI artifact contract tests, including repeated weeks, cancellation and failed publication.
+- Update the transitive source-map-js dependency to 1.2.2 for its newly published security fix.
+
 ## 2.1.17 - 2026-09-21
 
 - Read the recent National Park Service JSON through its official byte-range response, with automatic full-download fallback when the requested date range is not covered.

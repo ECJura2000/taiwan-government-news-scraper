@@ -6,6 +6,7 @@ use std::time::Duration;
 const DEFAULT_MAX_RESPONSE_BYTES: usize = 64 * 1024 * 1024;
 
 #[derive(Debug, Clone, Default, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct TransportConfig {
     #[serde(default)]
     pub list: PolicyOverrides,
@@ -21,6 +22,7 @@ pub struct DetailPolicy {
 }
 
 #[derive(Debug, Clone, Default, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct PolicyOverrides {
     pub timeout_seconds: Option<u64>,
     pub retry_attempts: Option<usize>,
@@ -64,19 +66,19 @@ impl TransportPolicy {
 
     fn overlay(mut self, settings: &PolicyOverrides) -> Self {
         if let Some(value) = settings.timeout_seconds {
-            self.timeout = Duration::from_secs(value.max(1));
+            self.timeout = Duration::from_secs(value);
         }
         if let Some(value) = settings.retry_attempts {
-            self.retry_attempts = value.max(1);
+            self.retry_attempts = value;
         }
         if let Some(value) = settings.host_concurrency {
-            self.host_concurrency = value.max(1);
+            self.host_concurrency = value;
         }
         if let Some(value) = settings.cache {
             self.cache = value;
         }
         if let Some(value) = settings.max_response_bytes {
-            self.max_response_bytes = value.max(1);
+            self.max_response_bytes = value;
         }
         if let Some(value) = &settings.tls_fallback_host {
             self.tls_fallback_host = Some(value.to_ascii_lowercase());
