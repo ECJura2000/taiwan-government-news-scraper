@@ -110,7 +110,13 @@ pub(super) fn excel_row(item: &NewsItem, result: &serde_json::Value) -> (Vec<Str
         department_path,
         item.title.clone(),
         source_link.clone(),
-        item.full_text.clone(),
+        if !item.full_text.is_empty() {
+            item.full_text.clone()
+        } else if !item.summary.is_empty() {
+            format!("【列表摘要；未取得全文】\n{}", item.summary)
+        } else {
+            "【未取得全文或摘要】".into()
+        },
         item.date_source.clone(),
         if result["topics"]
             .as_array()
@@ -682,7 +688,7 @@ pub(super) fn write_outputs(
         .map_err(|error| format!("無法建立 JSON 報告資料夾 {}：{error}", report_dir.display()))?;
     let stamp = Local::now().format("%Y%m%d_%H%M%S_%6f").to_string();
     let workbook_path = output_dir.join(format!(
-        "本週新聞整理（{}至{}）{}.xlsx",
+        "本週新聞整理（{}至{}）_{stamp}{}.xlsx",
         roc_compact(date_range.start),
         roc_compact(date_range.end),
         if options.content_mode == crate::ContentMode::Summary {
@@ -842,6 +848,7 @@ pub(super) fn write_outputs(
     )?;
     let policy_summary = profile.summary();
     let mut version_rows = policy_version_rows(&policy_summary);
+    version_rows.push(vec!["執行編號".into(), stamp]);
     version_rows.extend(mapping);
     for (label, key) in [
         ("分詞器版本", "tokenizer"),

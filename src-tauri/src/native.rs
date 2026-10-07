@@ -78,7 +78,10 @@ pub async fn run_with_progress(
     } else {
         options.sources.clone()
     };
-    let max_workers = options.max_workers.max(1) as usize;
+    if options.max_workers == 0 {
+        return Err("max_workers 必須大於零".into());
+    }
+    let max_workers = options.max_workers as usize;
     let total = selected.len() as u32;
     let date_range = resolve_date_range(options)?;
     let cache_root = PathBuf::from(options.output_dir.as_deref().unwrap_or(DEFAULT_OUTPUT_DIR));
@@ -332,7 +335,9 @@ pub async fn run_with_progress(
         return Err("分類結果與新聞筆數不一致".into());
     }
     let excel_started = Instant::now();
-    let paths = write_outputs(options, &classified, date_range, &profile)?;
+    let transaction = OutputTransaction::new(options)?;
+    let staged_paths = write_outputs(&transaction.options, &classified, date_range, &profile)?;
+    let paths = transaction.final_paths(&staged_paths)?;
     let excel_write_seconds = excel_started.elapsed().as_secs_f64();
     let finished_at = Utc::now();
     let duplicate_ratio = duplicate_count as f64 / input_count.max(1) as f64;
@@ -449,12 +454,11 @@ pub async fn run_with_progress(
             .iter()
             .zip(&classifications)
             .map(|(item, classification)| {
-                let record = item_records.get(&pipeline::key(item));
-                json!({"source":item.source, "date":item.date, "title":item.title, "link":item.link,
-                "list_summary":record.and_then(|record| record.get("list_summary")),
-                "detail_status":record.and_then(|record| record.get("detail_status")),
-                "route":record.and_then(|record| record.get("route")),
-                "classification":classification})
+                news_record(
+                    item,
+                    classification,
+                    item_records.get(&pipeline::key(item)).copied(),
+                )
             })
             .collect::<Vec<_>>()),
         status: status.into(),
@@ -484,6 +488,7 @@ pub async fn run_with_progress(
             "summary_coverage_rate": summary_coverage_rate,
             "full_text_count": full_text_count,
             "full_text_coverage_rate": full_text_coverage_rate,
+            "content_warnings": if options.content_mode == crate::ContentMode::Full && items.len() >= 10 && full_text_coverage_rate < 0.5 { vec!["low_full_text_coverage"] } else { Vec::<&str>::new() },
             "source_full_text_counts": source_full_text_counts,
             "detail_fetch_attempted_count": detail_attempted,
             "detail_fetch_recovered_count": detail_recovered,
@@ -532,8 +537,152 @@ pub async fn run_with_progress(
             message: Some("正在寫入 JSON 執行報告".into()),
         });
     }
-    report::write_json_report(&summary, &paths.1)?;
+    if cancelled.load(Ordering::SeqCst) {
+        return Err("執行已取消".into());
+    }
+    transaction.commit(&summary, &staged_paths, &paths)?;
     Ok(summary)
+}
+
+fn news_record(
+    item: &NewsItem,
+    classification: &serde_json::Value,
+    record: Option<&serde_json::Value>,
+) -> serde_json::Value {
+    json!({"source":item.source, "date":item.date, "title":item.title, "link":item.link,
+        "department":item.department, "category":item.category,
+        "summary":item.summary, "full_text":item.full_text,
+        "content_status": if !item.full_text.is_empty() { "full_text" } else if !item.summary.is_empty() { "summary_only" } else { "missing" },
+        "list_summary":record.and_then(|value| value.get("list_summary")),
+        "detail_status":record.and_then(|value| value.get("detail_status")),
+        "route":record.and_then(|value| value.get("route")),
+        "classification":classification})
+}
+
+// A completion marker is the commit record. Only unique, owned paths are
+// rolled back; a failed run cannot overwrite a previous week's artifacts.
+struct OutputTransaction {
+    options: crate::RunOptions,
+    output_dir: PathBuf,
+    report_dir: PathBuf,
+    _excel_stage: tempfile::TempDir,
+    _report_stage: tempfile::TempDir,
+}
+
+impl OutputTransaction {
+    fn new(options: &crate::RunOptions) -> Result<Self, String> {
+        let output_dir = PathBuf::from(options.output_dir.as_deref().unwrap_or(DEFAULT_OUTPUT_DIR));
+        let report_dir = options
+            .report_dir
+            .as_deref()
+            .map(PathBuf::from)
+            .unwrap_or_else(|| output_dir.join("執行紀錄"));
+        for directory in [&output_dir, &report_dir] {
+            std::fs::create_dir_all(directory)
+                .map_err(|e| format!("無法建立 {}：{e}", directory.display()))?;
+        }
+        let excel_stage = tempfile::Builder::new()
+            .prefix(".run-")
+            .tempdir_in(&output_dir)
+            .map_err(|e| e.to_string())?;
+        let report_stage = tempfile::Builder::new()
+            .prefix(".run-")
+            .tempdir_in(&report_dir)
+            .map_err(|e| e.to_string())?;
+        let mut staged = options.clone();
+        staged.output_dir = Some(excel_stage.path().to_string_lossy().into_owned());
+        staged.report_dir = Some(report_stage.path().to_string_lossy().into_owned());
+        Ok(Self {
+            options: staged,
+            output_dir,
+            report_dir,
+            _excel_stage: excel_stage,
+            _report_stage: report_stage,
+        })
+    }
+
+    fn final_paths(&self, staged: &(PathBuf, PathBuf)) -> Result<(PathBuf, PathBuf), String> {
+        Ok((
+            self.output_dir
+                .join(staged.0.file_name().ok_or("缺少 Excel 檔名")?),
+            self.report_dir
+                .join(staged.1.file_name().ok_or("缺少 JSON 檔名")?),
+        ))
+    }
+
+    fn commit(
+        self,
+        summary: &crate::RunSummary,
+        staged: &(PathBuf, PathBuf),
+        paths: &(PathBuf, PathBuf),
+    ) -> Result<(), String> {
+        use sha2::{Digest, Sha256};
+        use std::io::Write;
+        report::write_json_report(summary, &staged.1)?;
+        for path in [&staged.0, &staged.1] {
+            // Windows FlushFileBuffers requires a handle opened for writing.
+            std::fs::OpenOptions::new()
+                .read(true)
+                .write(true)
+                .open(path)
+                .and_then(|file| file.sync_all())
+                .map_err(|e| e.to_string())?;
+        }
+        let run_id = paths
+            .1
+            .file_stem()
+            .and_then(|name| name.to_str())
+            .ok_or("缺少執行編號")?
+            .trim_start_matches("news_scraper_run_");
+        let marker = paths.1.with_extension("complete");
+        let manifest = json!({"run_id":run_id, "output_file":paths.0, "report_file":paths.1,
+            "excel_sha256":format!("{:x}", Sha256::digest(std::fs::read(&staged.0).map_err(|e| e.to_string())?)),
+            "report_sha256":format!("{:x}", Sha256::digest(std::fs::read(&staged.1).map_err(|e| e.to_string())?))});
+        let bytes = serde_json::to_vec_pretty(&manifest).map_err(|e| e.to_string())?;
+        let mut completion =
+            tempfile::NamedTempFile::new_in(&self.report_dir).map_err(|e| e.to_string())?;
+        completion
+            .write_all(&bytes)
+            .and_then(|()| completion.as_file().sync_all())
+            .map_err(|e| e.to_string())?;
+        let mut latest =
+            tempfile::NamedTempFile::new_in(&self.report_dir).map_err(|e| e.to_string())?;
+        latest
+            .write_all(&bytes)
+            .and_then(|()| latest.as_file().sync_all())
+            .map_err(|e| e.to_string())?;
+        // Hard links publish a complete file without replacing an existing run.
+        std::fs::hard_link(&staged.0, &paths.0).map_err(|e| e.to_string())?;
+        let mut report_created = false;
+        let mut marker_created = false;
+        let result = (|| {
+            std::fs::hard_link(&staged.1, &paths.1).map_err(|e| e.to_string())?;
+            report_created = true;
+            completion
+                .persist_noclobber(&marker)
+                .map_err(|e| e.to_string())?;
+            marker_created = true;
+            let latest_name = if summary.content_mode == crate::ContentMode::Summary {
+                "latest_summary_run.json"
+            } else {
+                "latest_run.json"
+            };
+            latest
+                .persist(self.report_dir.join(latest_name))
+                .map_err(|e| e.to_string())?;
+            Ok(())
+        })();
+        if result.is_err() {
+            let _ = std::fs::remove_file(&paths.0);
+            if report_created {
+                let _ = std::fs::remove_file(&paths.1);
+            }
+            if marker_created {
+                let _ = std::fs::remove_file(marker);
+            }
+        }
+        result
+    }
 }
 
 pub fn resolve_date_range(options: &crate::RunOptions) -> Result<DateRange, String> {
@@ -620,6 +769,289 @@ mod tests {
             fail_on_source_error: false,
             content_mode: Default::default(),
             prefilter_mode: Default::default(),
+        }
+    }
+
+    #[tokio::test]
+    async fn repeated_week_preserves_completed_pairs_and_mode_pointers() {
+        use sha2::{Digest, Sha256};
+        let dir = tempfile::tempdir().unwrap();
+        let mut opts = options();
+        opts.sources = vec!["未註冊測試來源".into()];
+        opts.output_dir = Some(dir.path().join("excel").to_string_lossy().into_owned());
+        opts.report_dir = Some(dir.path().join("reports").to_string_lossy().into_owned());
+        opts.date = Some("2026-09-28".into());
+        let first = run(&opts, Arc::new(AtomicBool::new(false))).await.unwrap();
+        let second = run(&opts, Arc::new(AtomicBool::new(false))).await.unwrap();
+        assert_ne!(first.output_file, second.output_file);
+        assert_ne!(first.report_file, second.report_file);
+        for summary in [&first, &second] {
+            let report: serde_json::Value =
+                serde_json::from_slice(&std::fs::read(&summary.report_file).unwrap()).unwrap();
+            let marker: serde_json::Value = serde_json::from_slice(
+                &std::fs::read(Path::new(&summary.report_file).with_extension("complete")).unwrap(),
+            )
+            .unwrap();
+            assert_eq!(report["run_id"], marker["run_id"]);
+            assert_eq!(marker["output_file"], summary.output_file);
+            assert!(summary
+                .output_file
+                .contains(report["run_id"].as_str().unwrap()));
+            for (file, field) in [
+                (&summary.output_file, "excel_sha256"),
+                (&summary.report_file, "report_sha256"),
+            ] {
+                assert_eq!(
+                    marker[field],
+                    format!("{:x}", Sha256::digest(std::fs::read(file).unwrap()))
+                );
+            }
+        }
+        let pointer = dir.path().join("reports/latest_run.json");
+        let before = std::fs::read(&pointer).unwrap();
+        assert_eq!(
+            serde_json::from_slice::<serde_json::Value>(&before).unwrap()["report_file"],
+            second.report_file
+        );
+        opts.content_mode = crate::ContentMode::Summary;
+        let summary_run = run(&opts, Arc::new(AtomicBool::new(false))).await.unwrap();
+        assert_eq!(std::fs::read(&pointer).unwrap(), before);
+        let summary_pointer: serde_json::Value = serde_json::from_slice(
+            &std::fs::read(dir.path().join("reports/latest_summary_run.json")).unwrap(),
+        )
+        .unwrap();
+        assert_eq!(summary_pointer["report_file"], summary_run.report_file);
+        assert!(!std::fs::read_dir(dir.path().join("excel"))
+            .unwrap()
+            .flatten()
+            .any(|entry| entry.file_name().to_string_lossy().starts_with(".run-")));
+    }
+
+    #[tokio::test]
+    async fn failed_publication_rolls_back_owned_files_and_preserves_previous_run() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut opts = options();
+        opts.sources = vec!["未註冊測試來源".into()];
+        opts.output_dir = Some(dir.path().to_string_lossy().into_owned());
+        let previous = run(&opts, Arc::new(AtomicBool::new(false))).await.unwrap();
+        let pointer = dir.path().join("執行紀錄/latest_run.json");
+        let original_pointer = std::fs::read(&pointer).unwrap();
+        for collision in [true, false] {
+            let transaction = OutputTransaction::new(&opts).unwrap();
+            let staged = write_outputs(
+                &transaction.options,
+                &[],
+                resolve_date_range(&opts).unwrap(),
+                &crate::policy::Profile::embedded(),
+            )
+            .unwrap();
+            let paths = transaction.final_paths(&staged).unwrap();
+            let mut summary = previous.clone();
+            summary.output_file = paths.0.to_string_lossy().into_owned();
+            summary.report_file = paths.1.to_string_lossy().into_owned();
+            if collision {
+                std::fs::write(&paths.1, "existing report").unwrap();
+            } else {
+                std::fs::remove_file(&pointer).unwrap();
+                std::fs::create_dir(&pointer).unwrap();
+            }
+            assert!(transaction.commit(&summary, &staged, &paths).is_err());
+            assert!(!paths.0.exists());
+            assert!(!paths.1.with_extension("complete").exists());
+            if collision {
+                assert_eq!(
+                    std::fs::read_to_string(&paths.1).unwrap(),
+                    "existing report"
+                );
+                assert_eq!(std::fs::read(&pointer).unwrap(), original_pointer);
+            } else {
+                assert!(!paths.1.exists());
+            }
+            assert!(Path::new(&previous.output_file).is_file());
+            assert!(Path::new(&previous.report_file).is_file());
+        }
+    }
+
+    #[tokio::test]
+    async fn cancellation_after_excel_staging_does_not_publish_a_partial_pair() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut opts = options();
+        opts.sources = vec!["未註冊測試來源".into()];
+        opts.output_dir = Some(dir.path().to_string_lossy().into_owned());
+        let previous = run(&opts, Arc::new(AtomicBool::new(false))).await.unwrap();
+        let pointer = dir.path().join("執行紀錄/latest_run.json");
+        let before = std::fs::read(&pointer).unwrap();
+        let cancelled = Arc::new(AtomicBool::new(false));
+        let flag = cancelled.clone();
+        let progress: ProgressCallback = Arc::new(move |event| {
+            if event.kind == "writing_report" {
+                flag.store(true, Ordering::SeqCst);
+            }
+        });
+        assert!(run_with_progress(&opts, cancelled, Some(progress))
+            .await
+            .unwrap_err()
+            .contains("取消"));
+        assert_eq!(std::fs::read(&pointer).unwrap(), before);
+        let outputs: Vec<_> = std::fs::read_dir(dir.path())
+            .unwrap()
+            .flatten()
+            .filter(|entry| {
+                entry
+                    .path()
+                    .extension()
+                    .is_some_and(|extension| extension == "xlsx")
+            })
+            .collect();
+        assert_eq!(outputs.len(), 1);
+        assert_eq!(outputs[0].path(), Path::new(&previous.output_file));
+        for directory in [dir.path().to_path_buf(), dir.path().join("執行紀錄")] {
+            assert!(!std::fs::read_dir(directory)
+                .unwrap()
+                .flatten()
+                .any(|entry| entry.file_name().to_string_lossy().starts_with(".run-")));
+        }
+    }
+
+    #[test]
+    fn parsed_fields_survive_json_and_excel_without_category_or_copyright_pollution() {
+        use crate::scraper::{
+            adapters,
+            catalog::{find_source, routes_for, RouteSelectors},
+        };
+        use std::io::Read;
+        let source = find_source("高速公路局").unwrap();
+        let route = routes_for(source).remove(0);
+        let body = r#"<rss><channel><item><title>公路人工智慧政策</title><link>https://www.freeway.gov.tw/news/1</link><pubDate>Mon, 28 Sep 2026 09:00:00 +0800</pubDate><rights>Copyright © 2026 高公局</rights><description>列表摘要</description></item></channel></rss>"#;
+        let mut items = adapters::parse_route("高速公路局", &route, body).unwrap();
+        let html_route = SourceRoute {
+            id: "fixture".into(),
+            url: "https://example.test/news".into(),
+            kind: "html".into(),
+            parser: "standard".into(),
+            priority: 1,
+            official: true,
+            coverage_reduced: false,
+            transport: None,
+            selectors: Some(RouteSelectors {
+                item: "article".into(),
+                link: "a".into(),
+                title: "h2".into(),
+                date: "time".into(),
+                summary: Some("p".into()),
+                department: None,
+                category: Some("span".into()),
+                exclude_title_prefixes: vec![],
+                category_label: None,
+                strip_leading_date: false,
+            }),
+        };
+        items.extend(adapters::parse_route("測試機關", &html_route, r#"<article><a href="/n/2"><h2>人工智慧發展</h2></a><time>2026/09/28</time><span>新聞稿</span><p>第二筆摘要</p></article>"#).unwrap());
+        items.push(NewsItem {
+            source: "偵防分署".into(),
+            department: "海洋委員會海巡署／偵防分署".into(),
+            title: "人工智慧海巡".into(),
+            date: "2026-09-28".into(),
+            link: "https://example.test/n/3".into(),
+            full_text: "完整新聞全文".into(),
+            summary: String::new(),
+            category: String::new(),
+            date_source: "published".into(),
+        });
+        assert_eq!(items.len(), 3);
+        assert_eq!(items[1].category, "新聞稿");
+        assert!(items[1].department.is_empty() || items[1].department == items[1].source);
+        let profile = crate::policy::Profile::embedded();
+        let batch = pipeline::rank(&profile, &items, crate::ContentMode::Full);
+        let records: Vec<_> = items
+            .iter()
+            .zip(&batch.results)
+            .map(|(item, classification)| news_record(item, classification, None))
+            .collect();
+        assert_eq!(records[0]["department"], "高速公路局");
+        assert_eq!(records[0]["content_status"], "summary_only");
+        assert_eq!(records[1]["date"], "2026-09-28");
+        assert_eq!(records[1]["link"], "https://example.test/n/2");
+        assert_eq!(records[1]["category"], "新聞稿");
+        assert_eq!(records[2]["content_status"], "full_text");
+        let entries: Vec<_> = items
+            .iter()
+            .zip(&batch.results)
+            .map(|(item, classification)| ClassifiedNews {
+                item,
+                classification,
+            })
+            .collect();
+        let dir = tempfile::tempdir().unwrap();
+        let mut opts = options();
+        opts.output_dir = Some(dir.path().to_string_lossy().into_owned());
+        let (path, _) = write_outputs(
+            &opts,
+            &entries,
+            DateRange {
+                start: parse_date("2026-09-28").unwrap(),
+                end: parse_date("2026-10-04").unwrap(),
+            },
+            &profile,
+        )
+        .unwrap();
+        let mut archive = zip::ZipArchive::new(std::fs::File::open(path).unwrap()).unwrap();
+        let mut strings = String::new();
+        archive
+            .by_name("xl/sharedStrings.xml")
+            .unwrap()
+            .read_to_string(&mut strings)
+            .unwrap();
+        assert!(!strings.contains("Copyright"));
+        assert!(!strings.contains("<t>新聞稿</t>"));
+        assert!(strings.contains("【列表摘要；未取得全文】"));
+        assert!(strings.contains("完整新聞全文"));
+        assert!(!strings.contains("海洋委員會海巡署／偵防分署"));
+        let mut sheet = String::new();
+        archive
+            .by_name("xl/worksheets/sheet1.xml")
+            .unwrap()
+            .read_to_string(&mut sheet)
+            .unwrap();
+        assert!(sheet.contains("Q1"));
+        let document = scraper::Html::parse_fragment(&strings);
+        let shared: Vec<String> = document
+            .select(&scraper::Selector::parse("si").unwrap())
+            .map(|node| node.text().collect())
+            .collect();
+        let cell = |address: &str| {
+            let pattern =
+                Regex::new(&format!(r#"<c r="{address}"[^>]*><v>(\d+)</v></c>"#)).unwrap();
+            pattern
+                .captures(&sheet)
+                .map(|capture| shared[capture[1].parse::<usize>().unwrap()].clone())
+                .unwrap_or_default()
+        };
+        let row_for = |title: &str| {
+            (2..=4)
+                .find(|row| cell(&format!("D{row}")) == title)
+                .unwrap()
+        };
+        let freeway_row = row_for("公路人工智慧政策");
+        let html_row = row_for("人工智慧發展");
+        let coast_row = row_for("人工智慧海巡");
+        assert_eq!(cell(&format!("B{freeway_row}")), "2026/09/28");
+        assert_eq!(cell(&format!("C{freeway_row}")), "高速公路局");
+        assert_eq!(cell(&format!("C{html_row}")), "");
+        assert_eq!(cell(&format!("C{coast_row}")), "海巡署 / 偵防分署");
+        assert_eq!(
+            cell(&format!("F{freeway_row}")),
+            "【列表摘要；未取得全文】\n列表摘要"
+        );
+        assert_eq!(cell(&format!("F{coast_row}")), "完整新聞全文");
+        let mut rels = String::new();
+        archive
+            .by_name("xl/worksheets/_rels/sheet1.xml.rels")
+            .unwrap()
+            .read_to_string(&mut rels)
+            .unwrap();
+        for item in &items {
+            assert!(rels.contains(&item.link));
         }
     }
 

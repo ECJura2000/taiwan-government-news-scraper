@@ -64,6 +64,9 @@ pub(super) fn volume_anomalies_for_mode(
         let Ok(report) = serde_json::from_slice::<Value>(&bytes) else {
             continue;
         };
+        if report.get("run_id").is_some() && !path.with_extension("complete").is_file() {
+            continue;
+        }
         if report["status"] != "success"
             || report["relevance_policy"]["ruleset_hash"] != ruleset_hash
             || report["content_mode"].as_str().unwrap_or("full")
@@ -200,6 +203,17 @@ fn volume_regression(source: &str, current: usize, history: &[usize]) -> Option<
 pub(super) fn write_json_report(summary: &crate::RunSummary, path: &Path) -> Result<(), String> {
     let mut report_value = serde_json::to_value(summary).map_err(|error| error.to_string())?;
     if let Some(report) = report_value.as_object_mut() {
+        let final_path = Path::new(&summary.report_file);
+        if let Some(stem) = final_path.file_stem().and_then(|value| value.to_str()) {
+            report.insert(
+                "run_id".into(),
+                serde_json::json!(stem.trim_start_matches("news_scraper_run_")),
+            );
+            report.insert(
+                "completion_file".into(),
+                serde_json::json!(final_path.with_extension("complete")),
+            );
+        }
         report.remove("engine");
         report.remove("report_file");
         report.remove("error");

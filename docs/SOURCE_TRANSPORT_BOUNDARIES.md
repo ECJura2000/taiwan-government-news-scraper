@@ -20,6 +20,8 @@
 
 來源的 `transport.list` 設定列表預設值；`routes[].transport` 可覆寫單一路由。`transport.detail[]` 依詳細內文網址的完整主機名稱選用政策。可設定 `timeout_seconds`、`retry_attempts`、`host_concurrency`、`cache`、`max_response_bytes`；route 可另外宣告 `tls_fallback_host`。通用列表預設為 60 秒、3 次、同主機 2 筆、使用條件式快取、64 MiB；詳細內文相同但不快取。
 
+目錄首次載入即檢查設定，不再把零值偷偷改成 1。逾時允許 1–3600 秒、嘗試次數 1–10、同主機並行 1–64、回應大小 1 byte–128 MiB；未知欄位、重複來源／route、未支援 kind／parser、無效 CSS selector 與非 HTTP(S)／含帳密 URL 都拒絕。詳細頁主機必須為不重複的完整小寫主機名稱。TLS 例外只接受國防部已宣告兩個 route 的 HTTPS `www.mnd.gov.tw`，不得放在來源預設或詳細頁政策。錯誤包含來源、route／主機及欄位，讓目錄修改能在 CI 與啟動時立即被發現。
+
 勞動力發展署列表為 25 秒／1 次，國家資通安全研究院第一個 HTTP route 為 8 秒／1 次；法務部、國家公園署及農業部指定的詳細內文主機為 8 秒／1 次。國防部 TLS fallback 只能由其已宣告的兩個 route 使用，且主機必須精確為 `www.mnd.gov.tw`；不安全 TLS client 不跟隨跨站重導，成功使用仍記入 JSON 報告。瀏覽器 route 不經 HTTP client，保留系統 Chrome／Chromium 路由。
 
 驗收時以固定 mock HTTP 案例檢查重試、429 `Retry-After`、快取、逾時、主機並行與大小限制；即時 smoke 的網路故障須和解析／輸出回歸分開記錄。來源數驗收依現行核准目錄為 **88**，不是舊計畫的 73。
