@@ -83,7 +83,7 @@ jobs:
           cp "$report" source-health/source-health-report.json
           mkdir -p source-health/retries
           jq -r '.failed_sources[]' "$report" | while IFS= read -r source; do
-            safe_name="$(printf '%s' "$source" | sha256sum | cut -c1-12)"
+            safe_name="$(node -e 'process.stdout.write(require("node:crypto").createHash("sha256").update(process.argv[1]).digest("hex").slice(0, 12))' "$source")"
             mkdir -p "source-health/retries/$safe_name/output" "source-health/retries/$safe_name/reports"
             set +e
             cargo run --release --bin news-scraper -- collect \
