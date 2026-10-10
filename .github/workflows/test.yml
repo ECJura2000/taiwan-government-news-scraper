@@ -52,5 +52,5 @@ jobs:
       - name: Dependency audits
         run: |
           cargo install cargo-audit --locked
-          cargo audit
+          node scripts/audit-dependencies.mjs
           npm audit --audit-level=high

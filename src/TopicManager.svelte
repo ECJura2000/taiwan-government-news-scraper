@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount, tick } from "svelte";
-  import { invoke } from "@tauri-apps/api/core";
+  import { invoke } from "./lib/desktop";
   import { save } from "@tauri-apps/plugin-dialog";
   import { clonePolicy, enabledCount, ruleFields, type TopicPolicy, type Topic, type ImportPreview } from "./lib/topic-policy";
   export let profile: TopicPolicy | null = null;

@@ -3,16 +3,18 @@
 [![Rust quality](https://github.com/ECJura2000/taiwan-government-news-scraper/actions/workflows/test.yml/badge.svg)](https://github.com/ECJura2000/taiwan-government-news-scraper/actions/workflows/test.yml)
 [![Tauri v2](https://github.com/ECJura2000/taiwan-government-news-scraper/actions/workflows/tauri-v2.yml/badge.svg)](https://github.com/ECJura2000/taiwan-government-news-scraper/actions/workflows/tauri-v2.yml)
 
-v2.1.26 是完整 Rust 版；目前來源目錄含 88 個政府機關及主管財團法人來源。CLI、Tauri GUI、RSS／HTML／JSON、Chrome CDP、品質檢查、相關性規則、JSON schema v4 與 Excel 都由同一個 Rust application service 執行。新增法人及官方入口的查核依據見 [主管財團法人來源查核](docs/foundation-source-audit.md)。Excel 新聞日期使用斜線格式，新聞全文欄位會優先寫入官方完整內容；「開啟原文」欄會顯示「機關官網：完整網址」，並以同一網址建立可點擊的 Excel 超連結。經濟部改用官方 RSS 全文並保留瀏覽器列表頁備援；文策院採官方 Chrome CDP 路由，國防部僅在官方主機的 TLS 問題下使用瀏覽器備援。JSON 報告會記錄全文覆蓋率與摘要 fallback 數；入選新聞排序採關聯等級、規則分數、BM25、日期的穩定順序。v2.0.0 保留在 GitHub Releases 作為 rollback。
+v2.1.27 是完整 Rust 版；目前來源目錄含 88 個政府機關及主管財團法人來源。CLI、Tauri GUI、RSS／HTML／JSON、Chrome CDP、品質檢查、相關性規則、JSON schema v4 與 Excel 都由同一個 Rust application service 執行。新增法人及官方入口的查核依據見 [主管財團法人來源查核](docs/foundation-source-audit.md)。Excel 新聞日期使用斜線格式，新聞全文欄位會優先寫入官方完整內容；「開啟原文」欄會顯示「機關官網：完整網址」，並以同一網址建立可點擊的 Excel 超連結。經濟部改用官方 RSS 全文並保留瀏覽器列表頁備援；文策院採官方 Chrome CDP 路由，國防部僅在官方主機的 TLS 問題下使用瀏覽器備援。JSON 報告會記錄全文覆蓋率與摘要 fallback 數；入選新聞排序採關聯等級、規則分數、BM25、日期的穩定順序。v2.0.0 保留在 GitHub Releases 作為 rollback。
+
+v2.1.27 重整桌面介面為「範圍確認 → 搜集新聞 → 查看報告」，採用標楷體與 Times New Roman，支援深淺主題與文字放大，詳見 [本版更新說明](docs/v2.1.27-release-notes.md)。
 
 v2.1.26 加入 Excel／JSON 成對保存、全文品質提示、發布重試閘門、端到端回歸測試與設定載入檢查，並保留原有 Excel 深淺底色，詳見 [更新說明](docs/v2.1.26-release-notes.md)。
 
 ## 下載
 
-從 [GitHub Releases](https://github.com/ECJura2000/taiwan-government-news-scraper/releases) 下載 `v2.1.26`，並先用 `SHA256SUMS.txt` 驗證。
+從 [GitHub Releases](https://github.com/ECJura2000/taiwan-government-news-scraper/releases) 下載 `v2.1.27`，並先用 `SHA256SUMS.txt` 驗證。
 
-- Windows 一般使用者：下載 `TaiwanGovernmentNews-Setup-v2.1.26.exe`。
-- Windows 免安裝版：下載 `taiwan-government-news-v2.1.26-windows-portable.zip`，完整解壓後雙擊頂層的 `各機關新聞整理.exe`；進階 CLI 位於 `cli/news-scraper.exe`。
+- Windows 一般使用者：下載 `TaiwanGovernmentNews-Setup-v2.1.27.exe`。
+- Windows 免安裝版：下載 `taiwan-government-news-v2.1.27-windows-portable.zip`，完整解壓後雙擊頂層的 `各機關新聞整理.exe`；進階 CLI 位於 `cli/news-scraper.exe`。
 - macOS：下載 `macos-arm64`（Apple Silicon）或 `macos-x64`（Intel）ZIP；解壓縮後頂層會有 `各機關新聞整理.app`、`解除封鎖並開啟.command` 與 CLI `news-scraper`。
 - Linux：下載對應平台 ZIP；CLI 在 ZIP 頂層，GUI installer 位於 `installers/`。
 
@@ -93,6 +95,12 @@ npm run tauri build
 更多操作契約見 [AGENTS.md](AGENTS.md)、[AI 自動化](docs/AI_AUTOMATION.md) 與 [發布流程](docs/RELEASING.md)。
 
 ## 政策主題與介面設定
+
+桌面首頁採「範圍確認 → 搜集新聞 → 查看報告」三步流程。新聞期間預設為臺北時區的上一完整週，也可指定週次或自訂起訖；CLI 的預設日期規則維持原樣。主題及來源設定按需展開，來源可按機關名稱搜尋，進階設定集中收合。保留淺色／深色及 100%–200% 字級，較矮視窗使用緊湊排版。
+
+介面字型依序使用 Times New Roman 的英文／數字字形及標楷體中文字形；Windows 採 DFKai-SB，Mac 採 BiauKaiTC（標楷體-繁），並保留舊版 BiauKai 名稱。使用作業系統已安裝的字型，未將商用字型打包或提交至儲存庫；缺少指定字型時由系統 serif 字型替代。
+
+開發介面預覽可使用 `npm run dev` 後的 `/?preview=1`；僅讀取公開來源目錄及預設主題，顯示預覽提示並停用搜集／資料夾選擇；原生檔案儲存操作需在桌面程式使用，不會模擬成功報告。正式桌面程式仍透過同一 Rust 引擎執行。
 
 「搜尋主題」支援 JSON 匯入預覽、同名取代、清空後匯入、逐項刪除、啟停及規則編輯。目前內建十大主題的 201 個加權詞，保留政策來源頁碼及補充新聞詞的官網依據，首次啟動即可使用。請參閱 [主題 JSON 範例與格式](examples/topics/README.md)。
 

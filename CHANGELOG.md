@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.1.27 - 2026-10-10
+
+- 重整桌面介面為三步驟流程，集中期間、主題、來源與儲存位置設定。
+- 中文採標楷體、英文與數字採 Times New Roman，保留深淺主題與 100%–200% 文字放大。
+- GUI 預設上一個完整週，明確切換指定週／自訂期間，防止空白或反向日期啟動。
+- 來源搜尋、進階設定收合與窄視窗排版；保留 88 來源、JSON schema v4、17 欄 Excel 及相關性深淺底色。
+
 ## 2.1.26 - 2026-10-07
 
 - Save each Excel/JSON run with a shared unique ID, completion manifest, SHA-256 hashes and separate full/summary latest pointers; roll back owned files on publication failure or cancellation.

@@ -4,7 +4,7 @@
   let systemDark = false;
   let textSize = "100";
   function applySize() {
-    document.documentElement.style.fontSize = `${14 * Number(textSize) / 100}px`;
+    document.documentElement.style.fontSize = `${16 * Number(textSize) / 100}px`;
     try {localStorage.setItem("news-text-size", textSize);} catch { /* Use default when unavailable. */ }
   }
   function apply() {
