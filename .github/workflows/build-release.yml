@@ -7,6 +7,14 @@ on:
         description: Release version without the leading v
         required: true
         type: string
+      source_gate_os:
+        description: Runner for the complete unchanged live-source gate
+        required: true
+        default: ubuntu-22.04
+        type: choice
+        options:
+          - ubuntu-22.04
+          - macos-15
   push:
     tags: ["v*"]
 
@@ -41,7 +49,7 @@ jobs:
   source-health:
     name: Gate all 88 live sources
     needs: validate
-    runs-on: ubuntu-22.04
+    runs-on: ${{ inputs.source_gate_os || 'ubuntu-22.04' }}
     timeout-minutes: 90
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -49,6 +57,7 @@ jobs:
         with:
           node-version: 22
       - name: Install Linux Tauri and browser dependencies
+        if: runner.os == 'Linux'
         run: |
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
@@ -74,7 +83,7 @@ jobs:
           cp "$report" source-health/source-health-report.json
           mkdir -p source-health/retries
           jq -r '.failed_sources[]' "$report" | while IFS= read -r source; do
-            safe_name="$(printf '%s' "$source" | sha256sum | cut -c1-12)"
+            safe_name="$(node -e 'process.stdout.write(require("node:crypto").createHash("sha256").update(process.argv[1]).digest("hex").slice(0, 12))' "$source")"
             mkdir -p "source-health/retries/$safe_name/output" "source-health/retries/$safe_name/reports"
             set +e
             cargo run --release --bin news-scraper -- collect \
