@@ -74,7 +74,8 @@ jobs:
           test "$version" = "${{ needs.validate.outputs.version }}"
           if [[ "$GITHUB_REF" == refs/tags/* ]]; then test "$GITHUB_REF_NAME" = "v$version"; fi
           mkdir -p source-health/output source-health/reports
-          cargo run --release --bin news-scraper -- collect \
+          cargo build --release --bin news-scraper
+          target/release/news-scraper collect \
             --output-dir source-health/output \
             --report-dir source-health/reports \
             --max-workers 8 | tee source-health/summary.jsonl
@@ -86,7 +87,7 @@ jobs:
             safe_name="$(node -e 'process.stdout.write(require("node:crypto").createHash("sha256").update(process.argv[1]).digest("hex").slice(0, 12))' "$source")"
             mkdir -p "source-health/retries/$safe_name/output" "source-health/retries/$safe_name/reports"
             set +e
-            cargo run --release --bin news-scraper -- collect \
+            target/release/news-scraper collect \
               --sources "$source" \
               --output-dir "source-health/retries/$safe_name/output" \
               --report-dir "source-health/retries/$safe_name/reports" \

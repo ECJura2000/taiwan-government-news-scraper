@@ -60,6 +60,10 @@ fn main() -> ExitCode {
             }
         }
     });
+    // Application work has finished; successful runs have saved the output pair.
+    // DNS or TLS workers left behind by timed-out requests must not keep the
+    // CLI alive indefinitely during runtime destruction.
+    runtime.shutdown_timeout(std::time::Duration::from_secs(5));
     match result {
         Ok(summary) => {
             println!(
@@ -207,7 +211,7 @@ mod tests {
 
     #[test]
     fn reports_workspace_package_version() {
-        assert_eq!(version_text(), "news-scraper 2.1.27");
+        assert_eq!(version_text(), "news-scraper 2.1.28");
     }
 
     #[test]
