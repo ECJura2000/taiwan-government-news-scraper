@@ -507,14 +507,14 @@ mod tests {
     #[test]
     fn special_sources_keep_declared_fallback_and_browser_routes() {
         let fishery = routes_for(find_source("漁業署").unwrap());
-        assert_eq!(fishery[0].id, "primary-html");
-        assert_eq!(fishery[1].kind, "rss");
+        assert_eq!(fishery[0].kind, "rss");
+        assert_eq!(fishery[1].id, "primary-html");
 
         let environment = routes_for(find_source("環境部").unwrap());
         assert!(environment.iter().any(|route| route.kind == "browser"));
 
         let culture = routes_for(find_source("文化部").unwrap());
-        assert_eq!(culture[0].kind, "html");
+        assert_eq!(culture[0].kind, "rss");
         assert_eq!(culture[1].kind, "browser");
 
         let nics = routes_for(find_source("國家資通安全研究院").unwrap());

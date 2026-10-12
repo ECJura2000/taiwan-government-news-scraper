@@ -1,5 +1,8 @@
 use super::DateRange;
-use chrono::{Datelike, Local, NaiveDate};
+#[cfg(test)]
+use chrono::Local;
+use chrono::{Datelike, NaiveDate};
+#[cfg(test)]
 use chrono_tz::Asia::Taipei;
 use serde_json::Value;
 use std::collections::{HashMap, HashSet};
@@ -16,25 +19,27 @@ pub(super) fn volume_anomalies(
     counts: &HashMap<String, usize>,
     diagnostics: &[Value],
 ) -> Vec<String> {
-    volume_anomalies_for_mode(
+    volume_anomalies_for_mode_at(
         report_dir,
         range,
         ruleset_hash,
         counts,
         diagnostics,
         crate::ContentMode::Full,
+        Local::now().with_timezone(&Taipei).date_naive(),
     )
 }
 
-pub(super) fn volume_anomalies_for_mode(
+pub(super) fn volume_anomalies_for_mode_at(
     report_dir: &Path,
     range: DateRange,
     ruleset_hash: &str,
     counts: &HashMap<String, usize>,
     diagnostics: &[Value],
     content_mode: crate::ContentMode,
+    today: NaiveDate,
 ) -> Vec<String> {
-    let completed_week = range.end < Local::now().with_timezone(&Taipei).date_naive();
+    let completed_week = range.end < today;
     let mut histories: HashMap<String, Vec<usize>> = HashMap::new();
     let mut text_histories: HashMap<String, Vec<f64>> = HashMap::new();
     let mut seen_weeks = HashSet::new();

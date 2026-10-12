@@ -4,7 +4,7 @@ use crate::scraper::catalog::{find_source, routes_for, SourceDefinition, SourceR
 use crate::scraper::http::HttpClient;
 use crate::scraper::transport::TransportPolicy;
 use crate::scraper::{NewsItem, ScraperError};
-use chrono::{Local, NaiveDate};
+use chrono::NaiveDate;
 use chrono_tz::Asia::Taipei;
 use futures::stream::{self, StreamExt};
 use regex::Regex;
@@ -45,6 +45,7 @@ pub(super) async fn fetch_source(
     date_range: DateRange,
     progress: Option<&ProgressCallback>,
     total: u32,
+    today: NaiveDate,
 ) -> SourceResult {
     let Some(definition) = find_source(source) else {
         return SourceResult {
@@ -56,7 +57,10 @@ pub(super) async fn fetch_source(
             detail: DetailDiagnostics::default(),
         };
     };
-    fetch_source_definition(client, definition, source, date_range, progress, total).await
+    fetch_source_definition(
+        client, definition, source, date_range, progress, total, today,
+    )
+    .await
 }
 
 async fn fetch_source_definition(
@@ -66,15 +70,18 @@ async fn fetch_source_definition(
     date_range: DateRange,
     progress: Option<&ProgressCallback>,
     total: u32,
+    today: NaiveDate,
 ) -> SourceResult {
     let mut last_error = None;
     let mut attempts = Vec::new();
     let mut aggregated_items = Vec::new();
     let mut successful_routes = 0usize;
+    let mut coverage_pending = false;
     let mut aggregate_final_route = None;
     let mut detail = DetailDiagnostics::default();
-    'routes: for route in routes_for(definition) {
-        let policy = TransportPolicy::for_route(definition, &route);
+    let routes = routes_for(definition);
+    'routes: for (route_position, route) in routes.iter().enumerate() {
+        let policy = TransportPolicy::for_route(definition, route);
         let index = route.priority.saturating_sub(1) as usize;
         let url = &route.url;
         let host = url::Url::parse(url)
@@ -83,8 +90,7 @@ async fn fetch_source_definition(
             .unwrap_or_default();
         for attempt_number in 1..=2 {
             let started = Instant::now();
-            let recent_nps_window =
-                Local::now().with_timezone(&Taipei).date_naive() - chrono::Duration::days(180);
+            let recent_nps_window = today - chrono::Duration::days(180);
             let uses_recent_nps_prefix = source == "國家公園署"
                 && route.parser == "nps-json"
                 && date_range.end >= recent_nps_window;
@@ -121,7 +127,7 @@ async fn fetch_source_definition(
                     client.fetch_text(url, &policy).await
                 }
             };
-            let mut outcome = fetched.and_then(|body| adapters::parse_route(source, &route, &body));
+            let mut outcome = fetched.and_then(|body| adapters::parse_route(source, route, &body));
             // An official JSON snapshot can lag behind its corresponding list.
             // Never silently accept an out-of-date snapshot as an empty week.
             if route.parser == "thb-json"
@@ -141,13 +147,24 @@ async fn fetch_source_definition(
                 outcome = client
                     .fetch_text(url, &policy)
                     .await
-                    .and_then(|body| adapters::parse_route(source, &route, &body));
+                    .and_then(|body| adapters::parse_route(source, route, &body));
             }
             match outcome {
                 Ok(items) => {
                     detail.discovery_seconds += started.elapsed().as_secs_f64();
                     let parsed_item_count = items.len();
                     detail.list_items += parsed_item_count;
+                    let is_feed = route.kind == "rss" || route.parser.contains("rss");
+                    let feed_window_covered = !is_feed
+                        || (!route.coverage_reduced
+                            && items
+                                .iter()
+                                .filter_map(|item| parse_date(&item.date))
+                                .min()
+                                .is_some_and(|oldest| oldest < date_range.start)
+                            && !snapshot_predates_week(&items, date_range));
+                    let needs_feed_fallback =
+                        is_feed && route_position + 1 < routes.len() && !feed_window_covered;
                     let filtering_started = Instant::now();
                     let filtered_items = filter_to_date_range(items, date_range);
                     detail.date_filter_seconds += filtering_started.elapsed().as_secs_f64();
@@ -169,11 +186,14 @@ async fn fetch_source_definition(
                         "status": "success",
                         "elapsed_seconds": elapsed_seconds(started),
                         "item_count": parsed_item_count,
+                        "requested_window_covered": feed_window_covered,
+                        "continuing_for_coverage": needs_feed_fallback,
                         "failure_class": "",
                         "error_category": "",
                         "failure_evidence": {},
                     }));
-                    if definition.aggregate_routes {
+                    coverage_pending = needs_feed_fallback;
+                    if definition.aggregate_routes || needs_feed_fallback {
                         successful_routes += 1;
                         aggregated_items.extend(filtered_items);
                         aggregate_final_route = Some(json!({
@@ -181,21 +201,24 @@ async fn fetch_source_definition(
                             "url": url,
                             "url_host": host,
                             "used_fallback": false,
-                            "coverage_reduced": route.coverage_reduced,
+                            "coverage_reduced": route.coverage_reduced || needs_feed_fallback,
                             "aggregated": true,
                         }));
                         continue 'routes;
                     }
                     return SourceResult {
                         source: source.to_owned(),
-                        items: filtered_items,
+                        items: {
+                            aggregated_items.extend(filtered_items);
+                            aggregated_items
+                        },
                         error: None,
                         final_route: Some(json!({
                             "route_id": route.id,
                             "url": url,
                             "url_host": host,
                             "used_fallback": index > 0,
-                            "coverage_reduced": route.coverage_reduced,
+                            "coverage_reduced": route.coverage_reduced || !feed_window_covered,
                         })),
                         attempts,
                         detail,
@@ -203,10 +226,10 @@ async fn fetch_source_definition(
                 }
                 Err(error) => {
                     detail.discovery_seconds += started.elapsed().as_secs_f64();
-                    let should_retry = should_retry_browser_route(&route, &error, attempt_number);
+                    let should_retry = should_retry_browser_route(route, &error, attempt_number);
                     attempts.push(attempt_json(
                         source,
-                        &route,
+                        route,
                         &host,
                         started,
                         attempt_number,
@@ -235,7 +258,7 @@ async fn fetch_source_definition(
         return SourceResult {
             source: source.to_owned(),
             items: aggregated_items,
-            error: None,
+            error: if coverage_pending { last_error } else { None },
             attempts,
             detail,
             final_route: aggregate_final_route,
@@ -625,6 +648,59 @@ fn complete_json_array_prefix(bytes: &[u8]) -> Result<String, ScraperError> {
 mod tests {
     use super::*;
 
+    #[tokio::test]
+    async fn short_rss_retains_items_when_fallback_succeeds_or_fails() {
+        use std::io::{Read, Write};
+        for fail in [false, true] {
+            let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+            let base = format!("http://{}", listener.local_addr().unwrap());
+            let recent = "<rss><channel><item><title>RSS最新新聞</title><link>https://example.test/recent</link><pubDate>2026-10-10</pubDate></item></channel></rss>";
+            let older = "<rss><channel><item><title>同週較早新聞</title><link>https://example.test/older</link><pubDate>2026-10-05</pubDate></item><item><title>前週新聞</title><link>https://example.test/prior-week</link><pubDate>2026-10-04</pubDate></item></channel></rss>";
+            let server = std::thread::spawn(move || {
+                for (status, body) in [
+                    ("200 OK", recent),
+                    (
+                        if fail {
+                            "503 Service Unavailable"
+                        } else {
+                            "200 OK"
+                        },
+                        older,
+                    ),
+                ] {
+                    let (mut socket, _) = listener.accept().unwrap();
+                    let mut request = [0; 1024];
+                    let _ = socket.read(&mut request);
+                    write!(socket, "HTTP/1.1 {status}\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}", body.len()).unwrap();
+                }
+            });
+            let definition: SourceDefinition = serde_json::from_value(json!({"name":"測試", "urls":[format!("{base}/rss")],"routes":[
+                {"id":"rss", "url":format!("{base}/rss"), "kind":"rss", "priority":1, "transport":{"retry_attempts":1}},
+                {"id":"fallback", "url":format!("{base}/fallback"), "kind":"rss", "priority":2, "transport":{"retry_attempts":1}}
+            ]})).unwrap();
+            let date = NaiveDate::from_ymd_opt(2026, 10, 5).unwrap();
+            let result = fetch_source_definition(
+                &HttpClient::new().unwrap(),
+                &definition,
+                "測試",
+                DateRange {
+                    start: date,
+                    end: date + chrono::Duration::days(6),
+                },
+                None,
+                1,
+                date,
+            )
+            .await;
+            server.join().unwrap();
+            assert_eq!(result.items.len(), if fail { 1 } else { 2 });
+            assert_eq!(result.items[0].title, "RSS最新新聞");
+            assert_eq!(result.error.is_some(), fail);
+            assert_eq!(result.attempts[0]["continuing_for_coverage"], true);
+            assert_eq!(result.final_route.unwrap()["coverage_reduced"], fail);
+        }
+    }
+
     #[test]
     fn stale_or_empty_official_snapshot_must_not_end_fallbacks() {
         let range = DateRange {
@@ -726,6 +802,7 @@ mod tests {
             },
             None,
             1,
+            date,
         )
         .await;
         server.join().unwrap();

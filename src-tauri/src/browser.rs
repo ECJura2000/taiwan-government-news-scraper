@@ -237,7 +237,7 @@ async fn fetch_from_target(
             &mut socket,
             id,
             "Runtime.evaluate",
-            json!({"expression":"document.documentElement.outerHTML", "returnByValue":true}),
+            json!({"expression":"document.getElementById('webkit-xml-viewer-source-xml')?.innerHTML || document.documentElement.outerHTML", "returnByValue":true}),
         )
         .await?;
         let response = wait_for_response(&mut socket, id).await?;

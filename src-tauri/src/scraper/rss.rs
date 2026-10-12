@@ -160,7 +160,29 @@ fn normalize_department(value: &str) -> String {
     normalized.replace(['＞', '>'], "／")
 }
 
+pub(crate) fn is_feed_document(xml: &str) -> bool {
+    let mut reader = Reader::from_str(xml.trim_start_matches('\u{feff}'));
+    loop {
+        match reader.read_event() {
+            Ok(Event::Start(tag) | Event::Empty(tag)) => {
+                return matches!(
+                    local_name(tag.name().as_ref()).as_str(),
+                    "rss" | "feed" | "rdf"
+                )
+            }
+            Ok(Event::Decl(_) | Event::Comment(_) | Event::PI(_) | Event::DocType(_)) => {}
+            Ok(Event::Text(text)) if text.xml10_content().trim().is_empty() => {}
+            _ => return false,
+        }
+    }
+}
+
 pub fn parse_feed(source: &str, xml: &str) -> Result<Vec<NewsItem>, ScraperError> {
+    if !is_feed_document(xml) {
+        return Err(ScraperError::ParserRegression(
+            "RSS endpoint did not return an RSS/Atom document".into(),
+        ));
+    }
     let mut reader = Reader::from_str(xml);
     reader.config_mut().trim_text(true);
     let mut items = Vec::new();
@@ -254,6 +276,22 @@ pub fn parse_feed(source: &str, xml: &str) -> Result<Vec<NewsItem>, ScraperError
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn rejects_html_and_unrelated_xml_but_accepts_empty_feeds() {
+        for body in [
+            "<html><body>RSS maintenance</body></html>",
+            "<?xml version=\"1.0\"?><error>Unavailable</error>",
+        ] {
+            assert!(super::parse_feed("測試", body).is_err());
+        }
+        assert!(super::parse_feed(
+            "測試",
+            "\u{feff}<?xml version=\"1.0\"?><rss><channel/></rss>"
+        )
+        .unwrap()
+        .is_empty());
+    }
+
     #[test]
     fn cdata_permalink_decodes_query_separators_before_fetch_and_normalization() {
         for separator in ["&amp;", "&#38;", "&#x26;"] {

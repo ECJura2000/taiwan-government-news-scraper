@@ -430,7 +430,7 @@ fn policy_rule_rows(document: &serde_json::Value) -> Vec<Vec<String>> {
     rows
 }
 
-fn policy_version_rows(summary: &serde_json::Value) -> Vec<Vec<String>> {
+fn policy_version_rows(summary: &serde_json::Value, exported_at: &str) -> Vec<Vec<String>> {
     [
         ("設定格式版本", "schema_version"),
         ("設定名稱", "name"),
@@ -459,10 +459,7 @@ fn policy_version_rows(summary: &serde_json::Value) -> Vec<Vec<String>> {
                 .unwrap_or_else(|| summary[key].to_string()),
         ]
     })
-    .chain(std::iter::once(vec![
-        "匯出時間".into(),
-        Local::now().to_rfc3339(),
-    ]))
+    .chain(std::iter::once(vec!["匯出時間".into(), exported_at.into()]))
     .collect()
 }
 
@@ -666,11 +663,12 @@ pub(super) fn unique_sheet_name(
     unreachable!()
 }
 
-pub(super) fn write_outputs(
+pub(super) fn write_outputs_at(
     options: &crate::RunOptions,
     entries: &[ClassifiedNews<'_>],
     date_range: DateRange,
     profile: &crate::policy::Profile,
+    exported_at: chrono::DateTime<chrono_tz::Tz>,
 ) -> Result<(PathBuf, PathBuf), String> {
     let output_dir = PathBuf::from(options.output_dir.as_deref().unwrap_or(DEFAULT_OUTPUT_DIR));
     let report_dir = options
@@ -686,7 +684,7 @@ pub(super) fn write_outputs(
     })?;
     std::fs::create_dir_all(&report_dir)
         .map_err(|error| format!("無法建立 JSON 報告資料夾 {}：{error}", report_dir.display()))?;
-    let stamp = Local::now().format("%Y%m%d_%H%M%S_%6f").to_string();
+    let stamp = exported_at.format("%Y%m%d_%H%M%S_%6f").to_string();
     let workbook_path = output_dir.join(format!(
         "本週新聞整理（{}至{}）_{stamp}{}.xlsx",
         roc_compact(date_range.start),
@@ -847,7 +845,7 @@ pub(super) fn write_outputs(
         &formats,
     )?;
     let policy_summary = profile.summary();
-    let mut version_rows = policy_version_rows(&policy_summary);
+    let mut version_rows = policy_version_rows(&policy_summary, &exported_at.to_rfc3339());
     version_rows.push(vec!["執行編號".into(), stamp]);
     version_rows.extend(mapping);
     for (label, key) in [
@@ -883,4 +881,20 @@ pub(super) fn write_outputs(
         .save(&workbook_path)
         .map_err(|error| error.to_string())?;
     Ok((workbook_path, report_path))
+}
+
+#[cfg(test)]
+pub(super) fn write_outputs(
+    options: &crate::RunOptions,
+    entries: &[ClassifiedNews<'_>],
+    date_range: DateRange,
+    profile: &crate::policy::Profile,
+) -> Result<(PathBuf, PathBuf), String> {
+    write_outputs_at(
+        options,
+        entries,
+        date_range,
+        profile,
+        chrono::Utc::now().with_timezone(&chrono_tz::Asia::Taipei),
+    )
 }

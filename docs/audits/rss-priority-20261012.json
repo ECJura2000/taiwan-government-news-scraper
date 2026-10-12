@@ -1,0 +1,2166 @@
+{
+  "checked_at": "2026-10-12",
+  "source_count": 88,
+  "rss_priority_count": 49,
+  "method": "Official source news pages, homepages and their published RSS links. HTTPS certificate verification is preserved. RSS is selected only for the existing news section; failed requests are not treated as absence.",
+  "sources": [
+    {
+      "name": "行政院",
+      "status": "rss_priority",
+      "rss_routes": [
+        "https://www.ey.gov.tw/RSS_Content.aspx?ModuleType=3"
+      ],
+      "fallback_routes": [
+        "https://www.ey.gov.tw/Page/6485009ABEC1CB9C?PS=50&page=1"
+      ],
+      "evidence_pages": [
+        {
+          "url": "https://www.ey.gov.tw/Page/6485009ABEC1CB9C?PS=50&page=1",
+          "is_feed": false,
+          "request_failed": false
+        },
+        {
+          "url": "https://www.ey.gov.tw/RSS_Content.aspx?ModuleType=3",
+          "is_feed": true,
+          "request_failed": false
+        }
+      ],
+      "additional_subscription_pages": [],
+      "rss_coverage": [
+        {
+          "url": "https://www.ey.gov.tw/RSS_Content.aspx?ModuleType=3",
+          "coverage_reduced": true
+        }
+      ],
+      "note": "Same-week before/after comparison found original-page articles absent from RSS. Always supplement RSS using original list routes."
+    },
+    {
+      "name": "監察院",
+      "status": "rss_priority",
+      "rss_routes": [
+        "https://www.cy.gov.tw/OpenData.aspx?SN=ADE5198E06414AF5"
+      ],
+      "fallback_routes": [],
+      "evidence_pages": [
+        {
+          "url": "https://www.cy.gov.tw/OpenData.aspx?SN=ADE5198E06414AF5",
+          "is_feed": true,
+          "request_failed": false
+        }
+      ],
+      "additional_subscription_pages": [],
+      "rss_coverage": [
+        {
+          "url": "https://www.cy.gov.tw/OpenData.aspx?SN=ADE5198E06414AF5",
+          "coverage_reduced": false
+        }
+      ]
+    },
+    {
+      "name": "司法院",
+      "status": "no_matching_rss_verified",
+      "rss_routes": [],
+      "fallback_routes": [],
+      "evidence_pages": [
+        {
+          "url": "https://www.judicial.gov.tw/tw/lp-1790-1-1-40.html",
+          "is_feed": false,
+          "request_failed": false
+        },
+        {
+          "url": "https://www.judicial.gov.tw/tw/lp-1790-1-2-40.html",
+          "is_feed": false,
+          "request_failed": false
+        },
+        {
+          "url": "https://www.judicial.gov.tw/tw/lp-1790-1-3-40.html",
+          "is_feed": false,
+          "request_failed": false
+        },
+        {
+          "url": "https://www.judicial.gov.tw/tw/lp-1790-1-4-40.html",
+          "is_feed": false,
+          "request_failed": false
+        },
+        {
+          "url": "https://www.judicial.gov.tw/tw/lp-1790-1-5-40.html",
+          "is_feed": false,
+          "request_failed": false
+        }
+      ],
+      "homepage": {
+        "name": "司法院",
+        "url": "https://www.judicial.gov.tw/",
+        "candidates": []
+      },
+      "additional_subscription_pages": [],
+      "note": "Official notice says RSS stopped with the 2019 website update: https://www.judicial.gov.tw/tw/dl-212767-17d0c6d9b5734dc19912fa81d66f7b5c.html"
+    },
+    {
+      "name": "內政部",
+      "status": "rss_priority",
+      "rss_routes": [
+        "https://www.moi.gov.tw/OpenData.aspx?SN=76F358C679FAD4CF"
+      ],
+      "fallback_routes": [
+        "https://www.moi.gov.tw/news.aspx?n=4&sms=9009"
+      ],
+      "evidence_pages": [
+        {
+          "url": "https://www.moi.gov.tw/news.aspx?n=4&sms=9009",
+          "is_feed": false,
+          "request_failed": false
+        }
+      ],
+      "additional_subscription_pages": [],
+      "rss_coverage": [
+        {
+          "url": "https://www.moi.gov.tw/OpenData.aspx?SN=76F358C679FAD4CF",
+          "coverage_reduced": false
+        }
+      ]
+    },
+    {
+      "name": "國土管理署",
+      "status": "no_matching_rss_verified",
+      "rss_routes": [],
+      "fallback_routes": [
+        "https://www.nlma.gov.tw/sites/www.nlma.gov.tw/ch/main/news/list.json"
+      ],
+      "evidence_pages": [
+        {
+          "url": "https://www.nlma.gov.tw/sites/www.nlma.gov.tw/ch/main/news/list.json",
+          "is_feed": false,
+          "request_failed": false
+        }
+      ],
+      "homepage": {
+        "name": "國土管理署",
+        "url": "https://www.nlma.gov.tw/",
+        "candidates": []
+      },
+      "additional_subscription_pages": [],
+      "rss_coverage": []
+    },
+    {
+      "name": "國家公園署",
+      "status": "no_matching_rss_verified",
+      "rss_routes": [],
+      "fallback_routes": [
+        "https://www.nps.gov.tw/sites/www.nps.gov.tw/ch/main/parknews/list.json"
+      ],
+      "evidence_pages": [
+        {
+          "url": "https://www.nps.gov.tw/sites/www.nps.gov.tw/ch/main/parknews/list.json",
+          "is_feed": false,
+          "request_failed": false
+        }
+      ],
+      "homepage": {
+        "name": "國家公園署",
+        "url": "https://www.nps.gov.tw/",
+        "candidates": []
+      },
+      "additional_subscription_pages": [],
+      "rss_coverage": []
+    },
+    {
+      "name": "國土測繪中心",
+      "status": "rss_priority",
+      "rss_routes": [
+        "https://www.nlsc.gov.tw/OpenData.aspx?SN=6880137375636088"
+      ],
+      "fallback_routes": [],
+      "evidence_pages": [
+        {
+          "url": "https://www.nlsc.gov.tw/OpenData.aspx?SN=6880137375636088",
+          "is_feed": true,
+          "request_failed": false
+        }
+      ],
+      "additional_subscription_pages": [],
+      "rss_coverage": [
+        {
+          "url": "https://www.nlsc.gov.tw/OpenData.aspx?SN=6880137375636088",
+          "coverage_reduced": false
+        }
+      ]
+    },
+    {
+      "name": "警政署",
+      "status": "no_matching_rss_verified",
+      "rss_routes": [],
+      "fallback_routes": [],
+      "evidence_pages": [
+        {
+          "url": "https://www.npa.gov.tw/ch/app/news/list?module=news&id=2139",
+          "is_feed": false,
+          "request_failed": false
+        }
+      ],
+      "homepage": {
+        "name": "警政署",
+        "url": "https://www.npa.gov.tw/",
+        "candidates": []
+      },
+      "additional_subscription_pages": []
+    },
+    {
+      "name": "消防署",
+      "status": "no_matching_rss_verified",
+      "rss_routes": [],
+      "fallback_routes": [],
+      "evidence_pages": [
+        {
+          "url": "https://www.nfa.gov.tw/pro/index.php?code=list&ids=1470",
+          "is_feed": false,
+          "request_failed": false
+        }
+      ],
+      "homepage": {
+        "name": "消防署",
+        "url": "https://www.nfa.gov.tw/",
+        "candidates": []
+      },
+      "additional_subscription_pages": []
+    },
+    {
+      "name": "外交部",
+      "status": "rss_priority",
+      "rss_routes": [
+        "https://www.mofa.gov.tw/OpenData.aspx?SN=8ABA444B9AC1360F"
+      ],
+      "fallback_routes": [
+        "https://www.mofa.gov.tw/News.aspx?n=95&sms=73"
+      ],
+      "evidence_pages": [
+        {
+          "url": "https://www.mofa.gov.tw/News.aspx?n=95&sms=73",
+          "is_feed": false,
+          "request_failed": false
+        }
+      ],
+      "additional_subscription_pages": [],
+      "rss_coverage": [
+        {
+          "url": "https://www.mofa.gov.tw/OpenData.aspx?SN=8ABA444B9AC1360F",
+          "coverage_reduced": false
+        }
+      ]
+    },
+    {
+      "name": "僑委會",
+      "status": "no_matching_rss_verified",
+      "rss_routes": [],
+      "fallback_routes": [],
+      "evidence_pages": [
+        {
+          "url": "https://www.ocac.gov.tw/OCAC/Pages/List.aspx?nodeid=3018",
+          "is_feed": false,
+          "request_failed": false
+        }
+      ],
+      "homepage": {
+        "name": "僑委會",
+        "url": "https://www.ocac.gov.tw/",
+        "candidates": []
+      },
+      "additional_subscription_pages": []
+    },
+    {
+      "name": "陸委會",
+      "status": "rss_priority",
+      "rss_routes": [
+        "https://www.mac.gov.tw/OpenData.aspx?SN=D33B55D537402BAA"
+      ],
+      "fallback_routes": [],
+      "evidence_pages": [
+        {
+          "url": "https://www.mac.gov.tw/OpenData.aspx?SN=D33B55D537402BAA",
+          "is_feed": true,
+          "request_failed": false
+        }
+      ],
+      "additional_subscription_pages": [],
+      "rss_coverage": [
+        {
+          "url": "https://www.mac.gov.tw/OpenData.aspx?SN=D33B55D537402BAA",
+          "coverage_reduced": false
+        }
+      ]
+    },
+    {
+      "name": "國防部",
+      "status": "no_matching_rss_verified",
+      "rss_routes": [],
+      "fallback_routes": [
+        "https://www.mnd.gov.tw/news/pressreleaselist",
+        "https://www.mnd.gov.tw/news/pressreleaselist"
+      ],
+      "evidence_pages": [
+        {
+          "url": "https://www.mnd.gov.tw/news/pressreleaselist",
+          "is_feed": false,
+          "request_failed": false
+        }
+      ],
+      "homepage": {
+        "name": "國防部",
+        "url": "https://www.mnd.gov.tw/",
+        "candidates": []
+      },
+      "additional_subscription_pages": [],
+      "rss_coverage": []
+    },
+    {
+      "name": "文策院",
+      "status": "unavailable",
+      "rss_routes": [],
+      "fallback_routes": [
+        "https://taicca.tw/latest_news/news/list"
+      ],
+      "evidence_pages": [
+        {
+          "url": "https://taicca.tw/latest_news/news/list",
+          "request_failed": true
+        }
+      ],
+      "homepage": {
+        "name": "文策院",
+        "url": "https://taicca.tw/",
+        "error": "curl: (56) The requested URL returned error: 403\n"
+      },
+      "additional_subscription_pages": [],
+      "rss_coverage": []
+    },
+    {
+      "name": "中科院",
+      "status": "no_matching_rss_verified",
+      "rss_routes": [],
+      "fallback_routes": [],
+      "evidence_pages": [
+        {
+          "url": "https://www.ncsist.org.tw/csistdup/news/NewsPublish.aspx",
+          "is_feed": false,
+          "request_failed": false
+        }
+      ],
+      "homepage": {
+        "name": "中科院",
+        "url": "https://www.ncsist.org.tw/",
+        "candidates": []
+      },
+      "additional_subscription_pages": []
+    },
+    {
+      "name": "國防院",
+      "status": "no_matching_rss_verified",
+      "rss_routes": [],
+      "fallback_routes": [],
+      "evidence_pages": [
+        {
+          "url": "https://indsr.org.tw/informationlist?uid=7",
+          "is_feed": false,
+          "request_failed": false
+        }
+      ],
+      "homepage": {
+        "name": "國防院",
+        "url": "https://indsr.org.tw/",
+        "candidates": []
+      },
+      "additional_subscription_pages": []
+    },
+    {
+      "name": "財政部",
+      "status": "rss_priority",
+      "rss_routes": [
+        "https://www.mof.gov.tw/Rss/384fb3077bb349ea973e7fc6f13b6974",
+        "https://www.etax.nat.gov.tw/etwmain/rss/news"
+      ],
+      "fallback_routes": [],
+      "evidence_pages": [
+        {
+          "url": "https://www.mof.gov.tw/Rss/384fb3077bb349ea973e7fc6f13b6974",
+          "is_feed": true,
+          "request_failed": false
+        },
+        {
+          "url": "https://www.etax.nat.gov.tw/etwmain/rss/news",
+          "is_feed": true,
+          "request_failed": false
+        }
+      ],
+      "additional_subscription_pages": [],
+      "rss_coverage": [
+        {
+          "url": "https://www.mof.gov.tw/Rss/384fb3077bb349ea973e7fc6f13b6974",
+          "coverage_reduced": false
+        },
+        {
+          "url": "https://www.etax.nat.gov.tw/etwmain/rss/news",
+          "coverage_reduced": false
+        }
+      ]
+    },
+    {
+      "name": "金管會",
+      "status": "rss_priority",
+      "rss_routes": [
+        "https://www.fsc.gov.tw/RSS/Messages?serno=201202290009&language=chinese"
+      ],
+      "fallback_routes": [],
+      "evidence_pages": [
+        {
+          "url": "https://www.fsc.gov.tw/RSS/Messages?serno=201202290009&language=chinese",
+          "is_feed": true,
+          "request_failed": false
+        }
+      ],
+      "additional_subscription_pages": [],
+      "rss_coverage": [
+        {
+          "url": "https://www.fsc.gov.tw/RSS/Messages?serno=201202290009&language=chinese",
+          "coverage_reduced": false
+        }
+      ]
+    },
+    {
+      "name": "公平會",
+      "status": "rss_priority",
+      "rss_routes": [
+        "https://www.ftc.gov.tw/internet/main/rss/rss_1.xml"
+      ],
+      "fallback_routes": [],
+      "evidence_pages": [
+        {
+          "url": "https://www.ftc.gov.tw/internet/main/rss/rss_1.xml",
+          "is_feed": true,
+          "request_failed": false
+        }
+      ],
+      "additional_subscription_pages": [],
+      "rss_coverage": [
+        {
+          "url": "https://www.ftc.gov.tw/internet/main/rss/rss_1.xml",
+          "coverage_reduced": false
+        }
+      ]
+    },
+    {
+      "name": "中央銀行",
+      "status": "rss_priority",
+      "rss_routes": [
+        "https://www.cbc.gov.tw/tw/rss-302-1.xml"
+      ],
+      "fallback_routes": [
+        "https://www.cbc.gov.tw/tw/lp-302-1.html"
+      ],
+      "evidence_pages": [
+        {
+          "url": "https://www.cbc.gov.tw/tw/lp-302-1.html",
+          "is_feed": false,
+          "request_failed": false
+        }
+      ],
+      "additional_subscription_pages": [],
+      "rss_coverage": [
+        {
+          "url": "https://www.cbc.gov.tw/tw/rss-302-1.xml",
+          "coverage_reduced": false
+        }
+      ]
+    },
+    {
+      "name": "主計總處",
+      "status": "rss_priority",
+      "rss_routes": [
+        "https://www.dgbas.gov.tw/OpenData.aspx?SN=C741343EFC5BCC6A&isRssFeed=1",
+        "https://www.dgbas.gov.tw/OpenData.aspx?SN=0DA0FD2F5416554E"
+      ],
+      "fallback_routes": [
+        "https://www.dgbas.gov.tw/OpenData.aspx?SN=C741343EFC5BCC6A&isRssFeed=1"
+      ],
+      "evidence_pages": [
+        {
+          "url": "https://www.dgbas.gov.tw/OpenData.aspx?SN=0DA0FD2F5416554E",
+          "request_failed": true
+        }
+      ],
+      "additional_subscription_pages": [],
+      "note": "User-supplied RSS verified through ordinary certificate-validating Chrome; HTTP TLS failure is retained in diagnostics. No invalid-certificate exception.",
+      "rss_coverage": [
+        {
+          "url": "https://www.dgbas.gov.tw/OpenData.aspx?SN=C741343EFC5BCC6A&isRssFeed=1",
+          "coverage_reduced": false
+        },
+        {
+          "url": "https://www.dgbas.gov.tw/OpenData.aspx?SN=0DA0FD2F5416554E",
+          "coverage_reduced": false
+        }
+      ]
+    },
+    {
+      "name": "人事總處",
+      "status": "rss_priority",
+      "rss_routes": [
+        "https://www.dgpa.gov.tw/rsscon?uid=82"
+      ],
+      "fallback_routes": [],
+      "evidence_pages": [
+        {
+          "url": "https://www.dgpa.gov.tw/rsscon?uid=82",
+          "is_feed": true,
+          "request_failed": false
+        }
+      ],
+      "additional_subscription_pages": [],
+      "rss_coverage": [
+        {
+          "url": "https://www.dgpa.gov.tw/rsscon?uid=82",
+          "coverage_reduced": false
+        }
+      ]
+    },
+    {
+      "name": "教育部",
+      "status": "rss_priority",
+      "rss_routes": [
+        "https://www.edu.tw/Rss_News.aspx?n=9E7AC85F1954DDA8"
+      ],
+      "fallback_routes": [
+        "https://www.edu.tw/News.aspx?n=9E7AC85F1954DDA8&sms=169B8E91BB75571F"
+      ],
+      "evidence_pages": [
+        {
+          "url": "https://www.edu.tw/News.aspx?n=9E7AC85F1954DDA8&sms=169B8E91BB75571F",
+          "is_feed": false,
+          "request_failed": false
+        }
+      ],
+      "additional_subscription_pages": [],
+      "rss_coverage": [
+        {
+          "url": "https://www.edu.tw/Rss_News.aspx?n=9E7AC85F1954DDA8",
+          "coverage_reduced": false
+        }
+      ]
+    },
+    {
+      "name": "國教院",
+      "status": "no_matching_rss_verified",
+      "rss_routes": [],
+      "fallback_routes": [],
+      "evidence_pages": [
+        {
+          "url": "https://www.naer.edu.tw/PageDoc?fid=15",
+          "is_feed": false,
+          "request_failed": false
+        }
+      ],
+      "homepage": {
+        "name": "國教院",
+        "url": "https://www.naer.edu.tw/",
+        "candidates": []
+      },
+      "additional_subscription_pages": []
+    },
+    {
+      "name": "運動部",
+      "status": "unavailable",
+      "rss_routes": [],
+      "fallback_routes": [
+        "https://www.sports.gov.tw/News/309"
+      ],
+      "evidence_pages": [
+        {
+          "url": "https://www.sports.gov.tw/News/309",
+          "request_failed": true
+        }
+      ],
+      "homepage": {
+        "name": "運動部",
+        "url": "https://www.sports.gov.tw/",
+        "error": "curl: (56) The requested URL returned error: 403\n"
+      },
+      "additional_subscription_pages": [],
+      "rss_coverage": []
+    },
+    {
+      "name": "法務部",
+      "status": "rss_priority",
+      "rss_routes": [
+        "https://www.moj.gov.tw/2204/2795/2796/rss"
+      ],
+      "fallback_routes": [],
+      "evidence_pages": [
+        {
+          "url": "https://www.moj.gov.tw/2204/2795/2796/rss",
+          "is_feed": true,
+          "request_failed": false
+        }
+      ],
+      "additional_subscription_pages": [],
+      "rss_coverage": [
+        {
+          "url": "https://www.moj.gov.tw/2204/2795/2796/rss",
+          "coverage_reduced": false
+        }
+      ]
+    },
+    {
+      "name": "矯正署",
+      "status": "rss_priority",
+      "rss_routes": [
+        "https://www.mjac.moj.gov.tw/4786/4963/4965/rss"
+      ],
+      "fallback_routes": [
+        "https://www.mjac.moj.gov.tw/4786/4963/4965/",
+        "https://www.mjac.moj.gov.tw/4786/654264/"
+      ],
+      "evidence_pages": [
+        {
+          "url": "https://www.mjac.moj.gov.tw/4786/4963/4965/",
+          "is_feed": false,
+          "request_failed": false
+        },
+        {
+          "url": "https://www.mjac.moj.gov.tw/4786/654264/",
+          "is_feed": false,
+          "request_failed": false
+        }
+      ],
+      "additional_subscription_pages": [],
+      "rss_coverage": [
+        {
+          "url": "https://www.mjac.moj.gov.tw/4786/4963/4965/rss",
+          "coverage_reduced": false
+        }
+      ]
+    },
+    {
+      "name": "最高檢察署",
+      "status": "no_matching_rss_verified",
+      "rss_routes": [],
+      "fallback_routes": [],
+      "evidence_pages": [
+        {
+          "url": "https://www.tps.moj.gov.tw/16314/1140948/",
+          "is_feed": false,
+          "request_failed": false
+        }
+      ],
+      "homepage": {
+        "name": "最高檢察署",
+        "url": "https://www.tps.moj.gov.tw/",
+        "candidates": [
+          "https://www.tps.moj.gov.tw/16314/16370/16386/16388/RSSSourceList"
+        ]
+      },
+      "additional_subscription_pages": [
+        {
+          "url": "https://www.tps.moj.gov.tw/16314/16370/16386/16388/RSSSourceList",
+          "is_feed": false,
+          "title": "全國法規最新消息-最高檢察署",
+          "links": [
+            "https://www.tps.moj.gov.tw/16314/16370/16386/16388/RSSSourceList"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "經濟部",
+      "status": "rss_priority",
+      "rss_routes": [
+        "https://www.moea.gov.tw/Mns/populace/news/NewsRSSdetail.aspx?Kind=1"
+      ],
+      "fallback_routes": [
+        "https://www.moea.gov.tw/Mns/Populace/news/News.aspx?kind=1&menu_id=40"
+      ],
+      "evidence_pages": [
+        {
+          "url": "https://www.moea.gov.tw/Mns/populace/news/NewsRSSdetail.aspx?Kind=1",
+          "is_feed": true,
+          "request_failed": false
+        },
+        {
+          "url": "https://www.moea.gov.tw/Mns/Populace/news/News.aspx?kind=1&menu_id=40",
+          "request_failed": true
+        }
+      ],
+      "additional_subscription_pages": [],
+      "rss_coverage": [
+        {
+          "url": "https://www.moea.gov.tw/Mns/populace/news/NewsRSSdetail.aspx?Kind=1",
+          "coverage_reduced": false
+        }
+      ]
+    },
+    {
+      "name": "交通部",
+      "status": "rss_priority",
+      "rss_routes": [
+        "https://www.motc.gov.tw/ch/app/rss/News"
+      ],
+      "fallback_routes": [
+        "https://www.motc.gov.tw/ch/app/news_list/query?module=news&id=14"
+      ],
+      "evidence_pages": [
+        {
+          "url": "https://www.motc.gov.tw/ch/app/news_list/query?module=news&id=14",
+          "is_feed": false,
+          "request_failed": false
+        }
+      ],
+      "additional_subscription_pages": [],
+      "rss_coverage": [
+        {
+          "url": "https://www.motc.gov.tw/ch/app/rss/News",
+          "coverage_reduced": true
+        }
+      ],
+      "note": "Same-week before/after comparison found original-page articles absent from RSS. Always supplement RSS using original list routes."
+    },
+    {
+      "name": "觀光署",
+      "status": "rss_priority",
+      "rss_routes": [
+        "https://www.taiwan.net.tw/rss.aspx?sno=0001001"
+      ],
+      "fallback_routes": [
+        "https://www.taiwan.net.tw/m1.aspx?sNo=0001001"
+      ],
+      "evidence_pages": [
+        {
+          "url": "https://www.taiwan.net.tw/m1.aspx?sNo=0001001",
+          "is_feed": false,
+          "request_failed": false
+        }
+      ],
+      "additional_subscription_pages": [],
+      "rss_coverage": [
+        {
+          "url": "https://www.taiwan.net.tw/rss.aspx?sno=0001001",
+          "coverage_reduced": false
+        }
+      ]
+    },
+    {
+      "name": "公路局",
+      "status": "no_matching_rss_verified",
+      "rss_routes": [],
+      "fallback_routes": [
+        "https://www.thb.gov.tw/News.aspx?n=12181&sms=14672",
+        "https://www.thb.gov.tw/OpenData.aspx?SN=692480BFAF016DAA",
+        "https://www.thb.gov.tw/News.aspx?n=12181&sms=14672"
+      ],
+      "evidence_pages": [
+        {
+          "url": "https://www.thb.gov.tw/News.aspx?n=12181&sms=14672",
+          "is_feed": false,
+          "request_failed": false
+        },
+        {
+          "url": "https://www.thb.gov.tw/OpenData.aspx?SN=692480BFAF016DAA",
+          "is_feed": false,
+          "request_failed": false
+        }
+      ],
+      "homepage": {
+        "name": "公路局",
+        "url": "https://www.thb.gov.tw/",
+        "candidates": []
+      },
+      "additional_subscription_pages": [],
+      "rss_coverage": []
+    },
+    {
+      "name": "高速公路局",
+      "status": "rss_priority",
+      "rss_routes": [
+        "https://www.freeway.gov.tw/Rss/freewayrss2.xml"
+      ],
+      "fallback_routes": [],
+      "evidence_pages": [
+        {
+          "url": "https://www.freeway.gov.tw/Rss/freewayrss2.xml",
+          "is_feed": true,
+          "request_failed": false
+        }
+      ],
+      "additional_subscription_pages": [],
+      "rss_coverage": [
+        {
+          "url": "https://www.freeway.gov.tw/Rss/freewayrss2.xml",
+          "coverage_reduced": false
+        }
+      ]
+    },
+    {
+      "name": "航港局",
+      "status": "rss_priority",
+      "rss_routes": [
+        "https://www.motcmpb.gov.tw/Information/RSS?SiteId=1&NodeId=15"
+      ],
+      "fallback_routes": [],
+      "evidence_pages": [
+        {
+          "url": "https://www.motcmpb.gov.tw/Information/RSS?SiteId=1&NodeId=15",
+          "is_feed": true,
+          "request_failed": false
+        }
+      ],
+      "additional_subscription_pages": [],
+      "rss_coverage": [
+        {
+          "url": "https://www.motcmpb.gov.tw/Information/RSS?SiteId=1&NodeId=15",
+          "coverage_reduced": false
+        }
+      ]
+    },
+    {
+      "name": "中央氣象署",
+      "status": "no_matching_rss_verified",
+      "rss_routes": [],
+      "fallback_routes": [],
+      "evidence_pages": [
+        {
+          "url": "https://www.cwa.gov.tw/V8/C/S/news_data.html",
+          "is_feed": false,
+          "request_failed": false
+        }
+      ],
+      "homepage": {
+        "name": "中央氣象署",
+        "url": "https://www.cwa.gov.tw/",
+        "candidates": []
+      },
+      "additional_subscription_pages": []
+    },
+    {
+      "name": "農業部",
+      "status": "rss_priority",
+      "rss_routes": [
+        "https://www.moa.gov.tw/open_data.php?format=rss&func=news_agri"
+      ],
+      "fallback_routes": [],
+      "evidence_pages": [
+        {
+          "url": "https://www.moa.gov.tw/open_data.php?format=rss&func=news_agri",
+          "is_feed": true,
+          "request_failed": false
+        }
+      ],
+      "additional_subscription_pages": [],
+      "rss_coverage": [
+        {
+          "url": "https://www.moa.gov.tw/open_data.php?format=rss&func=news_agri",
+          "coverage_reduced": false
+        }
+      ]
+    },
+    {
+      "name": "農業金融署",
+      "status": "rss_priority",
+      "rss_routes": [
+        "https://www.afna.gov.tw/wm_DATA.php?data=news"
+      ],
+      "fallback_routes": [
+        "https://www.afna.gov.tw/list.php?theme=news&subtheme=news"
+      ],
+      "evidence_pages": [
+        {
+          "url": "https://www.afna.gov.tw/list.php?theme=news&subtheme=news",
+          "is_feed": false,
+          "request_failed": false
+        },
+        {
+          "url": "https://www.afna.gov.tw/wm_DATA.php?data=news",
+          "is_feed": true,
+          "request_failed": false
+        }
+      ],
+      "additional_subscription_pages": [],
+      "rss_coverage": [
+        {
+          "url": "https://www.afna.gov.tw/wm_DATA.php?data=news",
+          "coverage_reduced": false
+        }
+      ]
+    },
+    {
+      "name": "農糧署",
+      "status": "rss_priority",
+      "rss_routes": [
+        "https://www.afa.gov.tw/cht/index.php?act=rss&ids=309"
+      ],
+      "fallback_routes": [],
+      "evidence_pages": [
+        {
+          "url": "https://www.afa.gov.tw/cht/index.php?act=rss&ids=309",
+          "is_feed": true,
+          "request_failed": false
+        }
+      ],
+      "additional_subscription_pages": [],
+      "rss_coverage": [
+        {
+          "url": "https://www.afa.gov.tw/cht/index.php?act=rss&ids=309",
+          "coverage_reduced": false
+        }
+      ]
+    },
+    {
+      "name": "漁業署",
+      "status": "rss_priority",
+      "rss_routes": [
+        "https://www.fa.gov.tw/wm_DATA.php?data=news"
+      ],
+      "fallback_routes": [
+        "https://www.fa.gov.tw/list.php?theme=Press_release"
+      ],
+      "evidence_pages": [
+        {
+          "url": "https://www.fa.gov.tw/list.php?theme=Press_release",
+          "is_feed": false,
+          "request_failed": false
+        },
+        {
+          "url": "https://www.fa.gov.tw/wm_DATA.php?data=news",
+          "request_failed": true
+        }
+      ],
+      "additional_subscription_pages": [],
+      "rss_coverage": [
+        {
+          "url": "https://www.fa.gov.tw/wm_DATA.php?data=news",
+          "coverage_reduced": false
+        }
+      ]
+    },
+    {
+      "name": "農村發展及水土保持署",
+      "status": "rss_priority",
+      "rss_routes": [
+        "https://www.ardswc.gov.tw/Home/Content/RSS/press.xml"
+      ],
+      "fallback_routes": [],
+      "evidence_pages": [
+        {
+          "url": "https://www.ardswc.gov.tw/Home/Content/RSS/press.xml",
+          "is_feed": true,
+          "request_failed": false
+        }
+      ],
+      "additional_subscription_pages": [],
+      "rss_coverage": [
+        {
+          "url": "https://www.ardswc.gov.tw/Home/Content/RSS/press.xml",
+          "coverage_reduced": false
+        }
+      ]
+    },
+    {
+      "name": "防檢署",
+      "status": "rss_priority",
+      "rss_routes": [
+        "https://www.aphia.gov.tw/api.php?func=news&format=rss"
+      ],
+      "fallback_routes": [
+        "https://www.aphia.gov.tw/theme_list.php?theme=NewInfoListWS"
+      ],
+      "evidence_pages": [
+        {
+          "url": "https://www.aphia.gov.tw/theme_list.php?theme=NewInfoListWS",
+          "is_feed": false,
+          "request_failed": false
+        }
+      ],
+      "additional_subscription_pages": [],
+      "rss_coverage": [
+        {
+          "url": "https://www.aphia.gov.tw/api.php?func=news&format=rss",
+          "coverage_reduced": false
+        }
+      ]
+    },
+    {
+      "name": "農科園區",
+      "status": "rss_priority",
+      "rss_routes": [
+        "https://www.atp.gov.tw/CHT/Rss.aspx"
+      ],
+      "fallback_routes": [],
+      "evidence_pages": [
+        {
+          "url": "https://www.atp.gov.tw/CHT/Rss.aspx",
+          "is_feed": true,
+          "request_failed": false
+        }
+      ],
+      "additional_subscription_pages": [],
+      "rss_coverage": [
+        {
+          "url": "https://www.atp.gov.tw/CHT/Rss.aspx",
+          "coverage_reduced": false
+        }
+      ]
+    },
+    {
+      "name": "衛生福利部",
+      "status": "rss_priority",
+      "rss_routes": [
+        "https://www.mohw.gov.tw/rss-16-1.html"
+      ],
+      "fallback_routes": [
+        "https://www.mohw.gov.tw/lp-16-1.html"
+      ],
+      "evidence_pages": [
+        {
+          "url": "https://www.mohw.gov.tw/lp-16-1.html",
+          "is_feed": false,
+          "request_failed": false
+        }
+      ],
+      "homepage": {
+        "name": "衛生福利部",
+        "url": "https://www.mohw.gov.tw/",
+        "candidates": [
+          "https://www.mohw.gov.tw/cp-2661-6125-1.html"
+        ]
+      },
+      "additional_subscription_pages": [
+        {
+          "url": "https://www.mohw.gov.tw/cp-2661-6125-1.html",
+          "is_feed": false,
+          "title": "RSS-\r\n\t\t\t\t\t\t衛生福利部",
+          "links": [
+            "https://www.mohw.gov.tw/xslGip/Unit001/images/favicon.ico",
+            "https://www.mohw.gov.tw/xslGip/Unit001/slick/slick.css",
+            "https://www.mohw.gov.tw/xslGip/Unit001/css/style.css",
+            "https://www.mohw.gov.tw/cp-2661-6125-1.html#aC",
+            "https://www.mohw.gov.tw/cp-2661-6125-1.html",
+            "https://www.mohw.gov.tw/np-2661-1.html",
+            "https://www.mohw.gov.tw/np-2661-1.html",
+            "https://chrome.google.com/webstore/detail/rss-subscription-extensio/nlbjncdgjeocebhnmkbbbdekmmmcbfjd?hl=zh-TW",
+            "https://www.mohw.gov.tw/rss-2622-1.html",
+            "https://www.mohw.gov.tw/rss-16-1.html",
+            "https://www.mohw.gov.tw/rss-17-1.html",
+            "https://www.mohw.gov.tw/rss-18-1.html",
+            "https://www.mohw.gov.tw/rss-101-1.html",
+            "https://www.mohw.gov.tw/rss-102-1.html",
+            "https://www.mohw.gov.tw/rss-103-1.html"
+          ]
+        }
+      ],
+      "rss_coverage": [
+        {
+          "url": "https://www.mohw.gov.tw/rss-16-1.html",
+          "coverage_reduced": false
+        }
+      ]
+    },
+    {
+      "name": "食藥署",
+      "status": "rss_priority",
+      "rss_routes": [
+        "https://www.fda.gov.tw/tc/rssNews.ashx"
+      ],
+      "fallback_routes": [],
+      "evidence_pages": [
+        {
+          "url": "https://www.fda.gov.tw/tc/rssNews.ashx",
+          "is_feed": true,
+          "request_failed": false
+        }
+      ],
+      "additional_subscription_pages": [],
+      "rss_coverage": [
+        {
+          "url": "https://www.fda.gov.tw/tc/rssNews.ashx",
+          "coverage_reduced": false
+        }
+      ]
+    },
+    {
+      "name": "疾管署",
+      "status": "rss_priority",
+      "rss_routes": [
+        "https://www.cdc.gov.tw/RSS/RssXml/Hh094B49-DRwe2RR4eFfrQ?type=1"
+      ],
+      "fallback_routes": [
+        "https://www.cdc.gov.tw/Bulletin/List/MmgtpeidAR5Ooai4-fgHzQ"
+      ],
+      "evidence_pages": [
+        {
+          "url": "https://www.cdc.gov.tw/Bulletin/List/MmgtpeidAR5Ooai4-fgHzQ",
+          "is_feed": false,
+          "request_failed": false
+        }
+      ],
+      "additional_subscription_pages": [],
+      "rss_coverage": [
+        {
+          "url": "https://www.cdc.gov.tw/RSS/RssXml/Hh094B49-DRwe2RR4eFfrQ?type=1",
+          "coverage_reduced": false
+        }
+      ]
+    },
+    {
+      "name": "國健署",
+      "status": "rss_priority",
+      "rss_routes": [
+        "https://www.hpa.gov.tw/Pages/ashx/rsspage.ashx?nodeid=124"
+      ],
+      "fallback_routes": [],
+      "evidence_pages": [
+        {
+          "url": "https://www.hpa.gov.tw/Pages/ashx/rsspage.ashx?nodeid=124",
+          "request_failed": true
+        }
+      ],
+      "additional_subscription_pages": [],
+      "rss_coverage": [
+        {
+          "url": "https://www.hpa.gov.tw/Pages/ashx/rsspage.ashx?nodeid=124",
+          "coverage_reduced": false
+        }
+      ]
+    },
+    {
+      "name": "社家署",
+      "status": "no_matching_rss_verified",
+      "rss_routes": [],
+      "fallback_routes": [
+        "https://www.sfaa.gov.tw/sfaa/list/5cX",
+        "https://www.mohw.gov.tw/lp-16-1-40.html"
+      ],
+      "evidence_pages": [
+        {
+          "url": "https://www.sfaa.gov.tw/sfaa/list/5cX",
+          "is_feed": false,
+          "request_failed": false
+        },
+        {
+          "url": "https://www.mohw.gov.tw/lp-16-1-40.html",
+          "is_feed": false,
+          "request_failed": false
+        }
+      ],
+      "homepage": {
+        "name": "社家署",
+        "url": "https://www.sfaa.gov.tw/",
+        "candidates": [
+          "https://www.sfaa.gov.tw/sfaa/album/detail/5eW/6uY"
+        ]
+      },
+      "additional_subscription_pages": [
+        {
+          "url": "https://www.sfaa.gov.tw/sfaa/album/detail/5eW/6uY",
+          "is_feed": false,
+          "title": "社家署全球資訊網⠀115年度身心障礙福利機構及團體秋節產品聯合推廣活動",
+          "links": []
+        }
+      ],
+      "rss_coverage": []
+    },
+    {
+      "name": "勞動部",
+      "status": "rss_priority",
+      "rss_routes": [
+        "https://www.mol.gov.tw/1607/1632/1633/RssList"
+      ],
+      "fallback_routes": [
+        "https://www.mol.gov.tw/1607/1632/1633/"
+      ],
+      "evidence_pages": [
+        {
+          "url": "https://www.mol.gov.tw/1607/1632/1633/",
+          "is_feed": false,
+          "request_failed": false
+        }
+      ],
+      "homepage": {
+        "name": "勞動部",
+        "url": "https://www.mol.gov.tw/",
+        "candidates": [
+          "https://www.mol.gov.tw/2578/2582/3271/post"
+        ]
+      },
+      "additional_subscription_pages": [
+        {
+          "url": "https://www.mol.gov.tw/2578/2582/3271/post",
+          "is_feed": false,
+          "title": "RSS-勞動部全球資訊網中文網",
+          "links": [
+            "https://www.mol.gov.tw/2578/2582/3271/post",
+            "https://social-plugins.line.me/lineit/share?url=https://www.mol.gov.tw/2578/2582/3271/&text=RSS&from=line_scheme",
+            "https://www.mol.gov.tw/1607/1632/1633/RssList",
+            "https://www.mol.gov.tw/1607/1632/2665/RssList",
+            "https://www.mol.gov.tw/1607/1632/2660/RssList"
+          ]
+        },
+        {
+          "url": "https://www.mol.gov.tw/1607/1632/1633/rss",
+          "error": "curl: (56) The requested URL returned error: 404\n"
+        }
+      ],
+      "rss_coverage": [
+        {
+          "url": "https://www.mol.gov.tw/1607/1632/1633/RssList",
+          "coverage_reduced": false
+        }
+      ]
+    },
+    {
+      "name": "勞動力發展署",
+      "status": "rss_priority",
+      "rss_routes": [
+        "https://www.wda.gov.tw/OpenData.aspx?SN=8C4FEB29449A1601"
+      ],
+      "fallback_routes": [],
+      "evidence_pages": [
+        {
+          "url": "https://www.wda.gov.tw/OpenData.aspx?SN=8C4FEB29449A1601",
+          "is_feed": true,
+          "request_failed": false
+        }
+      ],
+      "additional_subscription_pages": [],
+      "rss_coverage": [
+        {
+          "url": "https://www.wda.gov.tw/OpenData.aspx?SN=8C4FEB29449A1601",
+          "coverage_reduced": false
+        }
+      ]
+    },
+    {
+      "name": "職業安全衛生署",
+      "status": "rss_priority",
+      "rss_routes": [
+        "https://www.osha.gov.tw/48110/48417/48419/RssList"
+      ],
+      "fallback_routes": [],
+      "evidence_pages": [
+        {
+          "url": "https://www.osha.gov.tw/48110/48417/48419/RssList",
+          "is_feed": true,
+          "request_failed": false
+        }
+      ],
+      "additional_subscription_pages": [],
+      "rss_coverage": [
+        {
+          "url": "https://www.osha.gov.tw/48110/48417/48419/RssList",
+          "coverage_reduced": false
+        }
+      ]
+    },
+    {
+      "name": "勞動基金運用局",
+      "status": "no_matching_rss_verified",
+      "rss_routes": [],
+      "fallback_routes": [],
+      "evidence_pages": [
+        {
+          "url": "https://www.blf.gov.tw/49200/49245/49247/",
+          "is_feed": false,
+          "request_failed": false
+        }
+      ],
+      "homepage": {
+        "name": "勞動基金運用局",
+        "url": "https://www.blf.gov.tw/",
+        "candidates": []
+      },
+      "additional_subscription_pages": [
+        {
+          "url": "https://www.blf.gov.tw/49200/49245/49247/rss",
+          "error": "curl: (56) The requested URL returned error: 404\n"
+        }
+      ],
+      "note": "RssList candidate returned an empty body; retain the original page."
+    },
+    {
+      "name": "文化部",
+      "status": "rss_priority",
+      "rss_routes": [
+        "https://www.moc.gov.tw/OpenData.aspx?SN=C4E4E3A8E687AD91"
+      ],
+      "fallback_routes": [
+        "https://www.moc.gov.tw/OpenData.aspx?SN=C4E4E3A8E687AD91"
+      ],
+      "evidence_pages": [
+        {
+          "url": "https://www.moc.gov.tw/OpenData.aspx?SN=C4E4E3A8E687AD91",
+          "is_feed": true,
+          "request_failed": false
+        }
+      ],
+      "additional_subscription_pages": [],
+      "rss_coverage": [
+        {
+          "url": "https://www.moc.gov.tw/OpenData.aspx?SN=C4E4E3A8E687AD91",
+          "coverage_reduced": false
+        }
+      ]
+    },
+    {
+      "name": "故宮",
+      "status": "no_matching_rss_verified",
+      "rss_routes": [],
+      "fallback_routes": [],
+      "evidence_pages": [
+        {
+          "url": "https://www.npm.gov.tw/News-List.aspx?sno=01000001&l=1&q=&s_date=&e_date=&type=03000096",
+          "is_feed": false,
+          "request_failed": false
+        }
+      ],
+      "homepage": {
+        "name": "故宮",
+        "url": "https://www.npm.gov.tw/",
+        "candidates": []
+      },
+      "additional_subscription_pages": []
+    },
+    {
+      "name": "數位發展部",
+      "status": "no_matching_rss_verified",
+      "rss_routes": [],
+      "fallback_routes": [],
+      "evidence_pages": [
+        {
+          "url": "https://moda.gov.tw/press/press-releases/372",
+          "is_feed": false,
+          "request_failed": false
+        }
+      ],
+      "homepage": {
+        "name": "數位發展部",
+        "url": "https://moda.gov.tw/",
+        "candidates": []
+      },
+      "additional_subscription_pages": []
+    },
+    {
+      "name": "數位產業署",
+      "status": "no_matching_rss_verified",
+      "rss_routes": [],
+      "fallback_routes": [],
+      "evidence_pages": [
+        {
+          "url": "https://moda.gov.tw/ADI/news/latest-news/766",
+          "is_feed": false,
+          "request_failed": false
+        }
+      ],
+      "homepage": {
+        "name": "數位產業署",
+        "url": "https://moda.gov.tw/",
+        "candidates": []
+      },
+      "additional_subscription_pages": []
+    },
+    {
+      "name": "資通安全署",
+      "status": "no_matching_rss_verified",
+      "rss_routes": [],
+      "fallback_routes": [],
+      "evidence_pages": [
+        {
+          "url": "https://moda.gov.tw/ACS/press/news/press/820",
+          "is_feed": false,
+          "request_failed": false
+        }
+      ],
+      "homepage": {
+        "name": "資通安全署",
+        "url": "https://moda.gov.tw/",
+        "candidates": []
+      },
+      "additional_subscription_pages": []
+    },
+    {
+      "name": "國家資通安全研究院",
+      "status": "no_matching_rss_verified",
+      "rss_routes": [],
+      "fallback_routes": [
+        "https://www.nics.nat.gov.tw/latest_news/announcements/Latest_Announcement/",
+        "https://www.nics.nat.gov.tw/latest_news/announcements/Latest_Announcement/"
+      ],
+      "evidence_pages": [
+        {
+          "url": "https://www.nics.nat.gov.tw/latest_news/announcements/Latest_Announcement/",
+          "is_feed": false,
+          "request_failed": false
+        }
+      ],
+      "homepage": {
+        "name": "國家資通安全研究院",
+        "url": "https://www.nics.nat.gov.tw/",
+        "candidates": []
+      },
+      "additional_subscription_pages": [],
+      "rss_coverage": []
+    },
+    {
+      "name": "環境部",
+      "status": "unavailable",
+      "rss_routes": [],
+      "fallback_routes": [
+        "https://www.moenv.gov.tw/press/press-releases/2626.html?p=1&dc=50",
+        "https://enews.moenv.gov.tw/"
+      ],
+      "evidence_pages": [
+        {
+          "url": "https://www.moenv.gov.tw/press/press-releases/2626.html?p=1&dc=50",
+          "request_failed": true
+        },
+        {
+          "url": "https://enews.moenv.gov.tw/",
+          "request_failed": true
+        }
+      ],
+      "homepage": {
+        "name": "環境部",
+        "url": "https://www.moenv.gov.tw/",
+        "error": "curl: (56) The requested URL returned error: 403\n"
+      },
+      "additional_subscription_pages": [],
+      "rss_coverage": []
+    },
+    {
+      "name": "國發會",
+      "status": "rss_priority",
+      "rss_routes": [
+        "https://www.ndc.gov.tw/Rss_News.aspx?n=114AAE178CD95D4C"
+      ],
+      "fallback_routes": [],
+      "evidence_pages": [
+        {
+          "url": "https://www.ndc.gov.tw/Rss_News.aspx?n=114AAE178CD95D4C",
+          "is_feed": true,
+          "request_failed": false
+        }
+      ],
+      "additional_subscription_pages": [],
+      "rss_coverage": [
+        {
+          "url": "https://www.ndc.gov.tw/Rss_News.aspx?n=114AAE178CD95D4C",
+          "coverage_reduced": false
+        }
+      ]
+    },
+    {
+      "name": "國科會",
+      "status": "rss_priority",
+      "rss_routes": [
+        "https://www.nstc.gov.tw/nstc/rss/news"
+      ],
+      "fallback_routes": [
+        "https://www.nstc.gov.tw/folksonomy/list/9aa56881-8df0-4eb6-a5a7-32a2f72826ff?l=ch&pageSize=%EF%BC%93%EF%BC%95&pageNum=1"
+      ],
+      "evidence_pages": [
+        {
+          "url": "https://www.nstc.gov.tw/folksonomy/list/9aa56881-8df0-4eb6-a5a7-32a2f72826ff?l=ch&pageSize=%EF%BC%93%EF%BC%95&pageNum=1",
+          "is_feed": false,
+          "request_failed": false
+        }
+      ],
+      "additional_subscription_pages": [],
+      "rss_coverage": [
+        {
+          "url": "https://www.nstc.gov.tw/nstc/rss/news",
+          "coverage_reduced": false
+        }
+      ]
+    },
+    {
+      "name": "國家實驗研究院",
+      "status": "no_matching_rss_verified",
+      "rss_routes": [],
+      "fallback_routes": [],
+      "evidence_pages": [
+        {
+          "url": "https://www.niar.org.tw/xmdoc?xsmsid=0I148622737263495777",
+          "is_feed": false,
+          "request_failed": false
+        }
+      ],
+      "homepage": {
+        "name": "國家實驗研究院",
+        "url": "https://www.niar.org.tw/",
+        "candidates": []
+      },
+      "additional_subscription_pages": []
+    },
+    {
+      "name": "國家太空中心",
+      "status": "no_matching_rss_verified",
+      "rss_routes": [],
+      "fallback_routes": [],
+      "evidence_pages": [
+        {
+          "url": "https://www.tasa.org.tw/zh-TW/announcements/news",
+          "is_feed": false,
+          "request_failed": false
+        }
+      ],
+      "homepage": {
+        "name": "國家太空中心",
+        "url": "https://www.tasa.org.tw/",
+        "candidates": []
+      },
+      "additional_subscription_pages": []
+    },
+    {
+      "name": "原民會",
+      "status": "rss_priority",
+      "rss_routes": [
+        "https://www.cip.gov.tw/zh-tw/rss/35AE118732EB6BAF/news.html"
+      ],
+      "fallback_routes": [],
+      "evidence_pages": [
+        {
+          "url": "https://www.cip.gov.tw/zh-tw/rss/35AE118732EB6BAF/news.html",
+          "is_feed": true,
+          "request_failed": false
+        }
+      ],
+      "additional_subscription_pages": [],
+      "rss_coverage": [
+        {
+          "url": "https://www.cip.gov.tw/zh-tw/rss/35AE118732EB6BAF/news.html",
+          "coverage_reduced": false
+        }
+      ]
+    },
+    {
+      "name": "客委會",
+      "status": "rss_priority",
+      "rss_routes": [
+        "https://www.hakka.gov.tw/chhakka/app/rss/News"
+      ],
+      "fallback_routes": [
+        "https://www.hakka.gov.tw/chhakka/app/data/list?id=25",
+        "https://www.hakka.gov.tw/chhakka/app/data/list?id=25"
+      ],
+      "evidence_pages": [
+        {
+          "url": "https://www.hakka.gov.tw/chhakka/app/data/list?id=25",
+          "is_feed": false,
+          "request_failed": false
+        }
+      ],
+      "homepage": {
+        "name": "客委會",
+        "url": "https://www.hakka.gov.tw/",
+        "candidates": [
+          "https://www.hakka.gov.tw/chhakka/app/artwebsite?module=artwebsite&id=253"
+        ]
+      },
+      "additional_subscription_pages": [
+        {
+          "url": "https://www.hakka.gov.tw/chhakka/app/artwebsite?module=artwebsite&id=253",
+          "is_feed": false,
+          "title": "RSS-客家委員會全球資訊網",
+          "links": [
+            "https://www.hakka.gov.tw/chhakka/app/artwebsite?module=artwebsite&id=253",
+            "https://www.hakka.gov.tw/chhakka/index",
+            "http://www.plurk.com/?qualifier=shares&status=https://www.hakka.gov.tw/chhakka/app/artwebsite?module=artwebsite&id=253(RSS)",
+            "https://www.hakka.gov.tw/chhakka/app/rss/News",
+            "https://www.hakka.gov.tw/chhakka/app/rss/NewsClarification"
+          ]
+        }
+      ],
+      "rss_coverage": [
+        {
+          "url": "https://www.hakka.gov.tw/chhakka/app/rss/News",
+          "coverage_reduced": true
+        }
+      ],
+      "note": "Same-week before/after comparison found original-page articles absent from RSS. Always supplement RSS using original list routes."
+    },
+    {
+      "name": "海委會",
+      "status": "rss_priority",
+      "rss_routes": [
+        "https://www.oac.gov.tw/News?language=chinese&websitedn=ch"
+      ],
+      "fallback_routes": [],
+      "evidence_pages": [
+        {
+          "url": "https://www.oac.gov.tw/News?language=chinese&websitedn=ch",
+          "is_feed": true,
+          "request_failed": false
+        }
+      ],
+      "additional_subscription_pages": [],
+      "rss_coverage": [
+        {
+          "url": "https://www.oac.gov.tw/News?language=chinese&websitedn=ch",
+          "coverage_reduced": false
+        }
+      ]
+    },
+    {
+      "name": "海巡署",
+      "status": "rss_priority",
+      "rss_routes": [
+        "https://www.cga.gov.tw/GipOpen/wSite/rss?ctNode=650&mp=999"
+      ],
+      "fallback_routes": [],
+      "evidence_pages": [
+        {
+          "url": "https://www.cga.gov.tw/GipOpen/wSite/rss?ctNode=650&mp=999",
+          "is_feed": true,
+          "request_failed": false
+        }
+      ],
+      "additional_subscription_pages": [],
+      "rss_coverage": [
+        {
+          "url": "https://www.cga.gov.tw/GipOpen/wSite/rss?ctNode=650&mp=999",
+          "coverage_reduced": false
+        }
+      ]
+    },
+    {
+      "name": "艦隊分署",
+      "status": "rss_priority",
+      "rss_routes": [
+        "https://www.cga.gov.tw/GipOpen/wSite/rss?ctNode=2116&mp=9997"
+      ],
+      "fallback_routes": [],
+      "evidence_pages": [
+        {
+          "url": "https://www.cga.gov.tw/GipOpen/wSite/rss?ctNode=2116&mp=9997",
+          "is_feed": true,
+          "request_failed": false
+        }
+      ],
+      "additional_subscription_pages": [],
+      "rss_coverage": [
+        {
+          "url": "https://www.cga.gov.tw/GipOpen/wSite/rss?ctNode=2116&mp=9997",
+          "coverage_reduced": false
+        }
+      ]
+    },
+    {
+      "name": "偵防分署",
+      "status": "rss_priority",
+      "rss_routes": [
+        "https://www.cga.gov.tw/GipOpen/wSite/rss?ctNode=10619&mp=9998"
+      ],
+      "fallback_routes": [],
+      "evidence_pages": [
+        {
+          "url": "https://www.cga.gov.tw/GipOpen/wSite/rss?ctNode=10619&mp=9998",
+          "is_feed": true,
+          "request_failed": false
+        }
+      ],
+      "additional_subscription_pages": [],
+      "rss_coverage": [
+        {
+          "url": "https://www.cga.gov.tw/GipOpen/wSite/rss?ctNode=10619&mp=9998",
+          "coverage_reduced": false
+        }
+      ]
+    },
+    {
+      "name": "退輔會",
+      "status": "rss_priority",
+      "rss_routes": [
+        "https://www.vac.gov.tw/rss-1788-1.html"
+      ],
+      "fallback_routes": [
+        "https://www.vac.gov.tw/lp-1788-1.html"
+      ],
+      "evidence_pages": [
+        {
+          "url": "https://www.vac.gov.tw/lp-1788-1.html",
+          "is_feed": false,
+          "request_failed": false
+        }
+      ],
+      "additional_subscription_pages": [],
+      "rss_coverage": [
+        {
+          "url": "https://www.vac.gov.tw/rss-1788-1.html",
+          "coverage_reduced": false
+        }
+      ]
+    },
+    {
+      "name": "榮總",
+      "status": "unavailable",
+      "rss_routes": [],
+      "fallback_routes": [
+        "https://www.vghtpe.gov.tw/News.action?gcode=A05"
+      ],
+      "evidence_pages": [
+        {
+          "url": "https://www.vghtpe.gov.tw/News.action?gcode=A05",
+          "request_failed": true
+        }
+      ],
+      "homepage": {
+        "name": "榮總",
+        "url": "https://www.vghtpe.gov.tw/",
+        "error": "curl: (56) The requested URL returned error: 403\n"
+      },
+      "additional_subscription_pages": [],
+      "rss_coverage": []
+    },
+    {
+      "name": "通傳會",
+      "status": "rss_priority",
+      "rss_routes": [
+        "https://api.ncc.gov.tw/chncc/rss/News?id=50"
+      ],
+      "fallback_routes": [],
+      "evidence_pages": [
+        {
+          "url": "https://api.ncc.gov.tw/chncc/rss/News?id=50",
+          "is_feed": true,
+          "request_failed": false
+        }
+      ],
+      "additional_subscription_pages": [],
+      "rss_coverage": [
+        {
+          "url": "https://api.ncc.gov.tw/chncc/rss/News?id=50",
+          "coverage_reduced": false
+        }
+      ]
+    },
+    {
+      "name": "工程會",
+      "status": "rss_priority",
+      "rss_routes": [
+        "https://www.pcc.gov.tw/content/opendata?item=news&n=CF5DF99964D9DB8E"
+      ],
+      "fallback_routes": [
+        "https://www.pcc.gov.tw/content/News.aspx?n=C61062639C0CD29F&sms=21EF9CF82726C1BB"
+      ],
+      "evidence_pages": [
+        {
+          "url": "https://www.pcc.gov.tw/content/News.aspx?n=C61062639C0CD29F&sms=21EF9CF82726C1BB",
+          "is_feed": false,
+          "request_failed": false
+        },
+        {
+          "url": "https://www.pcc.gov.tw/content/opendata?item=news&n=CF5DF99964D9DB8E",
+          "request_failed": true
+        }
+      ],
+      "additional_subscription_pages": [],
+      "rss_coverage": [
+        {
+          "url": "https://www.pcc.gov.tw/content/opendata?item=news&n=CF5DF99964D9DB8E",
+          "coverage_reduced": false
+        }
+      ]
+    },
+    {
+      "name": "中選會",
+      "status": "no_matching_rss_verified",
+      "rss_routes": [],
+      "fallback_routes": [],
+      "evidence_pages": [
+        {
+          "url": "https://web.cec.gov.tw/central",
+          "is_feed": false,
+          "request_failed": false
+        }
+      ],
+      "homepage": {
+        "name": "中選會",
+        "url": "https://web.cec.gov.tw/",
+        "candidates": []
+      },
+      "additional_subscription_pages": []
+    },
+    {
+      "name": "國家文化藝術基金會",
+      "status": "no_matching_rss_verified",
+      "rss_routes": [],
+      "fallback_routes": [
+        "https://www.ncafroc.org.tw/news.html"
+      ],
+      "evidence_pages": [
+        {
+          "url": "https://www.ncafroc.org.tw/news.html",
+          "is_feed": false,
+          "request_failed": false
+        }
+      ],
+      "homepage": {
+        "name": "國家文化藝術基金會",
+        "url": "https://www.ncafroc.org.tw/",
+        "candidates": []
+      },
+      "additional_subscription_pages": [],
+      "rss_coverage": []
+    },
+    {
+      "name": "金門酒廠胡璉文化藝術基金會",
+      "status": "no_matching_rss_verified",
+      "rss_routes": [],
+      "fallback_routes": [
+        "https://kkl-hulien.org.tw/新聞公告/新聞公告-公告專區/"
+      ],
+      "evidence_pages": [
+        {
+          "url": "https://kkl-hulien.org.tw/新聞公告/新聞公告-公告專區/",
+          "is_feed": false,
+          "request_failed": false
+        }
+      ],
+      "homepage": {
+        "name": "金門酒廠胡璉文化藝術基金會",
+        "url": "https://kkl-hulien.org.tw/",
+        "candidates": [
+          "https://kkl-hulien.org.tw/feed/"
+        ]
+      },
+      "additional_subscription_pages": [
+        {
+          "url": "https://kkl-hulien.org.tw/feed/",
+          "is_feed": true,
+          "title": "胡璉文化藝術基金會",
+          "links": []
+        }
+      ],
+      "note": "Generic site feed has broader scope than the approved announcements section; not selected.",
+      "rss_coverage": []
+    },
+    {
+      "name": "文化臺灣基金會",
+      "status": "no_matching_rss_verified",
+      "rss_routes": [],
+      "fallback_routes": [
+        "https://www.tctf.org.tw/"
+      ],
+      "evidence_pages": [
+        {
+          "url": "https://www.tctf.org.tw/",
+          "is_feed": false,
+          "request_failed": false
+        }
+      ],
+      "homepage": {
+        "name": "文化臺灣基金會",
+        "url": "https://www.tctf.org.tw/",
+        "candidates": []
+      },
+      "additional_subscription_pages": [],
+      "rss_coverage": []
+    },
+    {
+      "name": "臺灣美術基金會",
+      "status": "no_matching_rss_verified",
+      "rss_routes": [],
+      "fallback_routes": [
+        "https://www.tfaf.org.tw/News.aspx?n=3460&sms=12940"
+      ],
+      "evidence_pages": [
+        {
+          "url": "https://www.tfaf.org.tw/News.aspx?n=3460&sms=12940",
+          "is_feed": false,
+          "request_failed": false
+        }
+      ],
+      "homepage": {
+        "name": "臺灣美術基金會",
+        "url": "https://www.tfaf.org.tw/",
+        "candidates": []
+      },
+      "additional_subscription_pages": [],
+      "rss_coverage": []
+    },
+    {
+      "name": "臺灣博物館文教基金會",
+      "status": "no_matching_rss_verified",
+      "rss_routes": [],
+      "fallback_routes": [
+        "https://www.taiwan-museum.org.tw/category/news/"
+      ],
+      "evidence_pages": [
+        {
+          "url": "https://www.taiwan-museum.org.tw/category/news/",
+          "is_feed": false,
+          "request_failed": false
+        }
+      ],
+      "homepage": {
+        "name": "臺灣博物館文教基金會",
+        "url": "https://www.taiwan-museum.org.tw/",
+        "candidates": []
+      },
+      "additional_subscription_pages": [],
+      "rss_coverage": []
+    },
+    {
+      "name": "二二八事件紀念基金會",
+      "status": "no_matching_rss_verified",
+      "rss_routes": [],
+      "fallback_routes": [
+        "https://www.228.org.tw/newsmain"
+      ],
+      "evidence_pages": [
+        {
+          "url": "https://www.228.org.tw/newsmain",
+          "is_feed": false,
+          "request_failed": false
+        }
+      ],
+      "homepage": {
+        "name": "二二八事件紀念基金會",
+        "url": "https://www.228.org.tw/",
+        "candidates": []
+      },
+      "additional_subscription_pages": [],
+      "rss_coverage": []
+    },
+    {
+      "name": "威權統治時期國家不法行為被害者權利回復基金會",
+      "status": "rss_priority",
+      "rss_routes": [
+        "https://www.rrf.org.tw/presses/rss"
+      ],
+      "fallback_routes": [
+        "https://www.rrf.org.tw/presses"
+      ],
+      "evidence_pages": [
+        {
+          "url": "https://www.rrf.org.tw/presses",
+          "is_feed": false,
+          "request_failed": false
+        }
+      ],
+      "additional_subscription_pages": [],
+      "rss_coverage": [
+        {
+          "url": "https://www.rrf.org.tw/presses/rss",
+          "coverage_reduced": false
+        }
+      ]
+    },
+    {
+      "name": "台灣建築中心",
+      "status": "no_matching_rss_verified",
+      "rss_routes": [],
+      "fallback_routes": [
+        "https://www.tabc.org.tw/tw/modules/news/index.php?storytopic=15"
+      ],
+      "evidence_pages": [
+        {
+          "url": "https://www.tabc.org.tw/tw/modules/news/index.php?storytopic=15",
+          "is_feed": false,
+          "request_failed": false
+        }
+      ],
+      "homepage": {
+        "name": "台灣建築中心",
+        "url": "https://www.tabc.org.tw/",
+        "candidates": [
+          "https://www.tabc.org.tw/tw/backend.php"
+        ]
+      },
+      "additional_subscription_pages": [
+        {
+          "url": "https://www.tabc.org.tw/tw/backend.php",
+          "is_feed": true,
+          "title": "TABC台灣建築中心",
+          "links": []
+        }
+      ],
+      "note": "Generic RSS has broader scope than approved storytopic=15; not selected.",
+      "rss_coverage": []
+    },
+    {
+      "name": "藥害救濟基金會",
+      "status": "rss_priority",
+      "rss_routes": [
+        "https://www.tdrf.org.tw/category/news/feed/"
+      ],
+      "fallback_routes": [
+        "https://www.tdrf.org.tw/category/news/"
+      ],
+      "evidence_pages": [
+        {
+          "url": "https://www.tdrf.org.tw/category/news/",
+          "is_feed": false,
+          "request_failed": false
+        }
+      ],
+      "additional_subscription_pages": [],
+      "rss_coverage": [
+        {
+          "url": "https://www.tdrf.org.tw/category/news/feed/",
+          "coverage_reduced": false
+        }
+      ]
+    },
+    {
+      "name": "國家衛生研究院",
+      "status": "no_matching_rss_verified",
+      "rss_routes": [],
+      "fallback_routes": [
+        "https://www.nhri.edu.tw/News/?id=b787460a34504b8181d732f7d7f0e5c5"
+      ],
+      "evidence_pages": [
+        {
+          "url": "https://www.nhri.edu.tw/News/?id=b787460a34504b8181d732f7d7f0e5c5",
+          "is_feed": false,
+          "request_failed": false
+        }
+      ],
+      "homepage": {
+        "name": "國家衛生研究院",
+        "url": "https://www.nhri.edu.tw/",
+        "candidates": []
+      },
+      "additional_subscription_pages": [],
+      "rss_coverage": []
+    },
+    {
+      "name": "賑災基金會",
+      "status": "no_matching_rss_verified",
+      "rss_routes": [],
+      "fallback_routes": [
+        "https://www.tf4dr.org/posts"
+      ],
+      "evidence_pages": [
+        {
+          "url": "https://www.tf4dr.org/posts",
+          "is_feed": false,
+          "request_failed": false
+        }
+      ],
+      "homepage": {
+        "name": "賑災基金會",
+        "url": "https://www.tf4dr.org/",
+        "candidates": []
+      },
+      "additional_subscription_pages": [],
+      "rss_coverage": []
+    },
+    {
+      "name": "醫藥品查驗中心",
+      "status": "no_matching_rss_verified",
+      "rss_routes": [],
+      "fallback_routes": [
+        "https://www.cde.org.tw/1127/61365/"
+      ],
+      "evidence_pages": [
+        {
+          "url": "https://www.cde.org.tw/1127/61365/",
+          "is_feed": false,
+          "request_failed": false
+        }
+      ],
+      "homepage": {
+        "name": "醫藥品查驗中心",
+        "url": "https://www.cde.org.tw/",
+        "candidates": []
+      },
+      "additional_subscription_pages": [],
+      "rss_coverage": []
+    },
+    {
+      "name": "器官捐贈移植登錄及病人自主推廣中心",
+      "status": "no_matching_rss_verified",
+      "rss_routes": [],
+      "fallback_routes": [
+        "https://www.tosrpapc.org.tw/xmdoc?xsmsid=0P008623086253508127"
+      ],
+      "evidence_pages": [
+        {
+          "url": "https://www.tosrpapc.org.tw/xmdoc?xsmsid=0P008623086253508127",
+          "is_feed": false,
+          "request_failed": false
+        }
+      ],
+      "homepage": {
+        "name": "器官捐贈移植登錄及病人自主推廣中心",
+        "url": "https://www.tosrpapc.org.tw/",
+        "candidates": []
+      },
+      "additional_subscription_pages": [],
+      "rss_coverage": []
+    },
+    {
+      "name": "婦女權益促進發展基金會",
+      "status": "no_matching_rss_verified",
+      "rss_routes": [],
+      "fallback_routes": [
+        "https://www.wrp.org.tw/List.aspx?mid=111"
+      ],
+      "evidence_pages": [
+        {
+          "url": "https://www.wrp.org.tw/List.aspx?mid=111",
+          "is_feed": false,
+          "request_failed": false
+        }
+      ],
+      "homepage": {
+        "name": "婦女權益促進發展基金會",
+        "url": "https://www.wrp.org.tw/",
+        "candidates": []
+      },
+      "additional_subscription_pages": [],
+      "rss_coverage": []
+    },
+    {
+      "name": "醫院評鑑暨醫療品質策進會",
+      "status": "rss_priority",
+      "rss_routes": [
+        "https://www.jct.org.tw/rss-5-1.xml"
+      ],
+      "fallback_routes": [
+        "https://www.jct.org.tw/lp-5-1.html"
+      ],
+      "evidence_pages": [
+        {
+          "url": "https://www.jct.org.tw/lp-5-1.html",
+          "is_feed": false,
+          "request_failed": false
+        }
+      ],
+      "homepage": {
+        "name": "醫院評鑑暨醫療品質策進會",
+        "url": "https://www.jct.org.tw/",
+        "candidates": [
+          "https://www.jct.org.tw/cp-14-9-ef1df-1.html"
+        ]
+      },
+      "additional_subscription_pages": [
+        {
+          "url": "https://www.jct.org.tw/cp-14-9-ef1df-1.html",
+          "is_feed": false,
+          "title": "財團法人醫院評鑑暨醫療品質策進會-推薦資源-TOPLINKS 資源連結-RSS",
+          "links": [
+            "https://www.jct.org.tw/cp-14-9-ef1df-1.html",
+            "http://www.rssreader.com/",
+            "https://chrome.google.com/webstore/detail/rss-subscription-extensio/nlbjncdgjeocebhnmkbbbdekmmmcbfjd?hl=zh-TW",
+            "https://www.jct.org.tw/rss-5-1.xml",
+            "https://www.jct.org.tw/rss-6-1.xml",
+            "https://www.jct.org.tw/rss-7-1.xml",
+            "https://www.jct.org.tw/rss-8-1.xml"
+          ]
+        }
+      ],
+      "rss_coverage": [
+        {
+          "url": "https://www.jct.org.tw/rss-5-1.xml",
+          "coverage_reduced": false
+        }
+      ]
+    }
+  ]
+}
