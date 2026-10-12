@@ -2,19 +2,8 @@ name: Tauri v2 application
 
 on:
   pull_request:
-    paths:
-      - ".github/workflows/tauri-v2.yml"
-      - ".github/workflows/build-release.yml"
-      - ".github/workflows/release-live-smoke.yml"
-      - "Cargo.toml"
-      - "Cargo.lock"
-      - "src-tauri/**"
-      - "src/**"
-      - "package.json"
-      - "package-lock.json"
-      - "*.ts"
-      - "*.js"
-      - "index.html"
+    # These jobs are required by branch protection, including documentation PRs.
+    # A path-filtered workflow leaves the required checks pending indefinitely.
   push:
     branches: [main]
     paths:

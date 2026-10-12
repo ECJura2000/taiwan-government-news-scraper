@@ -67,7 +67,7 @@ try {
   registered = true;
   console.log('Starting the queued source gate. This runner exits after one job; no service is installed.');
   const exitCode = await new Promise((resolve, reject) => {
-    const child = spawn(path.join(directory, 'run.sh'), ['--once'], {
+    const child = spawn(path.join(directory, 'run.sh'), [], {
       cwd: directory, stdio: 'inherit',
       env: { ...process.env, NEWS_SCRAPER_CHROME_BIN: chrome },
     });
