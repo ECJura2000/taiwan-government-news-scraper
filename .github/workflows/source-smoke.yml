@@ -1,100 +1,34 @@
-name: Rust source smoke
-
+name: Temporary RSS browser diagnostics
 on:
   workflow_dispatch:
-  schedule:
-    - cron: "20 22 * * 1"
-
 permissions:
   contents: read
-  actions: read
-
-concurrency:
-  group: source-smoke-history-${{ github.ref }}
-  cancel-in-progress: false
-
 jobs:
-  all-sources:
-    runs-on: ubuntu-22.04
-    timeout-minutes: 90
+  probe:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-22.04, macos-15]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - name: Install Linux Tauri and browser dependencies
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - name: Linux dependencies
+        if: runner.os == 'Linux'
         run: |
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
-      - uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # master
+      - uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772
         with:
           toolchain: stable
-      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6
         with:
-          key: source-smoke-${{ runner.os }}
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
-        with:
-          node-version: 22
-      - name: Restore previous full-check history
-        env:
-          GH_TOKEN: ${{ github.token }}
-        shell: bash
-        run: |
-          mkdir -p source-smoke
-          gh api "repos/$GITHUB_REPOSITORY/actions/artifacts?name=rust-source-smoke&per_page=100" > /tmp/source-smoke-artifacts.json
-          jq -r --arg branch "$GITHUB_REF_NAME" --argjson current "$GITHUB_RUN_ID" '[.artifacts[] | select(.expired == false and .workflow_run.head_branch == $branch and .workflow_run.id != $current)] | sort_by(.created_at) | reverse | .[].id' /tmp/source-smoke-artifacts.json > /tmp/source-smoke-artifact-ids.txt
-          while IFS= read -r artifact; do
-            gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/$artifact/zip" > /tmp/source-smoke-previous.zip
-            entry="$(unzip -Z1 /tmp/source-smoke-previous.zip | awk '/(^|\/)source-health-history.json$/ { print; exit }')"
-            if [ -n "$entry" ]; then
-              unzip -p /tmp/source-smoke-previous.zip "$entry" > source-smoke/source-health-history.json
-              break
-            fi
-          done < /tmp/source-smoke-artifact-ids.txt
-          if [ ! -f source-smoke/source-health-history.json ]; then
-            echo "::notice::No retained history found; starting a new source-health history."
-          fi
-      - name: Run all official sources through the Rust engine
-        shell: bash
-        run: |
-          mkdir -p source-smoke/output source-smoke/reports
-          cargo run --release --bin news-scraper -- collect \
-            --output-dir source-smoke/output \
-            --report-dir source-smoke/reports \
-            --max-workers 8 | tee source-smoke/summary.jsonl
-      - name: Validate smoke artifacts and report status
+          key: release-source-health-${{ runner.os }}
+      - run: cargo run --release --example rss_browser_probe | tee diagnostics.log
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
-        shell: bash
-        run: |
-          report="$(find source-smoke/reports -name 'news_scraper_run_*.json' -type f | sort | tail -n 1)"
-          test -n "$report"
-          jq -e '.report_schema_version == 4 and (.news_count | type == "number") and .news_count > 0' "$report"
-          jq '{status, news_count, failed_sources, source_health, quality: {alert_reasons: .quality.alert_reasons}}' "$report" | tee source-smoke/source-health-summary.json
-          test "$(jq '.selected_source_count' "$report")" = 88
-          mkdir -p source-smoke/retries
-          jq -r '.failed_sources[]' "$report" | while IFS= read -r source; do
-            safe_name="$(printf '%s' "$source" | sha256sum | cut -c1-12)"
-            mkdir -p "source-smoke/retries/$safe_name/output" "source-smoke/retries/$safe_name/reports"
-            set +e
-            cargo run --release --bin news-scraper -- collect \
-              --sources "$source" \
-              --output-dir "source-smoke/retries/$safe_name/output" \
-              --report-dir "source-smoke/retries/$safe_name/reports" \
-              --fail-on-source-error | tee "source-smoke/retries/$safe_name/summary.jsonl"
-            retry_exit="${PIPESTATUS[0]}"
-            set -e
-            retry_report="$(find "source-smoke/retries/$safe_name/reports" -name 'news_scraper_run_*.json' -type f | sort | tail -n 1)"
-            test -n "$retry_report"
-            jq -n \
-              --arg source "$source" \
-              --argjson exit_code "$retry_exit" \
-              --slurpfile report "$retry_report" \
-              '{source: $source, exit_code: $exit_code, retry_status: $report[0].status, failed_sources: $report[0].failed_sources, failure_class_counts: $report[0].failure_class_counts, selected_source_count: $report[0].selected_source_count, selected_sources: $report[0].selected_sources, quality: {alert_reasons: $report[0].quality.alert_reasons}}' \
-              > "source-smoke/retries/$safe_name/retry-evidence.json"
-          done
-          node scripts/source-smoke-gate.mjs "$report" source-smoke/retries source-smoke/source-health-history.json source-smoke/gate-result.json
-      - name: Upload source-health evidence
-        if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: rust-source-smoke
-          path: source-smoke/
-          if-no-files-found: warn
-          retention-days: 90
+          name: rss-browser-diagnostic-${{ runner.os }}
+          path: |
+            diagnostics
+            diagnostics.log
