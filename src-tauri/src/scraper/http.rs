@@ -25,6 +25,20 @@ pub struct HttpClient {
     host_limits: Arc<Mutex<HashMap<String, Arc<HostGate>>>>,
     cache_dir: Option<PathBuf>,
     tls_fallback_hosts: Arc<Mutex<HashSet<String>>>,
+    metrics: Arc<HttpMetrics>,
+}
+
+#[derive(Default)]
+struct HttpMetrics {
+    requests: std::sync::atomic::AtomicU64,
+    retries: std::sync::atomic::AtomicU64,
+    cache_revalidations: std::sync::atomic::AtomicU64,
+    cache_hits: std::sync::atomic::AtomicU64,
+    host_wait_micros: std::sync::atomic::AtomicU64,
+    retry_wait_micros: std::sync::atomic::AtomicU64,
+}
+fn increment(counter: &std::sync::atomic::AtomicU64, amount: u64) {
+    counter.fetch_add(amount, std::sync::atomic::Ordering::Relaxed);
 }
 
 #[derive(Serialize, Deserialize)]
@@ -102,7 +116,28 @@ impl HttpClient {
             host_limits: Arc::new(Mutex::new(HashMap::new())),
             cache_dir: None,
             tls_fallback_hosts: Arc::new(Mutex::new(HashSet::new())),
+            metrics: Arc::new(HttpMetrics::default()),
         })
+    }
+
+    pub fn metrics(&self) -> serde_json::Value {
+        let load = |counter: &std::sync::atomic::AtomicU64| {
+            counter.load(std::sync::atomic::Ordering::Relaxed)
+        };
+        serde_json::json!({"request_attempts":load(&self.metrics.requests), "retry_count":load(&self.metrics.retries),
+            "cache_revalidations":load(&self.metrics.cache_revalidations), "cache_hits":load(&self.metrics.cache_hits),
+            "host_wait_seconds":load(&self.metrics.host_wait_micros) as f64 / 1_000_000.0,
+            "retry_wait_seconds":load(&self.metrics.retry_wait_micros) as f64 / 1_000_000.0,
+            "timing_semantics":"summed request waits may overlap; redirects and browser requests excluded"})
+    }
+
+    async fn wait_for_retry(&self, duration: Duration) {
+        let started = std::time::Instant::now();
+        tokio::time::sleep(duration).await;
+        increment(
+            &self.metrics.retry_wait_micros,
+            started.elapsed().as_micros() as u64,
+        );
     }
 
     pub fn with_cache_dir(mut self, directory: PathBuf) -> Self {
@@ -153,7 +188,8 @@ impl HttpClient {
                 }
                 Err(error) if error.retryable() && attempt + 1 < policy.retry_attempts => {
                     last_error = Some(error);
-                    tokio::time::sleep(retry_delay(attempt)).await;
+                    increment(&self.metrics.retries, 1);
+                    self.wait_for_retry(retry_delay(attempt)).await;
                 }
                 Err(error) => return Err(error),
             }
@@ -179,7 +215,8 @@ impl HttpClient {
             match self.fetch_range_once(url, policy, end_byte).await {
                 Ok(body) => return Ok(body),
                 Err(error) if error.retryable() && attempt + 1 < policy.retry_attempts => {
-                    tokio::time::sleep(retry_delay(attempt)).await;
+                    increment(&self.metrics.retries, 1);
+                    self.wait_for_retry(retry_delay(attempt)).await;
                 }
                 Err(error) => return Err(error),
             }
@@ -195,6 +232,7 @@ impl HttpClient {
         end_byte: usize,
     ) -> Result<Vec<u8>, ScraperError> {
         let permit = self.acquire_host(url, policy.host_concurrency).await?;
+        increment(&self.metrics.requests, 1);
         let response = self
             .client
             .get(url)
@@ -219,7 +257,7 @@ impl HttpClient {
                         delay.as_secs()
                     )));
                 }
-                tokio::time::sleep(delay).await;
+                self.wait_for_retry(delay).await;
                 return Err(ScraperError::SourceOutage(
                     "HTTP 429 Too Many Requests".into(),
                 ));
@@ -250,9 +288,19 @@ impl HttpClient {
                 request = request.header(IF_MODIFIED_SINCE, modified);
             }
         }
+        if cached
+            .as_ref()
+            .is_some_and(|entry| entry.etag.is_some() || entry.last_modified.is_some())
+        {
+            increment(&self.metrics.cache_revalidations, 1);
+        }
+        increment(&self.metrics.requests, 1);
         let response = request.send().await.map_err(classify_request_error)?;
         let status = response.status();
         if status == StatusCode::NOT_MODIFIED {
+            if cached.is_some() {
+                increment(&self.metrics.cache_hits, 1);
+            }
             return cached.map(|entry| entry.body).ok_or_else(|| {
                 ScraperError::SourceOutage("HTTP 304 without a cached body".into())
             });
@@ -284,7 +332,7 @@ impl HttpClient {
                     delay.as_secs()
                 )));
             }
-            tokio::time::sleep(delay).await;
+            self.wait_for_retry(delay).await;
             return Err(ScraperError::SourceOutage(
                 "HTTP 429 Too Many Requests".into(),
             ));
@@ -308,6 +356,7 @@ impl HttpClient {
         url: &str,
         concurrency: usize,
     ) -> Result<HostPermit, ScraperError> {
+        let waiting_started = std::time::Instant::now();
         let concurrency = concurrency.max(1);
         let host = url::Url::parse(url)
             .ok()
@@ -329,6 +378,10 @@ impl HttpClient {
                 let current_limit = active.iter().copied().min().unwrap_or(usize::MAX);
                 if active.len() < concurrency && active.len() < current_limit {
                     active.push(concurrency);
+                    increment(
+                        &self.metrics.host_wait_micros,
+                        waiting_started.elapsed().as_micros() as u64,
+                    );
                     return Ok(HostPermit {
                         gate: gate.clone(),
                         limit: concurrency,
@@ -548,15 +601,12 @@ mod tests {
             retry_attempts: 2,
             ..TransportPolicy::list_default()
         };
-        assert_eq!(
-            HttpClient::new()
-                .unwrap()
-                .fetch_text(&url, &policy)
-                .await
-                .unwrap(),
-            "ready"
-        );
+        let client = HttpClient::new().unwrap();
+        assert_eq!(client.fetch_text(&url, &policy).await.unwrap(), "ready");
         server.join().unwrap();
+        assert_eq!(client.metrics()["request_attempts"], 2);
+        assert_eq!(client.metrics()["retry_count"], 1);
+        assert!(client.metrics()["retry_wait_seconds"].as_f64().unwrap() > 0.0);
     }
 
     #[tokio::test]

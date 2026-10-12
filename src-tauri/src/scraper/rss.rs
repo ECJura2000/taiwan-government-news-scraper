@@ -80,7 +80,14 @@ fn finalize_item(item: &mut NewsItem) {
         .collect::<Vec<_>>()
         .join(" ")
         .replace("Copyright&copy;", "Copyright &copy;");
-    if let Ok(url) = url::Url::parse(item.link.trim()) {
+    if let Ok(url) = url::Url::parse(
+        &item
+            .link
+            .trim()
+            .replace("&amp;", "&")
+            .replace("&#38;", "&")
+            .replace("&#x26;", "&"),
+    ) {
         item.link = url.to_string();
     }
     if !item.summary.is_empty() {
@@ -247,6 +254,25 @@ pub fn parse_feed(source: &str, xml: &str) -> Result<Vec<NewsItem>, ScraperError
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn cdata_permalink_decodes_query_separators_before_fetch_and_normalization() {
+        for separator in ["&amp;", "&#38;", "&#x26;"] {
+            let feed = format!("<rss><channel><item><title>金融新聞</title><link><![CDATA[https://www.fsc.gov.tw/ch/home.jsp?id=96{separator}mcustomize=news_view.jsp{separator}dataserno=202610020002]]></link><pubDate>2026-10-02</pubDate></item></channel></rss>");
+            let items = super::parse_feed("金管會", &feed).unwrap();
+            let url = url::Url::parse(&items[0].link).unwrap();
+            let pairs: std::collections::HashMap<_, _> = url.query_pairs().collect();
+            assert_eq!(
+                pairs.get("dataserno").map(|v| v.as_ref()),
+                Some("202610020002")
+            );
+            assert_eq!(
+                pairs.get("mcustomize").map(|v| v.as_ref()),
+                Some("news_view.jsp")
+            );
+            assert!(!items[0].link.contains("amp;"));
+        }
+    }
+
     use super::*;
 
     #[test]

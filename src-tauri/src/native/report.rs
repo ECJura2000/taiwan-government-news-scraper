@@ -165,6 +165,59 @@ pub(super) fn volume_anomalies_for_mode(
     anomalies
 }
 
+/// Explicit source expectations detect persistently poor coverage without requiring
+/// a previously healthy history. Unverified sources retain the historical rule.
+pub(super) fn detail_quality_results(
+    selected: &[String],
+    counts: &HashMap<String, usize>,
+    full_counts: &HashMap<String, usize>,
+    mode: crate::ContentMode,
+) -> Vec<Value> {
+    selected
+        .iter()
+        .filter_map(|source| {
+            let policy = crate::scraper::catalog::find_source(source)?
+                .detail_quality
+                .as_ref()?;
+            Some(evaluate_detail_quality(
+                source,
+                policy,
+                *counts.get(source).unwrap_or(&0),
+                *full_counts.get(source).unwrap_or(&0),
+                mode,
+            ))
+        })
+        .collect()
+}
+
+fn evaluate_detail_quality(
+    source: &str,
+    policy: &crate::scraper::catalog::DetailQualityPolicy,
+    count: usize,
+    full: usize,
+    mode: crate::ContentMode,
+) -> Value {
+    use crate::scraper::catalog::DetailExpectation;
+    let expectation = match policy.expectation {
+        DetailExpectation::FullText => "full_text",
+        DetailExpectation::SummaryOnly => "summary_only",
+    };
+    let status = if mode != crate::ContentMode::Full
+        || policy.expectation == DetailExpectation::SummaryOnly
+    {
+        "not_required"
+    } else if count < policy.min_items {
+        "insufficient_sample"
+    } else if (full as u128) * 100 < (count as u128) * u128::from(policy.min_coverage_percent) {
+        "below_minimum"
+    } else {
+        "healthy"
+    };
+    serde_json::json!({"source":source,"expectation":expectation,"min_items":policy.min_items,
+        "min_coverage_percent":policy.min_coverage_percent,"item_count":count,"full_text_count":full,
+        "coverage_rate":if count == 0 { 0.0 } else { full as f64 / count as f64 },"status":status})
+}
+
 pub(super) fn zero_recovery_sources(diagnostics: &[Value]) -> Vec<String> {
     let mut sources = diagnostics
         .iter()
@@ -239,6 +292,52 @@ mod tests {
             Some("source_volume_drop:甲:1/11")
         );
         assert!(volume_regression("甲", 8, &[10, 11, 12]).is_none());
+    }
+
+    #[test]
+    fn explicit_detail_expectation_catches_persistent_failure_but_exempts_summary_and_small_samples(
+    ) {
+        use crate::scraper::catalog::{DetailExpectation, DetailQualityPolicy};
+        let mut policy = DetailQualityPolicy {
+            expectation: DetailExpectation::FullText,
+            min_items: 5,
+            min_coverage_percent: 70,
+        };
+        let evaluate = |p: &DetailQualityPolicy, n, full, mode| {
+            evaluate_detail_quality("測試", p, n, full, mode)["status"]
+                .as_str()
+                .unwrap()
+                .to_owned()
+        };
+        assert_eq!(
+            evaluate(&policy, 10, 0, crate::ContentMode::Full),
+            "below_minimum"
+        );
+        assert_eq!(
+            evaluate(&policy, 10, 6, crate::ContentMode::Full),
+            "below_minimum"
+        );
+        assert_eq!(
+            evaluate(&policy, 10, 7, crate::ContentMode::Full),
+            "healthy"
+        );
+        assert_eq!(
+            evaluate(&policy, 4, 0, crate::ContentMode::Full),
+            "insufficient_sample"
+        );
+        assert_eq!(
+            evaluate(&policy, 0, 0, crate::ContentMode::Full),
+            "insufficient_sample"
+        );
+        assert_eq!(
+            evaluate(&policy, 10, 0, crate::ContentMode::Summary),
+            "not_required"
+        );
+        policy.expectation = DetailExpectation::SummaryOnly;
+        assert_eq!(
+            evaluate(&policy, 10, 0, crate::ContentMode::Full),
+            "not_required"
+        );
     }
 
     #[test]
