@@ -15,6 +15,7 @@ on:
         options:
           - ubuntu-22.04
           - macos-15
+          - self-hosted-macos
   push:
     tags: ["v*"]
 
@@ -49,10 +50,27 @@ jobs:
   source-health:
     name: Gate all 88 live sources
     needs: validate
-    runs-on: ${{ inputs.source_gate_os || 'ubuntu-22.04' }}
+    # Self-hosted execution is selected only by a manual main-branch release.
+    # The validate job rejects manual requests from every other ref.
+    runs-on: ${{ inputs.source_gate_os == 'self-hosted-macos' && fromJSON('["self-hosted", "macOS", "news-source-gate"]') || inputs.source_gate_os || 'ubuntu-22.04' }}
     timeout-minutes: 90
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Create fresh live-source evidence directory
+        id: evidence
+        shell: bash
+        run: |
+          evidence_root="$(mktemp -d "$RUNNER_TEMP/news-source-health.XXXXXX")"
+          echo "root=$evidence_root" >> "$GITHUB_OUTPUT"
+      - name: Verify local release browser
+        if: inputs.source_gate_os == 'self-hosted-macos'
+        shell: bash
+        run: |
+          test "$RUNNER_OS" = macOS
+          test -x "${NEWS_SCRAPER_CHROME_BIN:-/Applications/Google Chrome.app/Contents/MacOS/Google Chrome}"
+          command -v jq
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 22
@@ -69,32 +87,40 @@ jobs:
           key: release-source-health-${{ runner.os }}
       - name: Verify version and run live gate
         shell: bash
+        env:
+          SOURCE_HEALTH_ROOT: ${{ steps.evidence.outputs.root }}
+          SOURCE_GATE_RUNNER: ${{ inputs.source_gate_os || 'ubuntu-22.04' }}
         run: |
           version="$(sed -n 's/^version = "\([^"]*\)"/\1/p' Cargo.toml)"
           test "$version" = "${{ needs.validate.outputs.version }}"
           if [[ "$GITHUB_REF" == refs/tags/* ]]; then test "$GITHUB_REF_NAME" = "v$version"; fi
-          mkdir -p source-health/output source-health/reports
+          mkdir -p "$SOURCE_HEALTH_ROOT/output" "$SOURCE_HEALTH_ROOT/reports"
+          jq -n --arg commit "$GITHUB_SHA" --arg run_id "$GITHUB_RUN_ID" \
+            --arg event "$GITHUB_EVENT_NAME" --arg runner "$SOURCE_GATE_RUNNER" \
+            --arg os "$RUNNER_OS" \
+            '{commit: $commit, run_id: $run_id, event: $event, source_gate_runner: $runner, os: $os}' \
+            > "$SOURCE_HEALTH_ROOT/execution-context.json"
           cargo build --release --bin news-scraper
           target/release/news-scraper collect \
-            --output-dir source-health/output \
-            --report-dir source-health/reports \
-            --max-workers 8 | tee source-health/summary.jsonl
-          report="$(find source-health/reports -name 'news_scraper_run_*.json' -type f | sort | tail -n 1)"
+            --output-dir "$SOURCE_HEALTH_ROOT/output" \
+            --report-dir "$SOURCE_HEALTH_ROOT/reports" \
+            --max-workers 8 | tee "$SOURCE_HEALTH_ROOT/summary.jsonl"
+          report="$(find "$SOURCE_HEALTH_ROOT/reports" -name 'news_scraper_run_*.json' -type f | sort | tail -n 1)"
           jq -e '.report_schema_version == 4 and .selected_source_count == 88 and (.news_count > 0) and (.quality.alert_reasons | length == 0)' "$report"
-          cp "$report" source-health/source-health-report.json
-          mkdir -p source-health/retries
+          cp "$report" "$SOURCE_HEALTH_ROOT/source-health-report.json"
+          mkdir -p "$SOURCE_HEALTH_ROOT/retries"
           jq -r '.failed_sources[]' "$report" | while IFS= read -r source; do
             safe_name="$(node -e 'process.stdout.write(require("node:crypto").createHash("sha256").update(process.argv[1]).digest("hex").slice(0, 12))' "$source")"
-            mkdir -p "source-health/retries/$safe_name/output" "source-health/retries/$safe_name/reports"
+            mkdir -p "$SOURCE_HEALTH_ROOT/retries/$safe_name/output" "$SOURCE_HEALTH_ROOT/retries/$safe_name/reports"
             set +e
             target/release/news-scraper collect \
               --sources "$source" \
-              --output-dir "source-health/retries/$safe_name/output" \
-              --report-dir "source-health/retries/$safe_name/reports" \
-              --fail-on-source-error | tee "source-health/retries/$safe_name/summary.jsonl"
+              --output-dir "$SOURCE_HEALTH_ROOT/retries/$safe_name/output" \
+              --report-dir "$SOURCE_HEALTH_ROOT/retries/$safe_name/reports" \
+              --fail-on-source-error | tee "$SOURCE_HEALTH_ROOT/retries/$safe_name/summary.jsonl"
             retry_exit="${PIPESTATUS[0]}"
             set -e
-            retry_report="$(find "source-health/retries/$safe_name/reports" -name 'news_scraper_run_*.json' -type f | sort | tail -n 1)"
+            retry_report="$(find "$SOURCE_HEALTH_ROOT/retries/$safe_name/reports" -name 'news_scraper_run_*.json' -type f | sort | tail -n 1)"
             test -n "$retry_report"
             jq -e '.selected_source_count == 1 and (.quality.alert_reasons | length == 0)' "$retry_report"
             jq -n \
@@ -102,14 +128,14 @@ jobs:
               --argjson exit_code "$retry_exit" \
               --slurpfile report "$retry_report" \
               '{source: $source, exit_code: $exit_code, retry_status: $report[0].status, failed_sources: $report[0].failed_sources, failure_class_counts: $report[0].failure_class_counts}' \
-              > "source-health/retries/$safe_name/retry-evidence.json"
+              > "$SOURCE_HEALTH_ROOT/retries/$safe_name/retry-evidence.json"
           done
-          node scripts/release-source-gate.mjs "$report" source-health/retries source-health/final-gate.json
+          node scripts/release-source-gate.mjs "$report" "$SOURCE_HEALTH_ROOT/retries" "$SOURCE_HEALTH_ROOT/final-gate.json"
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: always()
         with:
           name: release-source-health
-          path: source-health/
+          path: ${{ steps.evidence.outputs.root }}
           if-no-files-found: warn
           retention-days: 7
 
