@@ -211,7 +211,10 @@ mod tests {
 
     #[test]
     fn reports_workspace_package_version() {
-        assert_eq!(version_text(), "news-scraper 2.1.28");
+        assert_eq!(
+            version_text(),
+            format!("news-scraper {}", env!("CARGO_PKG_VERSION"))
+        );
     }
 
     #[test]

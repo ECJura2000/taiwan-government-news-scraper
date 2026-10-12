@@ -36,6 +36,7 @@ pub(super) struct DetailDiagnostics {
     pub(super) date_filter_seconds: f64,
     pub(super) fetch_seconds: f64,
     pub(super) browser_fallbacks: Vec<serde_json::Value>,
+    pub(super) requests: Vec<serde_json::Value>,
 }
 
 pub(super) async fn fetch_source(
@@ -340,6 +341,7 @@ pub(super) fn source_diagnostic(result: &SourceResult) -> serde_json::Value {
             "failed_or_empty": result.detail.issues.len(),
             "issues": result.detail.issues,
             "browser_fallbacks": result.detail.browser_fallbacks,
+            "requests": result.detail.requests,
         },
         "discovery": {
             "list_items":result.detail.list_items, "date_filtered":result.detail.date_filtered,
@@ -424,22 +426,28 @@ pub(super) async fn enrich_detail_full_text(
                         .map_or_else(TransportPolicy::detail_default, |source| {
                             TransportPolicy::for_detail(source, &item.link)
                         });
+                    let http_started = Instant::now();
                     let mut fetched = client.fetch_detail_text(&item.link, &policy).await;
+                    let http_seconds = http_started.elapsed().as_secs_f64();
                     let mut fallback = None;
+                    let mut browser_seconds = 0.0;
                     if policy.browser_fallback && !fetched.as_ref().is_ok_and(|body| !adapters::parse_detail_full_text(&item.source, body).is_empty()) {
                         let initial_reason = fetched.as_ref().err().map_or("empty_detail_text", |error| error.failure_class().as_str());
+                        let browser_started = Instant::now();
                         let rendered = crate::browser::fetch_rendered_html_after_with_timeout(&item.link, None, policy.timeout)
                             .await.map_err(classify_browser_error);
+                        browser_seconds = browser_started.elapsed().as_secs_f64();
                         fallback = Some(json!({"source":item.source,"url":item.link,"http_reason":initial_reason,
                             "browser_status":if rendered.is_ok(){"success"}else{"failed"},
                             "browser_failure_class":rendered.as_ref().err().map(|error|error.failure_class().as_str())}));
                         fetched = rendered;
                     }
+                    let parse_started = Instant::now();
                     let issue = match fetched {
                         Ok(body) => {
                             let full_text = adapters::parse_detail_full_text(&item.source, &body);
                             if full_text.is_empty() {
-                                Some(json!({"source": item.source, "url": item.link, "reason": "empty_detail_text"}))
+                                Some(json!({"source": item.source, "url": item.link, "reason": adapters::detail_empty_reason(&item.source, &body)}))
                             } else {
                                 item.summary = full_text.clone();
                                 item.full_text = full_text;
@@ -448,9 +456,12 @@ pub(super) async fn enrich_detail_full_text(
                         }
                         Err(error) => Some(json!({"source": item.source, "url": item.link, "reason": error.failure_class().as_str()})),
                     };
-                    (item, true, issue, fallback)
+                    let request = json!({"source":item.source,"url":item.link,"http_seconds":http_seconds,
+                        "browser_seconds":browser_seconds,"parse_seconds":parse_started.elapsed().as_secs_f64(),
+                        "status":if issue.is_none(){"recovered"}else{"failed"},"reason":issue.as_ref().and_then(|value|value.get("reason"))});
+                    (item, true, issue, fallback, Some(request))
                 } else {
-                    (item, false, None, None)
+                    (item, false, None, None, None)
                 }
             }
         })
@@ -459,7 +470,10 @@ pub(super) async fn enrich_detail_full_text(
         .await;
     let mut detail = DetailDiagnostics::default();
     let mut items = Vec::with_capacity(outcomes.len());
-    for (item, attempted, issue, fallback) in outcomes {
+    for (item, attempted, issue, fallback, request) in outcomes {
+        if let Some(request) = request {
+            detail.requests.push(request);
+        }
         if let Some(fallback) = fallback {
             detail.browser_fallbacks.push(fallback);
         }
@@ -492,31 +506,38 @@ pub(super) async fn enrich_source(
         result.detail.issues = diagnostics.issues;
         result.detail.fetch_seconds = diagnostics.fetch_seconds;
         result.detail.browser_fallbacks = diagnostics.browser_fallbacks;
+        result.detail.requests = diagnostics.requests;
     } else {
         for item in &mut result.items {
             item.full_text.clear();
         }
     }
-    result.detail.item_records = result
-        .items
-        .iter()
-        .zip(&result.detail.discovery_items)
-        .enumerate()
-        .map(|(index, (item, discovery))| {
-            let status = if mode == crate::ContentMode::Summary {
-                "not_needed"
-            } else if !item.full_text.is_empty() {
-                "fetched"
-            } else if item.link.is_empty() {
-                "not_needed"
-            } else {
-                "failed"
-            };
-            json!({"source": item.source, "date": item.date, "title": item.title,
+    result.detail.item_records =
+        result
+            .items
+            .iter()
+            .zip(&result.detail.discovery_items)
+            .enumerate()
+            .map(|(index, (item, discovery))| {
+                let status =
+                    if mode == crate::ContentMode::Summary {
+                        "not_needed"
+                    } else if !item.full_text.is_empty() {
+                        "fetched"
+                    } else if result.detail.issues.iter().any(|issue| {
+                        issue["url"] == item.link && issue["reason"] == "attachment_only"
+                    }) {
+                        "attachment_only"
+                    } else if item.link.is_empty() {
+                        "not_needed"
+                    } else {
+                        "failed"
+                    };
+                json!({"source": item.source, "date": item.date, "title": item.title,
             "link": item.link, "list_summary": discovery.summary, "detail_status": status,
             "route": result.detail.item_records.get(index).and_then(|record| record.get("route"))})
-        })
-        .collect();
+            })
+            .collect();
 }
 
 pub(super) fn parse_date(value: &str) -> Option<NaiveDate> {
@@ -684,6 +705,7 @@ mod tests {
         };
         let definition = SourceDefinition {
             name: "固定來源".into(),
+            detail_quality: None,
             urls: vec![format!("{base}/first"), format!("{base}/second")],
             parent_ministry: None,
             aggregate_routes: false,

@@ -398,6 +398,14 @@ pub fn parse_detail_full_text(source: &str, body: &str) -> String {
     }
     let source_selectors: &[&str] = match source {
         "國防部" => &["div.maincontent"],
+        "行政院" => &[".words_content .data_left"],
+        "高速公路局" => &[".FCKdetail"],
+        "交通部" => &[".d_subnews .editor"],
+        "外交部" | "文化部" => &["#CCMS_Content .essay .p"],
+        "教育部" => &["#ContentPlaceHolder1_divcontent"],
+        "勞動部" => &["section.cp"],
+        "金管會" => &[".maincontent .page-edit"],
+        "海巡署" | "偵防分署" => &[".commoncpxsl > div:not([class])"],
         "客委會" => &["div.d_sub div.sub_list div.editor"],
         "數位發展部" | "數位產業署" | "資通安全署" => {
             &[".article1.cpArticle", ".cpArticle", "article"]
@@ -439,7 +447,7 @@ pub fn parse_detail_full_text(source: &str, body: &str) -> String {
         let Some(container) = document.select(&selector).next() else {
             continue;
         };
-        let text = html::clean_text(container);
+        let text = clean_article_text(container);
         if !text.is_empty() && (source_specific || text.chars().count() >= 80) {
             return text;
         }
@@ -447,9 +455,127 @@ pub fn parse_detail_full_text(source: &str, body: &str) -> String {
     String::new()
 }
 
+/// A title/date page with official PDF attachments is not an HTML article.
+pub fn detail_empty_reason(source: &str, body: &str) -> &'static str {
+    if source == "金管會" {
+        let document = Html::parse_document(body);
+        let title = Selector::parse(".maincontent .subject h3").unwrap();
+        let content = Selector::parse(".maincontent .page-edit").unwrap();
+        let attachments = Selector::parse(".acces a[href]").unwrap();
+        if document
+            .select(&title)
+            .any(|element| !html::clean_text(element).is_empty())
+            && document.select(&content).next().is_none()
+            && document.select(&attachments).any(|element| {
+                element
+                    .value()
+                    .attr("href")
+                    .is_some_and(|link| link.to_ascii_lowercase().contains(".pdf"))
+            })
+        {
+            return "attachment_only";
+        }
+    }
+    "empty_detail_text"
+}
+
+// Article containers may include controls or executable code. These are never news.
+fn clean_article_text(container: scraper::ElementRef<'_>) -> String {
+    container
+        .descendants()
+        .filter_map(|node| {
+            let text = node.value().as_text()?;
+            let excluded = node
+                .ancestors()
+                .filter_map(scraper::ElementRef::wrap)
+                .any(|ancestor| {
+                    matches!(
+                        ancestor.value().name(),
+                        "script" | "style" | "nav" | "footer" | "aside" | "button" | "noscript"
+                    ) || ancestor.value().attr("hidden").is_some()
+                        || ancestor.value().attr("aria-hidden") == Some("true")
+                        || ancestor.value().attr("id") == Some("AttFile")
+                        || ancestor.value().classes().any(|class| {
+                            matches!(
+                                class,
+                                "publish_info_top" | "publish_info_down" | "pic" | "subject"
+                            )
+                        })
+                });
+            (!excluded).then_some(text.as_ref())
+        })
+        .collect::<Vec<_>>()
+        .join(" ")
+        .split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn pdf_only_article_keeps_missing_html_distinct_from_a_parser_failure() {
+        let body = include_str!("../../tests/fixtures/fsc_attachment_only.html");
+        assert!(parse_detail_full_text("金管會", body).is_empty());
+        assert_eq!(detail_empty_reason("金管會", body), "attachment_only");
+        assert_eq!(
+            detail_empty_reason("金管會", "<div class='newslist'>列表</div>"),
+            "empty_detail_text"
+        );
+        assert_eq!(detail_empty_reason("其他來源", body), "empty_detail_text");
+    }
+
+    #[test]
+    fn verified_official_detail_containers_recover_text_without_page_chrome() {
+        for (source, body) in [
+            (
+                "行政院",
+                include_str!("../../tests/fixtures/ey_detail.html"),
+            ),
+            (
+                "高速公路局",
+                include_str!("../../tests/fixtures/freeway_detail.html"),
+            ),
+            (
+                "交通部",
+                include_str!("../../tests/fixtures/motc_detail.html"),
+            ),
+            (
+                "外交部",
+                include_str!("../../tests/fixtures/mofa_detail.html"),
+            ),
+            (
+                "教育部",
+                include_str!("../../tests/fixtures/edu_detail.html"),
+            ),
+            (
+                "文化部",
+                include_str!("../../tests/fixtures/moc_detail.html"),
+            ),
+            (
+                "勞動部",
+                include_str!("../../tests/fixtures/mol_detail.html"),
+            ),
+            (
+                "金管會",
+                include_str!("../../tests/fixtures/fsc_detail.html"),
+            ),
+            (
+                "海巡署",
+                include_str!("../../tests/fixtures/cga_detail.html"),
+            ),
+        ] {
+            let text = parse_detail_full_text(source, body);
+            assert!(text.chars().count() >= 80, "{source}: {text}");
+            assert!(!text.contains("excluded_"), "{source}: {text}");
+        }
+        assert!(
+            parse_detail_full_text("金管會", "<div class='newslist'>列表不是正文</div>").is_empty()
+        );
+        assert!(parse_detail_full_text("行政院", "<div class='words_content'><div class='data_left'><script>fake article</script></div></div>").is_empty());
+    }
 
     #[test]
     fn defense_and_hakka_detail_containers_exclude_page_navigation() {

@@ -14,6 +14,23 @@ pub struct SourceDefinition {
     pub routes: Vec<SourceRoute>,
     #[serde(default)]
     pub transport: Option<TransportConfig>,
+    #[serde(default)]
+    pub detail_quality: Option<DetailQualityPolicy>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DetailQualityPolicy {
+    pub expectation: DetailExpectation,
+    pub min_items: usize,
+    pub min_coverage_percent: u8,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum DetailExpectation {
+    FullText,
+    SummaryOnly,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -168,6 +185,17 @@ pub fn parse_catalog(json: &str) -> Result<Vec<SourceDefinition>, String> {
         }
         for value in &source.urls {
             validate_url(value).map_err(|e| format!("來源 {} urls：{e}", source.name))?;
+        }
+        if let Some(policy) = &source.detail_quality {
+            if policy.min_items == 0
+                || policy.min_coverage_percent == 0
+                || policy.min_coverage_percent > 100
+            {
+                return Err(format!(
+                    "來源 {} detail_quality：min_items 須大於零，min_coverage_percent 須為 1–100",
+                    source.name
+                ));
+            }
         }
         if let Some(config) = &source.transport {
             validate_settings(&config.list)
@@ -327,6 +355,30 @@ pub fn find_source(name: &str) -> Option<&'static SourceDefinition> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn detail_quality_policy_is_validated_with_source_context() {
+        for (expectation, min_items, percent) in [
+            ("full_text", 0, 70),
+            ("full_text", 5, 101),
+            ("full_text", 5, 0),
+            ("typo", 5, 70),
+        ] {
+            let value = serde_json::json!([{"name":"測試機關","urls":["https://example.test/news"],"detail_quality":{"expectation":expectation,"min_items":min_items,"min_coverage_percent":percent}}]);
+            assert!(parse_catalog(&value.to_string())
+                .unwrap_err()
+                .contains("測試機關"));
+        }
+        let value = r#"[{"name":"測試機關","urls":["https://example.test/news"],"detail_quality":{"expectation":"summary_only","min_items":5,"min_coverage_percent":70}}]"#;
+        assert_eq!(
+            parse_catalog(value).unwrap()[0]
+                .detail_quality
+                .as_ref()
+                .unwrap()
+                .expectation,
+            DetailExpectation::SummaryOnly
+        );
+    }
 
     #[test]
     fn rejects_bad_settings_with_source_and_field_context() {

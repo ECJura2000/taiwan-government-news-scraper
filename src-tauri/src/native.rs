@@ -54,6 +54,7 @@ pub async fn run_with_progress(
 ) -> Result<crate::RunSummary, String> {
     let started_at = Utc::now();
     let run_started = Instant::now();
+    let mut timings = StageTimings::new(run_started);
     if options.content_mode == crate::ContentMode::Summary
         && options.prefilter_mode == crate::PrefilterMode::Shadow
     {
@@ -88,6 +89,8 @@ pub async fn run_with_progress(
     let client = HttpClient::new()
         .map_err(|error| error.to_string())?
         .with_cache_dir(cache_root.join(".http-cache"));
+    timings.finish("setup");
+    let collection_started = Instant::now();
     let mut jobs = stream::iter(selected.iter().cloned())
         .map(|source| {
             let client = client.clone();
@@ -156,7 +159,8 @@ pub async fn run_with_progress(
         }
     }
     drop(jobs);
-    let collection_wall_seconds = run_started.elapsed().as_secs_f64();
+    let collection_wall_seconds = collection_started.elapsed().as_secs_f64();
+    timings.finish("collection");
 
     if cancelled.load(Ordering::SeqCst) {
         return Err("執行已取消".into());
@@ -213,6 +217,7 @@ pub async fn run_with_progress(
     }
     let mut insecure_ssl_hosts: Vec<String> = insecure_hosts.into_iter().collect();
     insecure_ssl_hosts.sort();
+    timings.finish("aggregation");
     let dedup_started = Instant::now();
     if options.dedupe_affiliated {
         items = crate::scraper::quality::dedupe_affiliated(items);
@@ -249,6 +254,7 @@ pub async fn run_with_progress(
             message: Some("正在計算政策相關性與排序".into()),
         });
     }
+    timings.finish("quality_processing");
     let ranking_started = Instant::now();
     let batch = pipeline::rank(&profile, &items, options.content_mode);
     let ranking_seconds = if options.content_mode == crate::ContentMode::Full {
@@ -256,6 +262,7 @@ pub async fn run_with_progress(
     } else {
         0.0
     };
+    timings.finish("ranking");
     let prefilter_started = Instant::now();
     let discoveries: Vec<_> = results
         .iter()
@@ -277,6 +284,7 @@ pub async fn run_with_progress(
     } else {
         0.0
     };
+    timings.finish("prefilter");
     let mode_comparison = if options.content_mode == crate::ContentMode::Full {
         pipeline::summary_comparison(
             &discoveries,
@@ -287,6 +295,7 @@ pub async fn run_with_progress(
     } else {
         json!({"status":"full_control_not_available", "reason":"summary does not fetch full text or execute final ranking; consult a full run same-discovery simulation"})
     };
+    timings.finish("mode_comparison");
     let mut item_records = BTreeMap::new();
     for result in &results {
         for (item, record) in result
@@ -334,12 +343,13 @@ pub async fn run_with_progress(
     if classified.len() != items.len() {
         return Err("分類結果與新聞筆數不一致".into());
     }
+    timings.finish("record_indexing_and_topic_filter");
     let excel_started = Instant::now();
     let transaction = OutputTransaction::new(options)?;
     let staged_paths = write_outputs(&transaction.options, &classified, date_range, &profile)?;
     let paths = transaction.final_paths(&staged_paths)?;
     let excel_write_seconds = excel_started.elapsed().as_secs_f64();
-    let finished_at = Utc::now();
+    timings.finish("excel");
     let duplicate_ratio = duplicate_count as f64 / input_count.max(1) as f64;
     let excluded_ratio = excluded_non_news_count as f64 / input_count.max(1) as f64;
     let mut alert_reasons = Vec::new();
@@ -354,7 +364,7 @@ pub async fn run_with_progress(
     }
     let report_dir = paths.1.parent().ok_or("JSON 報告路徑缺少資料夾")?;
     let mut relevance_policy = profile.summary();
-    let anomalies = report::volume_anomalies_for_mode(
+    let mut anomalies = report::volume_anomalies_for_mode(
         report_dir,
         date_range,
         relevance_policy["ruleset_hash"]
@@ -364,6 +374,34 @@ pub async fn run_with_progress(
         &source_diagnostics,
         options.content_mode,
     );
+    let final_full_counts = items.iter().filter(|item| !item.full_text.is_empty()).fold(
+        HashMap::new(),
+        |mut counts, item| {
+            *counts.entry(item.source.clone()).or_insert(0_usize) += 1;
+            counts
+        },
+    );
+    let detail_quality = report::detail_quality_results(
+        &selected,
+        &source_counts,
+        &final_full_counts,
+        options.content_mode,
+    );
+    for result in detail_quality
+        .iter()
+        .filter(|result| result["status"] == "below_minimum")
+    {
+        anomalies.push(format!(
+            "detail_coverage_below_minimum:{}",
+            result["source"].as_str().unwrap_or_default()
+        ));
+    }
+    if detail_quality
+        .iter()
+        .any(|result| result["status"] == "below_minimum")
+    {
+        alert_reasons.push("detail_coverage_below_minimum");
+    }
     if anomalies.iter().any(|value| value.starts_with("source_")) {
         alert_reasons.push("source_volume_regression");
     }
@@ -433,7 +471,20 @@ pub async fn run_with_progress(
     } else {
         ((full_text_count as f64 / items.len() as f64) * 10_000.0).round() / 10_000.0
     };
-    let summary = crate::RunSummary {
+    let news_records: Vec<_> = items
+        .iter()
+        .zip(&classifications)
+        .map(|(item, classification)| {
+            news_record(
+                item,
+                classification,
+                item_records.get(&pipeline::key(item)).copied(),
+            )
+        })
+        .collect();
+    timings.finish("quality_and_news_records");
+    let finished_at = Utc::now();
+    let mut summary = crate::RunSummary {
         content_mode: options.content_mode,
         prefilter_mode: options.prefilter_mode,
         performance: json!({
@@ -450,17 +501,7 @@ pub async fn run_with_progress(
             "final_output_count":items.len()
         }),
         prefilter,
-        news_items: json!(items
-            .iter()
-            .zip(&classifications)
-            .map(|(item, classification)| {
-                news_record(
-                    item,
-                    classification,
-                    item_records.get(&pipeline::key(item)).copied(),
-                )
-            })
-            .collect::<Vec<_>>()),
+        news_items: json!(news_records),
         status: status.into(),
         news_count: items.len() as u64,
         failed_sources,
@@ -495,6 +536,7 @@ pub async fn run_with_progress(
             "detail_fetch_failed_or_empty_count": detail_failed_or_empty,
             "detail_fetch_zero_recovery_sources": detail_zero_recovery_sources,
             "detail_fetch_error_counts": detail_error_counts,
+            "detail_quality": detail_quality,
             "date_source_counts": date_source_counts,
             "description_fallback_count": description_fallback_count,
             "issues": issues,
@@ -540,8 +582,39 @@ pub async fn run_with_progress(
     if cancelled.load(Ordering::SeqCst) {
         return Err("執行已取消".into());
     }
+    timings.finish("summary_build");
+    let finished_at = Utc::now();
+    summary.finished_at = finished_at.to_rfc3339();
+    summary.duration_seconds = (finished_at - started_at).num_milliseconds() as f64 / 1000.0;
+    summary.performance["stage_wall_seconds"] = json!(timings.stages);
+    let monotonic_seconds = run_started.elapsed().as_secs_f64();
+    summary.performance["monotonic_duration_seconds"] = json!(monotonic_seconds);
+    summary.performance["wall_clock_gap_seconds"] =
+        json!(summary.duration_seconds - monotonic_seconds);
+    summary.performance["http"] = client.metrics();
+    summary.performance["duration_scope"] = json!("started_at through summary preparation; serialization, fsync and publication are measured in the completion manifest; wall_clock_gap may reflect system sleep or clock adjustment");
     transaction.commit(&summary, &staged_paths, &paths)?;
     Ok(summary)
+}
+
+/// Sequential, non-overlapping stages use the same monotonic clock.
+struct StageTimings {
+    previous: Instant,
+    stages: BTreeMap<&'static str, f64>,
+}
+impl StageTimings {
+    fn new(started: Instant) -> Self {
+        Self {
+            previous: started,
+            stages: BTreeMap::new(),
+        }
+    }
+    fn finish(&mut self, name: &'static str) {
+        let now = Instant::now();
+        self.stages
+            .insert(name, now.duration_since(self.previous).as_secs_f64());
+        self.previous = now;
+    }
 }
 
 fn news_record(
@@ -618,6 +691,7 @@ impl OutputTransaction {
     ) -> Result<(), String> {
         use sha2::{Digest, Sha256};
         use std::io::Write;
+        let commit_started = Instant::now();
         report::write_json_report(summary, &staged.1)?;
         for path in [&staged.0, &staged.1] {
             // Windows FlushFileBuffers requires a handle opened for writing.
@@ -628,6 +702,8 @@ impl OutputTransaction {
                 .and_then(|file| file.sync_all())
                 .map_err(|e| e.to_string())?;
         }
+        let serialization_and_sync_seconds = commit_started.elapsed().as_secs_f64();
+        let checksum_started = Instant::now();
         let run_id = paths
             .1
             .file_stem()
@@ -635,9 +711,12 @@ impl OutputTransaction {
             .ok_or("缺少執行編號")?
             .trim_start_matches("news_scraper_run_");
         let marker = paths.1.with_extension("complete");
-        let manifest = json!({"run_id":run_id, "output_file":paths.0, "report_file":paths.1,
+        let mut manifest = json!({"run_id":run_id, "output_file":paths.0, "report_file":paths.1,
             "excel_sha256":format!("{:x}", Sha256::digest(std::fs::read(&staged.0).map_err(|e| e.to_string())?)),
             "report_sha256":format!("{:x}", Sha256::digest(std::fs::read(&staged.1).map_err(|e| e.to_string())?))});
+        manifest["performance"] = json!({"report_serialization_and_sync_seconds":serialization_and_sync_seconds,
+            "checksum_seconds":checksum_started.elapsed().as_secs_f64(),
+            "scope":"artifact preparation before commit marker publication"});
         let bytes = serde_json::to_vec_pretty(&manifest).map_err(|e| e.to_string())?;
         let mut completion =
             tempfile::NamedTempFile::new_in(&self.report_dir).map_err(|e| e.to_string())?;

@@ -36,6 +36,27 @@ fn cli_preserves_failures_and_publishes_matching_excel_json_pairs() {
         let report_file = Path::new(summary["report_file"].as_str().unwrap());
         let report: Value = serde_json::from_slice(&std::fs::read(report_file).unwrap()).unwrap();
         assert_eq!(report["report_schema_version"], 4);
+        let performance = &report["performance"];
+        let elapsed = performance["monotonic_duration_seconds"].as_f64().unwrap();
+        let stages = performance["stage_wall_seconds"].as_object().unwrap();
+        let summed: f64 = stages.values().map(|value| value.as_f64().unwrap()).sum();
+        assert!(
+            stages.contains_key("mode_comparison")
+                && stages.contains_key("quality_and_news_records")
+        );
+        assert!(stages.values().all(|value| value.as_f64().unwrap() >= 0.0));
+        assert!(
+            (elapsed - summed).abs() < 0.1,
+            "sequential stages must account for elapsed time"
+        );
+        assert!(
+            (report["duration_seconds"].as_f64().unwrap()
+                - elapsed
+                - performance["wall_clock_gap_seconds"].as_f64().unwrap())
+            .abs()
+                < 0.001
+        );
+        assert_eq!(performance["http"]["request_attempts"], 0);
         assert_eq!(report["output_file"], summary["output_file"]);
         assert_eq!(report["week_start"], "2026-09-28");
         assert_eq!(report["week_end"], "2026-10-04");
@@ -43,6 +64,13 @@ fn cli_preserves_failures_and_publishes_matching_excel_json_pairs() {
             serde_json::from_slice(&std::fs::read(report_file.with_extension("complete")).unwrap())
                 .unwrap();
         assert_eq!(marker["run_id"], report["run_id"]);
+        assert!(
+            marker["performance"]["report_serialization_and_sync_seconds"]
+                .as_f64()
+                .unwrap()
+                >= 0.0
+        );
+        assert!(marker["performance"]["checksum_seconds"].as_f64().unwrap() >= 0.0);
         for (file_field, hash_field) in [
             ("output_file", "excel_sha256"),
             ("report_file", "report_sha256"),

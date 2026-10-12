@@ -1,13 +1,13 @@
 {
   "name": "taiwan-government-news-tauri",
   "private": true,
-  "version": "2.1.28",
+  "version": "2.1.29",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "check": "svelte-check --tsconfig ./tsconfig.json",
-    "test": "vitest run && node --test scripts/release-source-gate.checks.mjs",
+    "test": "vitest run && node --test scripts/*gate.checks.mjs",
     "tauri": "tauri"
   },
   "devDependencies": {
