@@ -251,13 +251,14 @@ async fn fetch_from_target(
         // a failure. Treating the resource script itself as blocked causes
         // false positives after the browser has passed the challenge.
         let blocked = crate::scraper::adapters::is_access_blocked_document(html);
-        if blocked && html.to_ascii_lowercase().contains("request unsuccessful") {
+        let challenge = crate::scraper::adapters::is_access_challenge_document(html);
+        if blocked && !challenge {
             let _ = socket.close(None).await;
             return Err(
-                "access_blocked: Incapsula returned an explicit access-denied document".into(),
+                "access_blocked: official endpoint returned an access-denied document".into(),
             );
         }
-        if !blocked {
+        if !blocked && !challenge {
             if let Some(expected_host) = expected_host {
                 send_command(
                     &mut socket,
@@ -281,7 +282,7 @@ async fn fetch_from_target(
         tokio::time::sleep(Duration::from_secs(1)).await;
     }
     let _ = socket.close(None).await;
-    Err("瀏覽器等待 Incapsula 驗證超過 30 秒".to_owned())
+    Err("access_blocked: 瀏覽器等待官方驗證頁超過 30 秒".to_owned())
 }
 
 async fn send_command(
