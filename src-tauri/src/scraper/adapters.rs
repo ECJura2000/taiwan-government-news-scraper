@@ -9,19 +9,6 @@ pub(crate) fn is_access_blocked_document(body: &str) -> bool {
         || (lower.contains("request unsuccessful") && lower.contains("_incapsula_resource"))
 }
 
-fn looks_like_feed(url: &str, body: &str) -> bool {
-    let lower_url = url.to_ascii_lowercase();
-    let trimmed = body
-        .trim_start_matches('\u{feff}')
-        .trim_start()
-        .to_ascii_lowercase();
-    lower_url.contains("rss")
-        || lower_url.contains("feed")
-        || trimmed.starts_with("<?xml")
-        || trimmed.starts_with("<rss")
-        || trimmed.starts_with("<feed")
-}
-
 fn html_profile(source: &str) -> Option<DatedListSelectors<'static>> {
     let profile = match source {
         "行政院" => DatedListSelectors {
@@ -273,6 +260,27 @@ pub fn parse_route(
             "official endpoint returned an Incapsula access-denied document".into(),
         ));
     }
+    if route.kind == "rss" || rss::is_feed_document(body) {
+        let mut items = rss::parse_feed(source, body)?;
+        if source == "農業部" {
+            for item in &mut items {
+                item.full_text = item.summary.clone();
+            }
+        }
+        if source == "經濟部" && route.parser == "moea-rss-full-text" {
+            for item in &mut items {
+                item.full_text = item.summary.clone();
+                if let Some(department) = item.department.strip_prefix(source) {
+                    let department = department.trim_start_matches(['／', '/', ' ']).trim();
+                    if !department.is_empty() {
+                        item.department = format!("{source}／{department}");
+                    }
+                }
+            }
+        }
+        return Ok(items);
+    }
+
     match source {
         "國家公園署" | "國土管理署" => return special::parse_cms_json(source, body),
         "公路局" if route.parser == "thb-json" => return special::parse_thb_json(source, body),
@@ -294,26 +302,6 @@ pub fn parse_route(
             return special::parse_228_announcements(source, body, &route.url)
         }
         _ => {}
-    }
-    if route.kind == "rss" || looks_like_feed(&route.url, body) {
-        let mut items = rss::parse_feed(source, body)?;
-        if source == "農業部" {
-            for item in &mut items {
-                item.full_text = item.summary.clone();
-            }
-        }
-        if source == "經濟部" && route.parser == "moea-rss-full-text" {
-            for item in &mut items {
-                item.full_text = item.summary.clone();
-                if let Some(department) = item.department.strip_prefix(source) {
-                    let department = department.trim_start_matches(['／', '/', ' ']).trim();
-                    if !department.is_empty() {
-                        item.department = format!("{source}／{department}");
-                    }
-                }
-            }
-        }
-        return Ok(items);
     }
 
     if let Some(selectors) = &route.selectors {
@@ -513,6 +501,18 @@ fn clean_article_text(container: scraper::ElementRef<'_>) -> String {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn rss_dispatch_precedes_source_specific_html_and_json_parsers() {
+        let route: crate::scraper::catalog::SourceRoute = serde_json::from_value(serde_json::json!({"id":"rss", "url":"https://example.test/rss", "kind":"rss", "parser":"standard-rss"})).unwrap();
+        let body = "<rss><channel><item><title>新聞</title><link>https://example.test/1</link><pubDate>2026-10-05</pubDate></item></channel></rss>";
+        for source in ["外交部", "交通部", "勞動部", "疾管署", "國家公園署"] {
+            let items = super::parse_route(source, &route, body).unwrap();
+            assert_eq!(items.len(), 1, "{source}");
+            assert_eq!(items[0].source, source);
+        }
+        assert!(super::parse_route("外交部", &route, "<html>Unavailable</html>").is_err());
+    }
+
     use super::*;
 
     #[test]
@@ -703,7 +703,9 @@ mod tests {
             let route = crate::scraper::catalog::routes_for(
                 crate::scraper::catalog::find_source(source).unwrap(),
             )
-            .remove(0);
+            .into_iter()
+            .find(|route| route.kind == "html")
+            .unwrap();
             let items = parse_route(source, &route, body).unwrap();
             assert_eq!(items.len(), 1, "{source}");
             assert_eq!(items[0].title, title);

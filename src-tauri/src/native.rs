@@ -16,6 +16,7 @@ mod excel;
 mod pipeline;
 mod report;
 mod source;
+mod time;
 #[cfg(test)]
 use crate::scraper::catalog::SourceRoute;
 use excel::*;
@@ -52,7 +53,9 @@ pub async fn run_with_progress(
     cancelled: Arc<AtomicBool>,
     progress: Option<ProgressCallback>,
 ) -> Result<crate::RunSummary, String> {
-    let started_at = Utc::now();
+    let run_clock = time::RunClock::synchronize().await;
+    let started_at = run_clock.now();
+    let system_started_at = Utc::now();
     let run_started = Instant::now();
     let mut timings = StageTimings::new(run_started);
     if options.content_mode == crate::ContentMode::Summary
@@ -84,7 +87,8 @@ pub async fn run_with_progress(
     }
     let max_workers = options.max_workers as usize;
     let total = selected.len() as u32;
-    let date_range = resolve_date_range(options)?;
+    let today = run_clock.now().with_timezone(&Taipei).date_naive();
+    let date_range = resolve_date_range_at(options, today)?;
     let cache_root = PathBuf::from(options.output_dir.as_deref().unwrap_or(DEFAULT_OUTPUT_DIR));
     let client = HttpClient::new()
         .map_err(|error| error.to_string())?
@@ -116,8 +120,15 @@ pub async fn run_with_progress(
                         message: Some(format!("正在處理：{source}")),
                     });
                 }
-                let mut result =
-                    fetch_source(&client, &source, date_range, progress.as_ref(), total).await;
+                let mut result = fetch_source(
+                    &client,
+                    &source,
+                    date_range,
+                    progress.as_ref(),
+                    total,
+                    today,
+                )
+                .await;
                 enrich_source(&client, &mut result, options.content_mode).await;
                 result
             }
@@ -346,7 +357,13 @@ pub async fn run_with_progress(
     timings.finish("record_indexing_and_topic_filter");
     let excel_started = Instant::now();
     let transaction = OutputTransaction::new(options)?;
-    let staged_paths = write_outputs(&transaction.options, &classified, date_range, &profile)?;
+    let staged_paths = write_outputs_at(
+        &transaction.options,
+        &classified,
+        date_range,
+        &profile,
+        run_clock.now().with_timezone(&Taipei),
+    )?;
     let paths = transaction.final_paths(&staged_paths)?;
     let excel_write_seconds = excel_started.elapsed().as_secs_f64();
     timings.finish("excel");
@@ -364,7 +381,7 @@ pub async fn run_with_progress(
     }
     let report_dir = paths.1.parent().ok_or("JSON 報告路徑缺少資料夾")?;
     let mut relevance_policy = profile.summary();
-    let mut anomalies = report::volume_anomalies_for_mode(
+    let mut anomalies = report::volume_anomalies_for_mode_at(
         report_dir,
         date_range,
         relevance_policy["ruleset_hash"]
@@ -373,6 +390,7 @@ pub async fn run_with_progress(
         &source_scraped_counts,
         &source_diagnostics,
         options.content_mode,
+        today,
     );
     let final_full_counts = items.iter().filter(|item| !item.full_text.is_empty()).fold(
         HashMap::new(),
@@ -483,11 +501,12 @@ pub async fn run_with_progress(
         })
         .collect();
     timings.finish("quality_and_news_records");
-    let finished_at = Utc::now();
+    let finished_at = run_clock.now();
     let mut summary = crate::RunSummary {
         content_mode: options.content_mode,
         prefilter_mode: options.prefilter_mode,
         performance: json!({
+            "time_sync":run_clock.evidence,
             "timing_semantics":"source stages are summed task durations, may overlap; collection_wall_seconds is wall time",
             "collection_wall_seconds":collection_wall_seconds,
             "source_discovery_seconds":results.iter().map(|result| result.detail.discovery_seconds).sum::<f64>(),
@@ -583,14 +602,15 @@ pub async fn run_with_progress(
         return Err("執行已取消".into());
     }
     timings.finish("summary_build");
-    let finished_at = Utc::now();
+    let finished_at = run_clock.now();
     summary.finished_at = finished_at.to_rfc3339();
     summary.duration_seconds = (finished_at - started_at).num_milliseconds() as f64 / 1000.0;
     summary.performance["stage_wall_seconds"] = json!(timings.stages);
     let monotonic_seconds = run_started.elapsed().as_secs_f64();
     summary.performance["monotonic_duration_seconds"] = json!(monotonic_seconds);
-    summary.performance["wall_clock_gap_seconds"] =
-        json!(summary.duration_seconds - monotonic_seconds);
+    summary.performance["wall_clock_gap_seconds"] = json!(
+        (Utc::now() - system_started_at).num_milliseconds() as f64 / 1000.0 - monotonic_seconds
+    );
     summary.performance["http"] = client.metrics();
     summary.performance["duration_scope"] = json!("started_at through summary preparation; serialization, fsync and publication are measured in the completion manifest; wall_clock_gap may reflect system sleep or clock adjustment");
     transaction.commit(&summary, &staged_paths, &paths)?;
@@ -765,6 +785,13 @@ impl OutputTransaction {
 }
 
 pub fn resolve_date_range(options: &crate::RunOptions) -> Result<DateRange, String> {
+    resolve_date_range_at(options, Local::now().with_timezone(&Taipei).date_naive())
+}
+
+fn resolve_date_range_at(
+    options: &crate::RunOptions,
+    today: NaiveDate,
+) -> Result<DateRange, String> {
     if options.date.is_some() && (options.start_date.is_some() || options.end_date.is_some()) {
         return Err("--date 不可與 --start-date/--end-date 同時使用".into());
     }
@@ -784,9 +811,7 @@ pub fn resolve_date_range(options: &crate::RunOptions) -> Result<DateRange, Stri
         return Ok(DateRange { start, end });
     }
 
-    Ok(default_range_for_date(
-        Local::now().with_timezone(&Taipei).date_naive(),
-    ))
+    Ok(default_range_for_date(today))
 }
 
 fn week_range_for_date(date: NaiveDate) -> DateRange {
