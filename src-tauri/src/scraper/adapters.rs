@@ -9,6 +9,31 @@ pub(crate) fn is_access_blocked_document(body: &str) -> bool {
         || (lower.contains("request unsuccessful") && lower.contains("_incapsula_resource"))
 }
 
+pub(crate) fn is_access_challenge_document(body: &str) -> bool {
+    if rss::is_feed_document(body) {
+        return false;
+    }
+    let lower = body.to_ascii_lowercase();
+    if lower.contains("_cf_chl_opt") && lower.contains("/cdn-cgi/challenge-platform/") {
+        let document = Html::parse_document(body);
+        let title = Selector::parse("title").expect("valid title selector");
+        return document.select(&title).any(|node| {
+            html::clean_text(node)
+                .trim()
+                .eq_ignore_ascii_case("Just a moment...")
+        });
+    }
+    if lower.contains("_incapsula_resource") {
+        let document = Html::parse_document(body);
+        let selector = Selector::parse("body").expect("valid body selector");
+        return document
+            .select(&selector)
+            .next()
+            .is_some_and(|body| !body.text().any(|text| !text.trim().is_empty()));
+    }
+    false
+}
+
 fn html_profile(source: &str) -> Option<DatedListSelectors<'static>> {
     let profile = match source {
         "行政院" => DatedListSelectors {
@@ -260,6 +285,11 @@ pub fn parse_route(
             "official endpoint returned an Incapsula access-denied document".into(),
         ));
     }
+    if is_access_challenge_document(body) {
+        return Err(ScraperError::AccessBlocked(
+            "official endpoint returned a verification interstitial".into(),
+        ));
+    }
     if route.kind == "rss" || rss::is_feed_document(body) {
         let mut items = rss::parse_feed(source, body)?;
         if source == "農業部" {
@@ -381,7 +411,7 @@ pub fn parse_route(
 }
 
 pub fn parse_detail_full_text(source: &str, body: &str) -> String {
-    if is_access_blocked_document(body) {
+    if is_access_blocked_document(body) || is_access_challenge_document(body) {
         return String::new();
     }
     let source_selectors: &[&str] = match source {
@@ -501,6 +531,27 @@ fn clean_article_text(container: scraper::ElementRef<'_>) -> String {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn managed_challenge_is_not_a_feed_or_article_and_resources_alone_are_not_blocked() {
+        let challenge = r#"<html><head><title>Just a moment...</title><script>window._cf_chl_opt = {};</script></head><body><script src="/cdn-cgi/challenge-platform/h/g/orchestrate/chl_page/v1"></script></body></html>"#;
+        assert!(super::is_access_challenge_document(challenge));
+        let route: crate::scraper::catalog::SourceRoute = serde_json::from_value(serde_json::json!({"id":"rss","url":"https://example.test/rss","kind":"rss","parser":"standard-rss"})).unwrap();
+        assert!(matches!(
+            super::parse_route("文化部", &route, challenge),
+            Err(crate::scraper::ScraperError::AccessBlocked(_))
+        ));
+        assert!(super::parse_detail_full_text("文化部", challenge).is_empty());
+        let normal = r#"<html><head><title>新聞</title><script src="/cdn-cgi/challenge-platform/script.js"></script></head><body><p>官方新聞正文</p><script>window._cf_chl_opt = {};</script></body></html>"#;
+        assert!(!super::is_access_challenge_document(normal));
+        let blank = r#"<html><head><script src="/_Incapsula_Resource"></script></head><body></body></html>"#;
+        assert!(super::is_access_challenge_document(blank));
+        assert!(!super::is_access_challenge_document(
+            &blank.replace("<body></body>", "<body><p>官方新聞</p></body>")
+        ));
+        let feed = format!("<rss><channel><item><title>驗證頁說明</title><description><![CDATA[{challenge}]]></description></item></channel></rss>");
+        assert!(!super::is_access_challenge_document(&feed));
+    }
+
     #[test]
     fn rss_dispatch_precedes_source_specific_html_and_json_parsers() {
         let route: crate::scraper::catalog::SourceRoute = serde_json::from_value(serde_json::json!({"id":"rss", "url":"https://example.test/rss", "kind":"rss", "parser":"standard-rss"})).unwrap();
