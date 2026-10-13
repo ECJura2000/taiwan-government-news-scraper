@@ -640,7 +640,10 @@
           "first_page": 1,
           "max_pages": 20
         },
-        "wait_for_selector": "#table_0 tbody tr td[data-title='公告日期']"
+        "wait_for_selector": "#table_0 tbody tr td[data-title='公告日期']",
+        "transport": {
+          "browser_entry_url": "https://www.thb.gov.tw/"
+        }
       }
     ]
   },

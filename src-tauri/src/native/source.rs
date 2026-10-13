@@ -120,6 +120,7 @@ async fn fetch_source_definition(
                         page_script.as_deref(),
                         None,
                         policy.browser_native_user_agent,
+                        policy.browser_entry_url.as_deref(),
                     )
                     .await
                     .map_err(classify_browser_error)
@@ -238,6 +239,7 @@ async fn fetch_source_definition(
                                 page_script.as_deref(),
                                 None,
                                 policy.browser_native_user_agent,
+                                policy.browser_entry_url.as_deref(),
                             )
                             .await
                             .map_err(classify_browser_error)
@@ -706,7 +708,7 @@ pub(super) async fn enrich_detail_full_text(
                         let initial_reason = fetched.as_ref().err().map_or("empty_detail_text", |error| error.failure_class().as_str());
                         let browser_started = Instant::now();
                         let wait_script = policy.browser_wait_script();
-                        let rendered = crate::browser::fetch_rendered_html_after_with_transport(&item.link, wait_script.as_deref(), Some(policy.timeout), policy.browser_native_user_agent)
+                        let rendered = crate::browser::fetch_rendered_html_after_with_transport(&item.link, wait_script.as_deref(), Some(policy.timeout), policy.browser_native_user_agent, policy.browser_entry_url.as_deref())
                             .await.map_err(classify_browser_error);
                         browser_seconds = browser_started.elapsed().as_secs_f64();
                         fallback = Some(json!({"source":item.source,"url":item.link,"http_reason":initial_reason,

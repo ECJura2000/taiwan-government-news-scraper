@@ -42,3 +42,5 @@
 重構後於 2026-09-21 週以 Rust CLI 限定六個特殊來源（國防部、國家資通安全研究院、勞動力發展署、國家公園署、法務部、農業部）驗證：`status=success`、7 則新聞、無失敗來源／異常／品質警示，Excel 正常產生。國家資通安全研究院第一個 HTTP route 遇到 `runner_network`，官方瀏覽器 route 接續成功；`error_counts.connection=1`、`source_health.unstable_count=1`。國防部的受限 TLS fallback 使用記錄使 `ssl_fallback_host_count=1`。這些恢復紀錄不能誤述成「無錯誤」。
 
 在 NPS 前綴解析移入來源元件後，再以國家公園署與國防部重跑同一固定週：兩次報告均為 `success`、2 則新聞、無失敗／異常／品質警示，來源嘗試的 route、篇數與分類相同（完成順序可因並行而變）。兩份 Excel 的第一工作表 XML 與 workbook XML SHA-256 相同；整個 ZIP 的位元組雜湊不同，不應據此誤判內容回歸。
+
+公路局瀏覽器列表另宣告 `routes[].transport.browser_entry_url`，在同一次隔離 Chrome session 中先開官方首頁，再進入新聞列表，保留正常導覽 cookie。入口限同來源、無帳密 HTTP(S)，不新增 TLS 例外，也不跳過正式頁的驗證頁及解析檢查；其他路徑與詳細頁不繼承此設定。Cookie、profile 與完整週報不納入版本控制。

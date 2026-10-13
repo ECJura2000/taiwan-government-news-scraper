@@ -233,6 +233,7 @@ pub fn parse_catalog(json: &str) -> Result<Vec<SourceDefinition>, String> {
                                     | "browser_fallback"
                                     | "browser_wait_for_selector"
                                     | "browser_native_user_agent"
+                                    | "browser_entry_url"
                             ) {
                                 return Err(format!(
                                     "來源 {name} transport.detail：未知欄位 {field}"
@@ -365,6 +366,11 @@ pub fn parse_catalog(json: &str) -> Result<Vec<SourceDefinition>, String> {
             }
             if let Some(settings) = &route.transport {
                 validate_settings(settings).map_err(|e| format!("{context} transport：{e}"))?;
+                if let Some(entry) = &settings.browser_entry_url {
+                    if validate_url(entry)?.origin() != url.origin() {
+                        return Err(format!("{context} browser_entry_url 必須與 route 同來源"));
+                    }
+                }
                 if let Some(host) = &settings.tls_fallback_host {
                     if source.name != "國防部"
                         || host != "www.mnd.gov.tw"
@@ -470,6 +476,9 @@ fn validate_url(value: &str) -> Result<url::Url, String> {
 }
 
 fn validate_settings(settings: &PolicyOverrides) -> Result<(), String> {
+    if let Some(entry) = &settings.browser_entry_url {
+        validate_url(entry).map_err(|error| format!("browser_entry_url：{error}"))?;
+    }
     if let Some(selector) = &settings.browser_wait_for_selector {
         if selector.trim().is_empty() {
             return Err("browser_wait_for_selector 不得空白".into());
@@ -520,6 +529,23 @@ fn matches_source_name(source: &SourceDefinition, name: &str) -> bool {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn browser_entry_url_requires_same_origin_and_no_credentials() {
+        let mut source = serde_json::json!({"name":"測試機關","urls":["https://official.test/news"],"routes":[{"id":"browser","url":"https://official.test/news","kind":"browser","parser":"standard","transport":{"browser_entry_url":"https://official.test/"}}]});
+        assert!(super::parse_catalog(&serde_json::json!([source.clone()]).to_string()).is_ok());
+        for entry in [
+            "https://other.test/",
+            "http://official.test/",
+            "https://user:password@official.test/",
+            "file:///tmp/page",
+        ] {
+            source["routes"][0]["transport"]["browser_entry_url"] = serde_json::json!(entry);
+            assert!(
+                super::parse_catalog(&serde_json::json!([source.clone()]).to_string()).is_err()
+            );
+        }
+    }
+
     #[test]
     fn detail_browser_wait_requires_valid_css_without_tls_exemption() {
         let mut source = serde_json::json!({"name":"Official dynamic source",

@@ -33,6 +33,7 @@ pub struct PolicyOverrides {
     pub browser_fallback: Option<bool>,
     pub browser_wait_for_selector: Option<String>,
     pub browser_native_user_agent: Option<bool>,
+    pub browser_entry_url: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -46,6 +47,7 @@ pub struct TransportPolicy {
     pub browser_fallback: bool,
     pub browser_wait_for_selector: Option<String>,
     pub browser_native_user_agent: bool,
+    pub browser_entry_url: Option<String>,
 }
 
 impl TransportPolicy {
@@ -60,6 +62,7 @@ impl TransportPolicy {
             browser_fallback: false,
             browser_wait_for_selector: None,
             browser_native_user_agent: false,
+            browser_entry_url: None,
         }
     }
 
@@ -97,6 +100,9 @@ impl TransportPolicy {
         }
         if let Some(value) = settings.browser_native_user_agent {
             self.browser_native_user_agent = value;
+        }
+        if let Some(value) = &settings.browser_entry_url {
+            self.browser_entry_url = Some(value.clone());
         }
         self
     }
@@ -154,6 +160,28 @@ impl TransportPolicy {
 mod tests {
     use super::*;
     use crate::scraper::catalog::{find_source, routes_for};
+
+    #[test]
+    fn homepage_entry_is_scoped_to_declared_browser_route() {
+        let source = find_source("公路局").unwrap();
+        for route in routes_for(source) {
+            let policy = TransportPolicy::for_route(source, &route);
+            assert_eq!(
+                policy.browser_entry_url.as_deref(),
+                if route.id == "official-browser" {
+                    Some("https://www.thb.gov.tw/")
+                } else {
+                    None
+                }
+            );
+            assert!(!policy.allows_tls_fallback_for(&route.url));
+        }
+        assert!(
+            TransportPolicy::for_detail(source, "https://www.thb.gov.tw/article")
+                .browser_entry_url
+                .is_none()
+        );
+    }
 
     #[test]
     fn native_browser_identification_is_declared_and_scoped() {

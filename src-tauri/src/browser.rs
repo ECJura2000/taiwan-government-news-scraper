@@ -47,7 +47,8 @@ pub async fn fetch_rendered_html_after(
     url: &str,
     page_script: Option<&str>,
 ) -> Result<String, String> {
-    fetch_rendered_html_after_with_certificate_policy(url, page_script, false, None, false).await
+    fetch_rendered_html_after_with_certificate_policy(url, page_script, false, None, false, None)
+        .await
 }
 
 pub async fn fetch_rendered_html_after_with_timeout(
@@ -55,8 +56,15 @@ pub async fn fetch_rendered_html_after_with_timeout(
     page_script: Option<&str>,
     timeout: Duration,
 ) -> Result<String, String> {
-    fetch_rendered_html_after_with_certificate_policy(url, page_script, false, Some(timeout), false)
-        .await
+    fetch_rendered_html_after_with_certificate_policy(
+        url,
+        page_script,
+        false,
+        Some(timeout),
+        false,
+        None,
+    )
+    .await
 }
 
 /// Fetch a rendered page while accepting an invalid certificate for the single
@@ -65,7 +73,8 @@ pub async fn fetch_rendered_html_after_allow_invalid_certificates(
     url: &str,
     page_script: Option<&str>,
 ) -> Result<String, String> {
-    fetch_rendered_html_after_with_certificate_policy(url, page_script, true, None, false).await
+    fetch_rendered_html_after_with_certificate_policy(url, page_script, true, None, false, None)
+        .await
 }
 
 pub async fn fetch_rendered_html_after_with_transport(
@@ -73,6 +82,7 @@ pub async fn fetch_rendered_html_after_with_transport(
     page_script: Option<&str>,
     timeout: Option<Duration>,
     native_user_agent: bool,
+    entry_url: Option<&str>,
 ) -> Result<String, String> {
     fetch_rendered_html_after_with_certificate_policy(
         url,
@@ -80,6 +90,7 @@ pub async fn fetch_rendered_html_after_with_transport(
         false,
         timeout,
         native_user_agent,
+        entry_url,
     )
     .await
 }
@@ -90,7 +101,22 @@ async fn fetch_rendered_html_after_with_certificate_policy(
     allow_invalid_certificates: bool,
     timeout: Option<Duration>,
     native_user_agent: bool,
+    entry_url: Option<&str>,
 ) -> Result<String, String> {
+    if let Some(entry) = entry_url {
+        let target = url::Url::parse(url).map_err(|e| e.to_string())?;
+        let entry = url::Url::parse(entry).map_err(|e| e.to_string())?;
+        if entry.origin() != target.origin()
+            || !matches!(entry.scheme(), "http" | "https")
+            || !entry.username().is_empty()
+            || entry.password().is_some()
+        {
+            return Err(
+                "browser entry URL must be an HTTP(S) URL on the same origin without credentials"
+                    .into(),
+            );
+        }
+    }
     // Keep browser work bounded: two independent profiles let a slow fallback
     // run alongside another dynamic source without starting an unbounded number
     // of Chrome processes on low-resource runners.
@@ -112,7 +138,13 @@ async fn fetch_rendered_html_after_with_certificate_policy(
         launch_browser(allow_invalid_certificates, native_user_agent).await?;
     // Scope the deadline inside the owner so timeout still kills Chrome and
     // removes its profile. Semaphore queueing and browser startup are separate.
-    let fetch = fetch_from_target(&endpoint, url, page_script, expected_host.as_deref());
+    let fetch = fetch_from_target(
+        &endpoint,
+        url,
+        page_script,
+        expected_host.as_deref(),
+        entry_url,
+    );
     let result = if let Some(timeout) = timeout {
         tokio::time::timeout(timeout, fetch)
             .await
@@ -223,6 +255,7 @@ async fn fetch_from_target(
     url: &str,
     page_script: Option<&str>,
     expected_host: Option<&str>,
+    entry_url: Option<&str>,
 ) -> Result<String, String> {
     let (mut socket, _) = connect_async(endpoint)
         .await
@@ -245,6 +278,14 @@ async fn fetch_from_target(
     )
     .await?;
     wait_for_response(&mut socket, 4).await?;
+    if let Some(entry) = entry_url {
+        // Preserve the ordinary homepage-to-news navigation state in this
+        // request's isolated profile. The requested page still passes all
+        // normal verification and parser checks below.
+        send_command(&mut socket, 5_000, "Page.navigate", json!({"url": entry})).await?;
+        wait_for_response(&mut socket, 5_000).await?;
+        tokio::time::sleep(Duration::from_secs(7)).await;
+    }
     send_command(&mut socket, 5, "Page.navigate", json!({"url": url})).await?;
     wait_for_response(&mut socket, 5).await?;
     let _ = wait_for_event(&mut socket, "Page.loadEventFired").await;
@@ -541,6 +582,46 @@ mod tests {
         );
         assert!(records[0].item.full_text.starts_with("內政部次長董建宏"));
         assert_eq!(records[1].item.date, "2026-10-07");
+    }
+
+    #[tokio::test]
+    #[ignore = "requires a system Chrome or Chromium executable"]
+    async fn normal_entry_navigation_preserves_same_session_cookie() {
+        use tokio::io::{AsyncReadExt, AsyncWriteExt};
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let address = listener.local_addr().unwrap();
+        let server = tokio::spawn(async move {
+            loop {
+                let (mut stream, _) = listener.accept().await.unwrap();
+                let mut request = [0_u8; 4096];
+                let received = stream.read(&mut request).await.unwrap();
+                let request = std::str::from_utf8(&request[..received]).unwrap();
+                let is_news = request.starts_with("GET /news ");
+                let body = if is_news && request.contains("official_entry=yes") {
+                    "<html><head><title>News</title></head><body>entered-via-home</body></html>"
+                } else {
+                    "<html><head><title>Home</title></head><body>Home</body></html>"
+                };
+                let response = format!("HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\nSet-Cookie: official_entry=yes; Path=/\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}", body.len());
+                stream.write_all(response.as_bytes()).await.unwrap();
+                stream.shutdown().await.unwrap();
+                if is_news {
+                    break;
+                }
+            }
+        });
+        let entry = format!("http://{address}/home");
+        let captured = fetch_rendered_html_after_with_transport(
+            &format!("http://{address}/news"),
+            None,
+            Some(Duration::from_secs(45)),
+            false,
+            Some(&entry),
+        )
+        .await
+        .unwrap();
+        server.await.unwrap();
+        assert!(captured.contains("entered-via-home"));
     }
 
     #[tokio::test]
