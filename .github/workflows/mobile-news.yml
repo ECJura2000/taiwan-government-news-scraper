@@ -1,0 +1,91 @@
+name: 手機手動抓取新聞
+
+on:
+  workflow_dispatch:
+    inputs:
+      start_date:
+        description: '起日 YYYY-MM-DD（與迄日一起填；留白用預設期間）'
+        required: false
+        type: string
+      end_date:
+        description: '迄日 YYYY-MM-DD（包含當日）'
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mobile-news-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  collect:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 120
+    env:
+      TZ: Asia/Taipei
+      START_DATE: ${{ inputs.start_date }}
+      END_DATE: ${{ inputs.end_date }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '22'
+      - name: Verify cloud delivery contracts
+        run: node --test scripts/cloud-delivery.test.mjs
+      - name: Validate dates before network collection
+        run: node scripts/cloud-delivery.mjs validate-inputs
+      - name: Install Linux CLI dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+      - uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772
+        with:
+          toolchain: stable
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6
+        with:
+          key: mobile-news
+      - name: Build headless Rust CLI
+        run: cargo build --release --locked --bin news-scraper
+      - name: Locate system Chrome for dynamic sources
+        shell: bash
+        run: |
+          chrome=$(command -v google-chrome || command -v chromium || command -v chromium-browser)
+          test -n "$chrome"
+          "$chrome" --version
+          printf 'NEWS_SCRAPER_CHROME_BIN=%s\n' "$chrome" >> "$GITHUB_ENV"
+      - name: Collect Taiwan news
+        shell: bash
+        run: |
+          mkdir -p output
+          args=(collect --max-workers 8 --output-dir "$PWD/output" --report-dir "$PWD/output/reports")
+          if [[ -n "$START_DATE" ]]; then
+            args+=(--start-date "$START_DATE" --end-date "$END_DATE")
+          fi
+          set -o pipefail
+          target/release/news-scraper "${args[@]}" 2>&1 | tee output/collection.log
+      - name: Verify and stage completed reports
+        id: stage
+        run: node scripts/cloud-delivery.mjs taiwan output cloud-publish
+      - name: Keep reports and diagnostics as GitHub Artifacts
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: news-${{ github.run_id }}-attempt-${{ github.run_attempt }}
+          path: |
+            output/
+            cloud-publish/
+          if-no-files-found: warn
+          retention-days: 30
+      - name: Install Drive uploader
+        if: ${{ success() && steps.stage.outcome == 'success' }}
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y rclone
+      - name: Upload verified reports to Google Drive
+        if: ${{ success() && steps.stage.outcome == 'success' }}
+        env:
+          RCLONE_CONFIG_TEXT: ${{ secrets.RCLONE_CONFIG }}
+          DRIVE_FOLDER_ID: ${{ vars.DRIVE_FOLDER_ID }}
+        run: bash scripts/upload-cloud-drive.sh
