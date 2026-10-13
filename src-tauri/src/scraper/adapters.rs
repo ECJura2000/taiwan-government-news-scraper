@@ -280,6 +280,175 @@ pub fn parse_route(
     route: &SourceRoute,
     body: &str,
 ) -> Result<Vec<NewsItem>, ScraperError> {
+    let records = parse_route_records(source, route, body)?;
+    let mut items: Vec<_> = records.into_iter().map(|record| record.item).collect();
+    if let Some(selectors) = &route.selectors {
+        items.retain(|item| {
+            !selectors
+                .exclude_title_prefixes
+                .iter()
+                .any(|prefix| item.title.starts_with(prefix))
+        });
+    }
+    Ok(items)
+}
+
+pub fn parse_route_records(
+    source: &str,
+    route: &SourceRoute,
+    body: &str,
+) -> Result<Vec<rss::FeedRecord>, ScraperError> {
+    let items = parse_route_raw(source, route, body)?;
+    let metadata = if route.kind == "rss" || rss::is_feed_document(body) {
+        Some(rss::parse_feed_records(source, body)?)
+    } else {
+        None
+    };
+    let base = url::Url::parse(&route.url).ok();
+    let mut html_publishers = std::collections::HashMap::new();
+    let mut html_categories = std::collections::HashMap::new();
+    if metadata.is_none() {
+        if let Some(selectors) = &route.selectors {
+            if selectors.department.is_some() || selectors.category.is_some() {
+                let document = scraper::Html::parse_document(body);
+                let html_base = document
+                    .select(&scraper::Selector::parse("base[href]").expect("valid base selector"))
+                    .next()
+                    .and_then(|element| element.value().attr("href"))
+                    .and_then(|href| base.as_ref().and_then(|base| base.join(href).ok()))
+                    .filter(|candidate| {
+                        base.as_ref()
+                            .is_some_and(|base| candidate.origin() == base.origin())
+                    })
+                    .or_else(|| base.clone());
+                let row_selector =
+                    scraper::Selector::parse(&selectors.item).expect("validated row selector");
+                let link_selector =
+                    scraper::Selector::parse(&selectors.link).expect("validated link selector");
+                let department_selector = selectors.department.as_ref().map(|department| {
+                    scraper::Selector::parse(department).expect("validated department selector")
+                });
+                let category_selector = selectors.category.as_ref().map(|category| {
+                    scraper::Selector::parse(category).expect("validated category selector")
+                });
+                let title_selector =
+                    scraper::Selector::parse(&selectors.title).expect("validated title selector");
+                let leading_date = selectors.strip_leading_date.then(|| {
+                    regex::Regex::new(r"^\d{2,4}[-/.年]\d{1,2}[-/.月]\d{1,2}(?:日)?\s*")
+                        .expect("valid leading date regex")
+                });
+                for row in document.select(&row_selector) {
+                    let element = if row.value().attr("href").is_some() {
+                        Some(row)
+                    } else {
+                        row.select(&link_selector).next()
+                    };
+                    let link = element
+                        .and_then(|e| e.value().attr("href"))
+                        .and_then(|href| html_base.as_ref().and_then(|b| b.join(href).ok()));
+                    let label = department_selector
+                        .as_ref()
+                        .and_then(|selector| row.select(selector).next())
+                        .map(html::clean_text)
+                        .filter(|label| !label.is_empty());
+                    if let Some(link) = link {
+                        if let Some(label) = label {
+                            html_publishers.insert(link.to_string(), label);
+                        }
+                        if let Some(selector) = &category_selector {
+                            let mut first_category = row
+                                .select(selector)
+                                .next()
+                                .map(html::clean_text)
+                                .unwrap_or_default();
+                            if first_category.is_empty() {
+                                if let Some(label) = &selectors.category_label {
+                                    first_category = label.clone();
+                                }
+                            }
+                            let categories: Vec<_> = row
+                                .select(selector)
+                                .map(html::clean_text)
+                                .filter(|category| !category.is_empty())
+                                .collect();
+                            let title = row.select(&title_selector).next().map(|element| {
+                                let title = selectors
+                                    .title_attribute
+                                    .as_deref()
+                                    .and_then(|attribute| element.value().attr(attribute))
+                                    .map(|value| {
+                                        value.split_whitespace().collect::<Vec<_>>().join(" ")
+                                    })
+                                    .filter(|value| !value.is_empty())
+                                    .unwrap_or_else(|| html::clean_text(element));
+                                leading_date.as_ref().map_or_else(
+                                    || title.clone(),
+                                    |pattern| pattern.replace(&title, "").trim().to_owned(),
+                                )
+                            });
+                            if let Some(title) = title.filter(|_| !categories.is_empty()) {
+                                html_categories
+                                    .insert((link.to_string(), title, first_category), categories);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    Ok(items
+        .into_iter()
+        .enumerate()
+        .map(|(index, mut item)| {
+            if url::Url::parse(&item.link).is_err() {
+                if let Some(link) = base.as_ref().and_then(|base| base.join(&item.link).ok()) {
+                    item.link = link.to_string();
+                }
+            }
+            let publisher = if let Some(records) = &metadata {
+                records
+                    .get(index)
+                    .and_then(|record| record.publisher.clone())
+            } else {
+                html_publishers.get(&item.link).cloned().or_else(|| {
+                    (item.department != source).then(|| {
+                        item.department
+                            .strip_prefix(&format!("{source}／"))
+                            .unwrap_or(&item.department)
+                            .to_owned()
+                    })
+                })
+            };
+            let categories = metadata
+                .as_ref()
+                .and_then(|records| records.get(index))
+                .map(|record| record.categories.clone())
+                .or_else(|| {
+                    html_categories
+                        .get(&(item.link.clone(), item.title.clone(), item.category.clone()))
+                        .cloned()
+                })
+                .unwrap_or_else(|| {
+                    if item.category.is_empty() {
+                        Vec::new()
+                    } else {
+                        vec![item.category.clone()]
+                    }
+                });
+            rss::FeedRecord {
+                item,
+                publisher,
+                categories,
+            }
+        })
+        .collect())
+}
+
+fn parse_route_raw(
+    source: &str,
+    route: &SourceRoute,
+    body: &str,
+) -> Result<Vec<NewsItem>, ScraperError> {
     if is_access_blocked_document(body) {
         return Err(ScraperError::AccessBlocked(
             "official endpoint returned an Incapsula access-denied document".into(),
@@ -314,6 +483,7 @@ pub fn parse_route(
     match source {
         "國家公園署" | "國土管理署" => return special::parse_cms_json(source, body),
         "公路局" if route.parser == "thb-json" => return special::parse_thb_json(source, body),
+        "公路局" if route.parser == "thb-xml" => return special::parse_thb_xml(source, body),
         "外交部" => return special::parse_mofa(source, body, &route.url),
         "僑委會" => return special::parse_ocac(source, body, &route.url),
         "防檢署" => return special::parse_aphia(source, body, &route.url),
@@ -344,13 +514,13 @@ pub fn parse_route(
             department: selectors.department.as_deref(),
             category: selectors.category.as_deref(),
         };
-        let mut items = html::parse_dated_list(source, body, &route.url, &profile)?;
-        items.retain(|item| {
-            !selectors
-                .exclude_title_prefixes
-                .iter()
-                .any(|prefix| item.title.starts_with(prefix))
-        });
+        let mut items = html::parse_dated_list_with_title_attribute(
+            source,
+            body,
+            &route.url,
+            &profile,
+            selectors.title_attribute.as_deref(),
+        )?;
         if let Some(label) = &selectors.category_label {
             for item in &mut items {
                 if item.category.is_empty() {
@@ -415,6 +585,7 @@ pub fn parse_detail_full_text(source: &str, body: &str) -> String {
         return String::new();
     }
     let source_selectors: &[&str] = match source {
+        "財團法人台灣優良農產品發展協會" => &["#postblock .post-block"],
         "國防部" => &["div.maincontent"],
         "行政院" => &[".words_content .data_left"],
         "高速公路局" => &[".FCKdetail"],
@@ -707,8 +878,10 @@ mod tests {
                 exclude_title_prefixes: Vec::new(),
                 category_label: None,
                 strip_leading_date: false,
+                ..Default::default()
             }),
             transport: None,
+            ..Default::default()
         };
         let body =
             r#"<article><a href="/n/1"><h2>公告標題</h2><time>2026/09/28</time></a></article>"#;
@@ -773,7 +946,13 @@ mod tests {
         )
         .remove(0);
         let museum_body = r#"<li class="item reveal-list"><a href="/job"><time>2026/09/24</time><h3>【徵才】本會招募會計人員</h3></a></li><li class="item reveal-list"><a href="/event"><time>2026/09/23</time><h3>博物館國際交流活動</h3></a></li>"#;
-        let items = parse_route("臺灣博物館文教基金會", &museum, museum_body).unwrap();
+        let records = parse_route_records("臺灣博物館文教基金會", &museum, museum_body).unwrap();
+        let (items, decisions) = crate::scraper::filter::apply(
+            crate::scraper::catalog::find_source("臺灣博物館文教基金會").unwrap(),
+            &museum,
+            records,
+        );
+        assert_eq!(decisions.len(), 1);
         assert_eq!(items.len(), 1);
         assert_eq!(items[0].link, "https://www.taiwan-museum.org.tw/event");
 
@@ -799,6 +978,7 @@ mod tests {
             coverage_reduced: false,
             selectors: None,
             transport: None,
+            ..Default::default()
         }
     }
 
@@ -890,6 +1070,18 @@ mod tests {
         let full_text = parse_detail_full_text("數位發展部", &body);
         assert_eq!(full_text.chars().count(), 1_254);
         assert!(full_text.ends_with("第二段"));
+    }
+
+    #[test]
+    fn cas_spa_detail_keeps_official_body_without_navigation_or_footer() {
+        let body =
+            include_str!("../../tests/fixtures/four-ministry-agriculture/source-056-detail.html");
+        let text = parse_detail_full_text("財團法人台灣優良農產品發展協會", body);
+        assert!(text.contains("本會長期致力於食品安全衛生教育"));
+        assert!(text.contains("marathon@chinee-haccp.on"));
+        assert!(!text.contains("CAS驗證機構"));
+        assert!(!text.contains("Copyright"));
+        assert!(!text.contains("返回"));
     }
 
     #[test]

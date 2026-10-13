@@ -1,0 +1,1536 @@
+{
+  "checked_at": "2026-10-12",
+  "baseline_count": 88,
+  "approved_count": 192,
+  "entries": [
+    {
+      "id": "boch",
+      "name": "文化部文化資產局",
+      "official_name": "文化部文化資產局",
+      "parent_ministry": "文化部",
+      "parent_source": "文化部",
+      "relationship": "subordinate_agency",
+      "evidence_urls": [
+        "https://personnel.moc.gov.tw/template/belong.ug"
+      ],
+      "homepage": "https://www.boch.gov.tw/",
+      "news_urls": [],
+      "rss_urls": [],
+      "status": "pending",
+      "reason": "新聞列表未完成可解析發布日期驗證。",
+      "checked_at": "2026-10-12",
+      "audit_file": "docs/audits/four-ministry-culture-mac-20261012.json"
+    },
+    {
+      "id": "ntcri",
+      "name": "國立臺灣工藝研究發展中心",
+      "official_name": "國立臺灣工藝研究發展中心",
+      "parent_ministry": "文化部",
+      "parent_source": "文化部",
+      "relationship": "subordinate_agency",
+      "evidence_urls": [
+        "https://personnel.moc.gov.tw/template/belong.ug"
+      ],
+      "homepage": "https://www.ntcri.gov.tw/",
+      "news_urls": [],
+      "rss_urls": [],
+      "status": "pending",
+      "reason": "新聞列表未完成可解析發布日期驗證。",
+      "checked_at": "2026-10-12",
+      "audit_file": "docs/audits/four-ministry-culture-mac-20261012.json"
+    },
+    {
+      "id": "ntmc",
+      "name": "國家漫畫博物館籌備處",
+      "official_name": "國家漫畫博物館籌備處",
+      "parent_ministry": "文化部",
+      "parent_source": "文化部",
+      "relationship": "subordinate_agency",
+      "evidence_urls": [
+        "https://personnel.moc.gov.tw/template/belong.ug",
+        "https://gazette.nat.gov.tw/egFront/e_detail.do?metaid=144191"
+      ],
+      "homepage": "https://www.ntmc.gov.tw/home/zh-tw",
+      "news_urls": [],
+      "rss_urls": [],
+      "status": "pending",
+      "reason": "新聞列表未完成可解析發布日期驗證。",
+      "checked_at": "2026-10-12",
+      "audit_file": "docs/audits/four-ministry-culture-mac-20261012.json"
+    },
+    {
+      "id": "npac",
+      "name": "國家表演藝術中心",
+      "official_name": "國家表演藝術中心",
+      "parent_ministry": "文化部",
+      "parent_source": "文化部",
+      "relationship": "administrative_corporation",
+      "evidence_urls": [
+        "https://www.npac-ntch.org/npac/zh/about/overview"
+      ],
+      "homepage": "https://www.npac-ntch.org/npac/zh/",
+      "news_urls": [],
+      "rss_urls": [],
+      "status": "pending",
+      "reason": "法人無獨立新聞列表，由下轄四場館團隊分別取得正式公告。",
+      "checked_at": "2026-10-12",
+      "audit_file": "docs/audits/four-ministry-culture-mac-20261012.json"
+    },
+    {
+      "id": "tfai",
+      "name": "國家電影及視聽文化中心",
+      "official_name": "國家電影及視聽文化中心",
+      "parent_ministry": "文化部",
+      "parent_source": "文化部",
+      "relationship": "administrative_corporation",
+      "evidence_urls": [
+        "https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=P0040012"
+      ],
+      "homepage": "https://www.tfai.org.tw/zh/",
+      "news_urls": [
+        "https://www.tfai.org.tw/zh/event/list"
+      ],
+      "rss_urls": [],
+      "status": "pending",
+      "reason": "活動列表未提供可解析發布日期，須詳細頁日期證據。",
+      "checked_at": "2026-10-12",
+      "audit_file": "docs/audits/four-ministry-culture-mac-20261012.json"
+    },
+    {
+      "id": "ntch",
+      "name": "國家兩廳院",
+      "official_name": "國家表演藝術中心國家兩廳院",
+      "parent_ministry": "文化部",
+      "parent_source": "國家表演藝術中心",
+      "relationship": "administrative_corporation_unit",
+      "evidence_urls": [
+        "https://www.npac-ntch.org/npac/zh/about/overview"
+      ],
+      "homepage": "https://www.npac-ntch.org/zh",
+      "news_urls": [],
+      "rss_urls": [],
+      "status": "pending",
+      "reason": "官方新聞入口已列入查核，但尚未取得可用的固定發布日期、標題及文章連結樣本；未配置收集路徑，保留待確認。",
+      "checked_at": "2026-10-12",
+      "audit_file": "docs/audits/four-ministry-culture-mac-20261012.json"
+    },
+    {
+      "id": "fondation",
+      "name": "臺法文化教育基金會",
+      "official_name": "財團法人臺法文化教育基金會",
+      "parent_ministry": "文化部",
+      "parent_source": "文化部",
+      "relationship": "government_donated_foundation",
+      "evidence_urls": [
+        "https://file.moc.gov.tw/001/Upload/470/relfile/16391/253690/35667c42-b4da-4e6f-8cf9-3f3161eead2f.csv"
+      ],
+      "homepage": "https://www.fondation.org.tw/",
+      "news_urls": [
+        "https://www.fondation.org.tw/News.aspx?n=3794&sms=13081"
+      ],
+      "rss_urls": [],
+      "status": "pending",
+      "reason": "最新消息頁HTTP可讀，但列表沒有有效日期標題項目。",
+      "checked_at": "2026-10-12",
+      "audit_file": "docs/audits/four-ministry-culture-mac-20261012.json"
+    },
+    {
+      "id": "rti",
+      "name": "中央廣播電臺",
+      "official_name": "財團法人中央廣播電臺",
+      "parent_ministry": "文化部",
+      "parent_source": "文化部",
+      "relationship": "government_donated_foundation",
+      "evidence_urls": [
+        "https://file.moc.gov.tw/001/Upload/470/relfile/16391/253690/35667c42-b4da-4e6f-8cf9-3f3161eead2f.csv"
+      ],
+      "homepage": "https://www.rti.org.tw/",
+      "news_urls": [],
+      "rss_urls": [],
+      "status": "pending",
+      "reason": "法人政府捐助已核實；尚無獨立機構公告入口，不以媒體每日新聞RSS代替。",
+      "checked_at": "2026-10-12",
+      "audit_file": "docs/audits/four-ministry-culture-mac-20261012.json"
+    },
+    {
+      "id": "cna",
+      "name": "中央通訊社",
+      "official_name": "財團法人中央通訊社",
+      "parent_ministry": "文化部",
+      "parent_source": "文化部",
+      "relationship": "government_donated_foundation",
+      "evidence_urls": [
+        "https://file.moc.gov.tw/001/Upload/470/relfile/16391/253690/35667c42-b4da-4e6f-8cf9-3f3161eead2f.csv"
+      ],
+      "homepage": "https://www.cna.com.tw/",
+      "news_urls": [],
+      "rss_urls": [],
+      "status": "pending",
+      "reason": "法人政府捐助已核實；尚無獨立機構公告入口，不以媒體每日新聞RSS代替。",
+      "checked_at": "2026-10-12",
+      "audit_file": "docs/audits/four-ministry-culture-mac-20261012.json"
+    },
+    {
+      "id": "mtf",
+      "name": "蒙藏基金會",
+      "official_name": "財團法人蒙藏基金會",
+      "parent_ministry": "文化部",
+      "parent_source": "文化部",
+      "relationship": "government_donated_foundation",
+      "evidence_urls": [
+        "https://file.moc.gov.tw/001/Upload/470/relfile/16391/253690/35667c42-b4da-4e6f-8cf9-3f3161eead2f.csv"
+      ],
+      "homepage": "https://mtf.org.tw/",
+      "news_urls": [
+        "https://mtf.org.tw/News.aspx?n=3446&sms=12937"
+      ],
+      "rss_urls": [],
+      "status": "pending",
+      "reason": "會務列表只有年度標題、沒有發布日期，不能用網站更新日填補。",
+      "checked_at": "2026-10-12",
+      "audit_file": "docs/audits/four-ministry-culture-mac-20261012.json"
+    },
+    {
+      "id": "music",
+      "name": "台灣音樂文化教育基金會",
+      "official_name": "財團法人台灣音樂文化教育基金會",
+      "parent_ministry": "文化部",
+      "parent_source": "文化部",
+      "relationship": "government_donated_foundation",
+      "evidence_urls": [
+        "https://file.moc.gov.tw/001/Upload/470/relfile/16391/253690/35667c42-b4da-4e6f-8cf9-3f3161eead2f.csv"
+      ],
+      "homepage": null,
+      "news_urls": [],
+      "rss_urls": [],
+      "status": "pending",
+      "reason": "官方法人資料沒有有效官網，政府曾捐助但新聞入口pending。",
+      "checked_at": "2026-10-12",
+      "audit_file": "docs/audits/four-ministry-culture-mac-20261012.json"
+    },
+    {
+      "id": "mac-hk",
+      "name": "大陸委員會香港辦事處",
+      "official_name": "大陸委員會香港辦事處",
+      "parent_ministry": "陸委會",
+      "parent_source": "陸委會",
+      "relationship": "subordinate_agency",
+      "evidence_urls": [
+        "https://www.mac.gov.tw/cp.aspx?n=B7DDBFCACE3EB8F9",
+        "https://ws.mac.gov.tw/001/Upload/295/relfile/0/5311/bcc3fa88-db17-4d86-ae26-0f6f23eeb60b.pdf"
+      ],
+      "homepage": null,
+      "news_urls": [],
+      "rss_urls": [],
+      "status": "pending",
+      "reason": "正式所屬辦事處；臺北經濟文化辦事處為外名，不另建來源。尚未核實獨立新聞入口。",
+      "checked_at": "2026-10-12",
+      "audit_file": "docs/audits/four-ministry-culture-mac-20261012.json"
+    },
+    {
+      "id": "mac-macao",
+      "name": "大陸委員會澳門辦事處",
+      "official_name": "大陸委員會澳門辦事處",
+      "parent_ministry": "陸委會",
+      "parent_source": "陸委會",
+      "relationship": "subordinate_agency",
+      "evidence_urls": [
+        "https://www.mac.gov.tw/cp.aspx?n=B7DDBFCACE3EB8F9",
+        "https://ws.mac.gov.tw/001/Upload/295/relfile/0/5311/bcc3fa88-db17-4d86-ae26-0f6f23eeb60b.pdf"
+      ],
+      "homepage": null,
+      "news_urls": [],
+      "rss_urls": [],
+      "status": "pending",
+      "reason": "正式所屬辦事處；臺北經濟文化辦事處為外名，不另建來源。尚未核實獨立新聞入口。",
+      "checked_at": "2026-10-12",
+      "audit_file": "docs/audits/four-ministry-culture-mac-20261012.json"
+    },
+    {
+      "name": "台灣美國事務委員會",
+      "official_name": "台灣美國事務委員會",
+      "parent_ministry": "外交部",
+      "parent_source": "外交部",
+      "relationship": "official_special_committee",
+      "evidence_urls": [
+        "https://www.mofa.gov.tw/Organization.aspx?n=60",
+        "https://law.mofa.gov.tw/LawContent.aspx?id=GL000088"
+      ],
+      "homepage": "https://www.mofa.gov.tw/Organization.aspx?n=60",
+      "news_urls": [],
+      "rss_urls": [],
+      "status": "pending",
+      "reason": "組織關係及辦事細則確認。尚未驗證獨立新聞列表；相關新聞現由外交部既有新聞流刊登。不得重複使用母機關全RSS冒充獨立委員會來源。",
+      "checked_at": "2026-10-12",
+      "audit_file": "docs/audits/four-ministry-mofa-20261012.json"
+    },
+    {
+      "name": "外交部中部辦事處",
+      "official_name": "外交部中部辦事處",
+      "parent_ministry": "外交部",
+      "parent_source": "外交部領事事務局",
+      "relationship": "domestic_branch_office",
+      "evidence_urls": [
+        "https://www.mofa.gov.tw/Organization.aspx?n=60",
+        "https://www.boca.gov.tw/cp-105-203-40dfe-1.html"
+      ],
+      "homepage": "https://www.boca.gov.tw/cp-105-203-40dfe-1.html",
+      "news_urls": [],
+      "rss_urls": [],
+      "status": "pending",
+      "reason": "外交部組織頁及領事局官方聯絡頁確認。尚未確認獨立新聞列表；新聞與領務活動分散在外交部及領事局已有新聞流，禁止複製全站RSS而錯誤歸屬。",
+      "checked_at": "2026-10-12",
+      "audit_file": "docs/audits/four-ministry-mofa-20261012.json"
+    },
+    {
+      "name": "外交部雲嘉南辦事處",
+      "official_name": "外交部雲嘉南辦事處",
+      "parent_ministry": "外交部",
+      "parent_source": "外交部領事事務局",
+      "relationship": "domestic_branch_office",
+      "evidence_urls": [
+        "https://www.mofa.gov.tw/Organization.aspx?n=60",
+        "https://www.boca.gov.tw/cp-105-204-8876c-1.html"
+      ],
+      "homepage": "https://www.boca.gov.tw/cp-105-204-8876c-1.html",
+      "news_urls": [],
+      "rss_urls": [],
+      "status": "pending",
+      "reason": "外交部組織頁及領事局官方聯絡頁確認。尚未確認獨立新聞列表；新聞與領務活動分散在外交部及領事局已有新聞流，禁止複製全站RSS而錯誤歸屬。",
+      "checked_at": "2026-10-12",
+      "audit_file": "docs/audits/four-ministry-mofa-20261012.json"
+    },
+    {
+      "name": "外交部南部辦事處",
+      "official_name": "外交部南部辦事處",
+      "parent_ministry": "外交部",
+      "parent_source": "外交部領事事務局",
+      "relationship": "domestic_branch_office",
+      "evidence_urls": [
+        "https://www.mofa.gov.tw/Organization.aspx?n=60",
+        "https://www.boca.gov.tw/cp-105-205-871ad-1.html"
+      ],
+      "homepage": "https://www.boca.gov.tw/cp-105-205-871ad-1.html",
+      "news_urls": [],
+      "rss_urls": [],
+      "status": "pending",
+      "reason": "外交部組織頁及領事局官方聯絡頁確認。尚未確認獨立新聞列表；新聞與領務活動分散在外交部及領事局已有新聞流，禁止複製全站RSS而錯誤歸屬。",
+      "checked_at": "2026-10-12",
+      "audit_file": "docs/audits/four-ministry-mofa-20261012.json"
+    },
+    {
+      "name": "外交部東部辦事處",
+      "official_name": "外交部東部辦事處",
+      "parent_ministry": "外交部",
+      "parent_source": "外交部領事事務局",
+      "relationship": "domestic_branch_office",
+      "evidence_urls": [
+        "https://www.mofa.gov.tw/Organization.aspx?n=60",
+        "https://www.boca.gov.tw/cp-105-206-1cb9f-1.html"
+      ],
+      "homepage": "https://www.boca.gov.tw/cp-105-206-1cb9f-1.html",
+      "news_urls": [],
+      "rss_urls": [],
+      "status": "pending",
+      "reason": "外交部組織頁及領事局官方聯絡頁確認。尚未確認獨立新聞列表；新聞與領務活動分散在外交部及領事局已有新聞流，禁止複製全站RSS而錯誤歸屬。",
+      "checked_at": "2026-10-12",
+      "audit_file": "docs/audits/four-ministry-mofa-20261012.json"
+    },
+    {
+      "name": "太平洋經濟合作理事會中華民國委員會",
+      "official_name": "財團法人太平洋經濟合作理事會中華民國委員會",
+      "parent_ministry": "外交部",
+      "parent_source": "外交部",
+      "relationship": "government_funded_foundation",
+      "evidence_urls": [
+        "https://www.mofa.gov.tw/cl.aspx?n=685",
+        "https://www.mofa.gov.tw/News.aspx?n=687&sms=205",
+        "https://ws.mofa.gov.tw/Download.ashx?icon=.pdf&n=5aSW5Lqk6YOoMTE05bm05Li7566h5rG6566XKOiHque3qOeJiCkucGRm&u=LzAwMS9VcGxvYWQvNDAyL3JlbGZpbGUvMTE5LzEyMTg4OS9iNzYwYTg5Ni02NzBlLTRmNjctYjg5Mi1lYTQxZjg1YTE4NDgucGRm"
+      ],
+      "homepage": "https://www.ctpecc.org.tw/",
+      "news_urls": [],
+      "rss_urls": [],
+      "status": "pending",
+      "reason": "114主管決算捐助及效益表列政府基金比率66.67%。官網HTTPS於本次GET連線逾時，HTTP與無www亦逾時；新聞入口及RSS未確認。保留待核對，不以其他機構APEC媒體每日報導代替。",
+      "checked_at": "2026-10-12",
+      "audit_file": "docs/audits/four-ministry-mofa-20261012.json"
+    },
+    {
+      "name": "松鶴國際企業公司",
+      "official_name": "松鶴國際企業公司",
+      "parent_ministry": "外交部",
+      "parent_source": "外交部",
+      "relationship": "government_shareholding",
+      "evidence_urls": [
+        "https://ws.mofa.gov.tw/Download.ashx?icon=.pdf&n=5aSW5Lqk6YOoMTE05bm05Li7566h5rG6566XKOiHque3qOeJiCkucGRm&u=LzAwMS9VcGxvYWQvNDAyL3JlbGZpbGUvMTE5LzEyMTg4OS9iNzYwYTg5Ni02NzBlLTRmNjctYjg5Mi1lYTQxZjg1YTE4NDgucGRm",
+        "https://www.mofa.gov.tw/News_Content.aspx?n=96&s=72112"
+      ],
+      "homepage": null,
+      "news_urls": [],
+      "rss_urls": [],
+      "status": "pending",
+      "reason": "114主管決算P105列長期投資成本378,000,000元、10,800股；境外投資企業符合持股範圍。尚未驗證独立官方新聞入口及RSS，禁止臆造route。",
+      "checked_at": "2026-10-12",
+      "audit_file": "docs/audits/four-ministry-mofa-20261012.json"
+    },
+    {
+      "name": "北區分所",
+      "official_name": "農業部畜產試驗所北區分所",
+      "parent_ministry": "農業部",
+      "parent_source": "畜產試驗所",
+      "relationship": "subordinate_institution_level_4",
+      "evidence_urls": [
+        "https://www.moa.gov.tw/sp_ws.php?id=8715",
+        "https://www.moa.gov.tw/ws.php?id=2514347"
+      ],
+      "homepage": "https://www.tlri.gov.tw/",
+      "news_urls": [],
+      "rss_urls": [],
+      "status": "pending",
+      "reason": "已從母部官方完整組織链接核实分支子站並實GET；未發現可獨立歸屬日期新聞流，不能用母站全流替代。",
+      "attempts": [
+        {
+          "url": "https://www.tlri.gov.tw/",
+          "status": 200,
+          "phase": "scoped_branch"
+        }
+      ],
+      "attempted_urls": [
+        "https://www.tlri.gov.tw/"
+      ],
+      "checked_at": "2026-10-12",
+      "audit_file": "docs/audits/four-ministry-agriculture-20261012.json"
+    },
+    {
+      "name": "南區分所",
+      "official_name": "農業部畜產試驗所南區分所",
+      "parent_ministry": "農業部",
+      "parent_source": "畜產試驗所",
+      "relationship": "subordinate_institution_level_4",
+      "evidence_urls": [
+        "https://www.moa.gov.tw/sp_ws.php?id=8715",
+        "https://www.moa.gov.tw/ws.php?id=2514347"
+      ],
+      "homepage": "https://www.tlri.gov.tw/",
+      "news_urls": [],
+      "rss_urls": [],
+      "status": "pending",
+      "reason": "已從母部官方完整組織链接核实分支子站並實GET；未發現可獨立歸屬日期新聞流，不能用母站全流替代。",
+      "attempts": [
+        {
+          "url": "https://www.tlri.gov.tw/",
+          "status": 200,
+          "phase": "scoped_branch"
+        }
+      ],
+      "attempted_urls": [
+        "https://www.tlri.gov.tw/"
+      ],
+      "checked_at": "2026-10-12",
+      "audit_file": "docs/audits/four-ministry-agriculture-20261012.json"
+    },
+    {
+      "name": "東區分所",
+      "official_name": "農業部畜產試驗所東區分所",
+      "parent_ministry": "農業部",
+      "parent_source": "畜產試驗所",
+      "relationship": "subordinate_institution_level_4",
+      "evidence_urls": [
+        "https://www.moa.gov.tw/sp_ws.php?id=8715",
+        "https://www.moa.gov.tw/ws.php?id=2514347"
+      ],
+      "homepage": "https://www.tlri.gov.tw/",
+      "news_urls": [],
+      "rss_urls": [],
+      "status": "pending",
+      "reason": "已從母部官方完整組織链接核实分支子站並實GET；未發現可獨立歸屬日期新聞流，不能用母站全流替代。",
+      "attempts": [
+        {
+          "url": "https://www.tlri.gov.tw/",
+          "status": 200,
+          "phase": "scoped_branch"
+        }
+      ],
+      "attempted_urls": [
+        "https://www.tlri.gov.tw/"
+      ],
+      "checked_at": "2026-10-12",
+      "audit_file": "docs/audits/four-ministry-agriculture-20261012.json"
+    },
+    {
+      "name": "財團法人豐年社",
+      "official_name": "財團法人豐年社",
+      "parent_ministry": "農業部",
+      "parent_source": "農業部",
+      "relationship": "government_donated_foundation",
+      "evidence_urls": [
+        "https://www.moa.gov.tw/ws.php?id=2504775",
+        "https://www.moa.gov.tw/ws.php?id=2514347"
+      ],
+      "homepage": "https://www.agriharvest.tw/",
+      "news_urls": [],
+      "rss_urls": [],
+      "status": "pending",
+      "reason": "只收豐年社自身公告、出版與推廣活動；農傳媒每日報導與全站RSS排除，獨立機構消息路徑待確認。 實測首頁無可用回應：HTTP 429",
+      "attempts": [
+        {
+          "url": "https://www.agriharvest.tw/",
+          "status": 429
+        }
+      ],
+      "attempted_urls": [
+        "https://www.agriharvest.tw/"
+      ],
+      "checked_at": "2026-10-12",
+      "audit_file": "docs/audits/four-ministry-agriculture-20261012.json"
+    },
+    {
+      "name": "財團法人台灣區蠶業發展基金會",
+      "official_name": "財團法人台灣區蠶業發展基金會",
+      "parent_ministry": "農業部",
+      "parent_source": "農業部",
+      "relationship": "government_donated_foundation",
+      "evidence_urls": [
+        "https://www.moa.gov.tw/ws.php?id=2504775",
+        "https://www.moa.gov.tw/ws.php?id=2514347"
+      ],
+      "homepage": "https://www.silkworm.org.tw/",
+      "news_urls": [
+        "https://www.silkworm.org.tw/news.htm"
+      ],
+      "rss_urls": [],
+      "status": "pending",
+      "reason": "待驗證具日期、標題、文章連結之獨立新聞入口與RSS；不以全母站流冒充此機構。 已GET官網並探索公開RSS/新聞鏈結；尚無通過日期、標題及連結檢核的RSS，HTML selector仍待實測。 HTML第二輪已實GET公開新聞入口：https://www.silkworm.org.tw/news.htm；尚未取得可用日期列（可能JS或入口變動），保留明確HTTP證據。",
+      "attempts": [
+        {
+          "url": "https://www.silkworm.org.tw/",
+          "status": 200
+        },
+        {
+          "url": "https://www.silkworm.org.tw/news.htm",
+          "status": 200
+        },
+        {
+          "url": "https://www.silkworm.org.tw/",
+          "status": 200,
+          "phase": "dated_html"
+        },
+        {
+          "url": "https://www.silkworm.org.tw/news.htm",
+          "status": 200,
+          "phase": "dated_html"
+        }
+      ],
+      "attempted_urls": [
+        "https://www.silkworm.org.tw/",
+        "https://www.silkworm.org.tw/news.htm"
+      ],
+      "checked_at": "2026-10-12",
+      "audit_file": "docs/audits/four-ministry-agriculture-20261012.json"
+    },
+    {
+      "name": "財團法人台灣區花卉發展協會",
+      "official_name": "財團法人台灣區花卉發展協會",
+      "parent_ministry": "農業部",
+      "parent_source": "農業部",
+      "relationship": "government_donated_foundation",
+      "evidence_urls": [
+        "https://www.moa.gov.tw/ws.php?id=2504775",
+        "https://www.moa.gov.tw/ws.php?id=2514347"
+      ],
+      "homepage": null,
+      "news_urls": [],
+      "rss_urls": [],
+      "status": "pending",
+      "reason": "待驗證具日期、標題、文章連結之獨立新聞入口與RSS；不以全母站流冒充此機構。",
+      "attempts": [],
+      "attempted_urls": [],
+      "checked_at": "2026-10-12",
+      "audit_file": "docs/audits/four-ministry-agriculture-20261012.json"
+    },
+    {
+      "name": "財團法人台灣香蕉研究所",
+      "official_name": "財團法人台灣香蕉研究所",
+      "parent_ministry": "農業部",
+      "parent_source": "農業部",
+      "relationship": "government_donated_foundation",
+      "evidence_urls": [
+        "https://www.moa.gov.tw/ws.php?id=2504775",
+        "https://www.moa.gov.tw/ws.php?id=2514347"
+      ],
+      "homepage": "https://www.banana.org.tw/",
+      "news_urls": [],
+      "rss_urls": [],
+      "status": "pending",
+      "reason": "待驗證具日期、標題、文章連結之獨立新聞入口與RSS；不以全母站流冒充此機構。 已GET官網並探索公開RSS/新聞鏈結；尚無通過日期、標題及連結檢核的RSS，HTML selector仍待實測。 HTML第二輪已實GET公開新聞入口：；尚未取得可用日期列（可能JS或入口變動），保留明確HTTP證據。",
+      "attempts": [
+        {
+          "url": "https://www.banana.org.tw/",
+          "status": 200
+        },
+        {
+          "url": "https://www.banana.org.tw/FeedBack.aspx",
+          "status": 200
+        },
+        {
+          "url": "https://www.banana.org.tw/FeedBack.aspx#",
+          "status": 200
+        },
+        {
+          "url": "https://www.banana.org.tw/FeedBack.aspx#panel-003-001-001",
+          "status": 200
+        },
+        {
+          "url": "https://www.banana.org.tw/FeedBack.aspx#panel-003-001-002",
+          "status": 200
+        },
+        {
+          "url": "https://www.banana.org.tw/FeedBack.aspx#panel-003-001-003",
+          "status": 200
+        },
+        {
+          "url": "https://www.banana.org.tw/FeedBack.aspx#panel-003-001-004",
+          "status": 200
+        },
+        {
+          "url": "https://www.banana.org.tw/FeedBack.aspx#panel-003-001-005",
+          "status": 200
+        },
+        {
+          "url": "https://www.banana.org.tw/FeedBack.aspx#panel-003-001-006",
+          "status": 200
+        },
+        {
+          "url": "https://www.banana.org.tw/FeedBack.aspx#panel-003-001-007",
+          "status": 200
+        },
+        {
+          "url": "https://www.banana.org.tw/",
+          "status": 200,
+          "phase": "dated_html"
+        }
+      ],
+      "attempted_urls": [
+        "https://www.banana.org.tw/",
+        "https://www.banana.org.tw/FeedBack.aspx",
+        "https://www.banana.org.tw/FeedBack.aspx#",
+        "https://www.banana.org.tw/FeedBack.aspx#panel-003-001-001",
+        "https://www.banana.org.tw/FeedBack.aspx#panel-003-001-002",
+        "https://www.banana.org.tw/FeedBack.aspx#panel-003-001-003",
+        "https://www.banana.org.tw/FeedBack.aspx#panel-003-001-004",
+        "https://www.banana.org.tw/FeedBack.aspx#panel-003-001-005",
+        "https://www.banana.org.tw/FeedBack.aspx#panel-003-001-006",
+        "https://www.banana.org.tw/FeedBack.aspx#panel-003-001-007"
+      ],
+      "checked_at": "2026-10-12",
+      "audit_file": "docs/audits/four-ministry-agriculture-20261012.json"
+    },
+    {
+      "name": "財團法人農村發展基金會",
+      "official_name": "財團法人農村發展基金會",
+      "parent_ministry": "農業部",
+      "parent_source": "農業部",
+      "relationship": "government_donated_foundation",
+      "evidence_urls": [
+        "https://www.moa.gov.tw/ws.php?id=2504775",
+        "https://www.moa.gov.tw/ws.php?id=2514347"
+      ],
+      "homepage": "https://www.rdf.org.tw/",
+      "news_urls": [],
+      "rss_urls": [],
+      "status": "pending",
+      "reason": "待驗證具日期、標題、文章連結之獨立新聞入口與RSS；不以全母站流冒充此機構。 實測首頁無可用回應：fetch failed HTML第二輪已實GET公開新聞入口：；尚未取得可用日期列（可能JS或入口變動），保留明確HTTP證據。",
+      "attempts": [
+        {
+          "url": "https://www.rdf.org.tw/",
+          "error": "fetch failed"
+        },
+        {
+          "url": "https://www.rdf.org.tw/",
+          "error": "fetch failed",
+          "phase": "dated_html"
+        }
+      ],
+      "attempted_urls": [
+        "https://www.rdf.org.tw/"
+      ],
+      "checked_at": "2026-10-12",
+      "audit_file": "docs/audits/four-ministry-agriculture-20261012.json"
+    },
+    {
+      "name": "財團法人台灣區鰻魚發展基金會",
+      "official_name": "財團法人台灣區鰻魚發展基金會",
+      "parent_ministry": "農業部",
+      "parent_source": "農業部",
+      "relationship": "government_donated_foundation",
+      "evidence_urls": [
+        "https://www.moa.gov.tw/ws.php?id=2504775",
+        "https://www.moa.gov.tw/ws.php?id=2514347"
+      ],
+      "homepage": "http://www.eel.org.tw/",
+      "news_urls": [],
+      "rss_urls": [],
+      "status": "pending",
+      "reason": "待驗證具日期、標題、文章連結之獨立新聞入口與RSS；不以全母站流冒充此機構。 已GET官網並探索公開RSS/新聞鏈結；尚無通過日期、標題及連結檢核的RSS，HTML selector仍待實測。 HTML第二輪已實GET公開新聞入口：http://www.eel.org.tw/；尚未取得可用日期列（可能JS或入口變動），保留明確HTTP證據。",
+      "attempts": [
+        {
+          "url": "http://www.eel.org.tw/",
+          "status": 200
+        },
+        {
+          "url": "http://www.eel.org.tw/backend.php",
+          "status": 200
+        },
+        {
+          "url": "http://www.eel.org.tw/",
+          "status": 200,
+          "phase": "dated_html"
+        }
+      ],
+      "attempted_urls": [
+        "http://www.eel.org.tw/",
+        "http://www.eel.org.tw/backend.php"
+      ],
+      "checked_at": "2026-10-12",
+      "audit_file": "docs/audits/four-ministry-agriculture-20261012.json"
+    },
+    {
+      "name": "財團法人台灣養殖漁業發展基金會",
+      "official_name": "財團法人台灣養殖漁業發展基金會",
+      "parent_ministry": "農業部",
+      "parent_source": "農業部",
+      "relationship": "government_donated_foundation",
+      "evidence_urls": [
+        "https://www.moa.gov.tw/ws.php?id=2504775",
+        "https://www.moa.gov.tw/ws.php?id=2514347"
+      ],
+      "homepage": "https://www.aquadf.org.tw/tadf/",
+      "news_urls": [],
+      "rss_urls": [],
+      "status": "pending",
+      "reason": "待驗證具日期、標題、文章連結之獨立新聞入口與RSS；不以全母站流冒充此機構。 已GET官網並探索公開RSS/新聞鏈結；尚無通過日期、標題及連結檢核的RSS，HTML selector仍待實測。 HTML第二輪已實GET公開新聞入口：；尚未取得可用日期列（可能JS或入口變動），保留明確HTTP證據。",
+      "attempts": [
+        {
+          "url": "https://www.aquadf.org.tw/tadf/",
+          "status": 200
+        },
+        {
+          "url": "https://www.aquadf.org.tw/tadf/",
+          "status": 200,
+          "phase": "dated_html"
+        }
+      ],
+      "attempted_urls": [
+        "https://www.aquadf.org.tw/tadf/"
+      ],
+      "checked_at": "2026-10-12",
+      "audit_file": "docs/audits/four-ministry-agriculture-20261012.json"
+    },
+    {
+      "name": "財團法人中華民國對外漁業合作發展協會",
+      "official_name": "財團法人中華民國對外漁業合作發展協會",
+      "parent_ministry": "農業部",
+      "parent_source": "農業部",
+      "relationship": "government_donated_foundation",
+      "evidence_urls": [
+        "https://www.moa.gov.tw/ws.php?id=2504775",
+        "https://www.moa.gov.tw/ws.php?id=2514347"
+      ],
+      "homepage": "https://www.ofdc.org.tw/",
+      "news_urls": [],
+      "rss_urls": [],
+      "status": "pending",
+      "reason": "待驗證具日期、標題、文章連結之獨立新聞入口與RSS；不以全母站流冒充此機構。 已GET官網並探索公開RSS/新聞鏈結；尚無通過日期、標題及連結檢核的RSS，HTML selector仍待實測。 HTML第二輪已實GET公開新聞入口：；尚未取得可用日期列（可能JS或入口變動），保留明確HTTP證據。",
+      "attempts": [
+        {
+          "url": "https://www.ofdc.org.tw/",
+          "status": 200
+        },
+        {
+          "url": "https://www.ofdc.org.tw/",
+          "status": 200,
+          "phase": "dated_html"
+        }
+      ],
+      "attempted_urls": [
+        "https://www.ofdc.org.tw/"
+      ],
+      "checked_at": "2026-10-12",
+      "audit_file": "docs/audits/four-ministry-agriculture-20261012.json"
+    },
+    {
+      "name": "財團法人臺灣兩岸漁業合作發展基金會",
+      "official_name": "財團法人臺灣兩岸漁業合作發展基金會",
+      "parent_ministry": "農業部",
+      "parent_source": "農業部",
+      "relationship": "government_donated_foundation",
+      "evidence_urls": [
+        "https://www.moa.gov.tw/ws.php?id=2504775",
+        "https://www.moa.gov.tw/ws.php?id=2514347"
+      ],
+      "homepage": "https://www.cfcd.org.tw/",
+      "news_urls": [],
+      "rss_urls": [],
+      "status": "pending",
+      "reason": "待驗證具日期、標題、文章連結之獨立新聞入口與RSS；不以全母站流冒充此機構。 實測首頁無可用回應：fetch failed HTML第二輪已實GET公開新聞入口：；尚未取得可用日期列（可能JS或入口變動），保留明確HTTP證據。",
+      "attempts": [
+        {
+          "url": "https://www.cfcd.org.tw/",
+          "error": "fetch failed"
+        },
+        {
+          "url": "https://www.cfcd.org.tw/",
+          "error": "fetch failed",
+          "phase": "dated_html"
+        }
+      ],
+      "attempted_urls": [
+        "https://www.cfcd.org.tw/"
+      ],
+      "checked_at": "2026-10-12",
+      "audit_file": "docs/audits/four-ministry-agriculture-20261012.json"
+    },
+    {
+      "name": "財團法人臺灣海洋保育與漁業永續基金會",
+      "official_name": "財團法人臺灣海洋保育與漁業永續基金會",
+      "parent_ministry": "農業部",
+      "parent_source": "農業部",
+      "relationship": "government_donated_foundation",
+      "evidence_urls": [
+        "https://www.moa.gov.tw/ws.php?id=2504775",
+        "https://www.moa.gov.tw/ws.php?id=2514347"
+      ],
+      "homepage": "https://www.toff.org.tw/",
+      "news_urls": [],
+      "rss_urls": [],
+      "status": "pending",
+      "reason": "待驗證具日期、標題、文章連結之獨立新聞入口與RSS；不以全母站流冒充此機構。 已GET官網並探索公開RSS/新聞鏈結；尚無通過日期、標題及連結檢核的RSS，HTML selector仍待實測。 HTML第二輪已實GET公開新聞入口：；尚未取得可用日期列（可能JS或入口變動），保留明確HTTP證據。",
+      "attempts": [
+        {
+          "url": "https://www.toff.org.tw/",
+          "status": 200
+        },
+        {
+          "url": "https://www.toff.org.tw/",
+          "status": 200,
+          "phase": "dated_html"
+        }
+      ],
+      "attempted_urls": [
+        "https://www.toff.org.tw/"
+      ],
+      "checked_at": "2026-10-12",
+      "audit_file": "docs/audits/four-ministry-agriculture-20261012.json"
+    },
+    {
+      "name": "財團法人維謙基金會",
+      "official_name": "財團法人維謙基金會",
+      "parent_ministry": "農業部",
+      "parent_source": "農業部",
+      "relationship": "government_donated_foundation",
+      "evidence_urls": [
+        "https://www.moa.gov.tw/ws.php?id=2504775",
+        "https://www.moa.gov.tw/ws.php?id=2514347"
+      ],
+      "homepage": null,
+      "news_urls": [],
+      "rss_urls": [],
+      "status": "pending",
+      "reason": "待驗證具日期、標題、文章連結之獨立新聞入口與RSS；不以全母站流冒充此機構。",
+      "attempts": [],
+      "attempted_urls": [],
+      "checked_at": "2026-10-12",
+      "audit_file": "docs/audits/four-ministry-agriculture-20261012.json"
+    },
+    {
+      "name": "財團法人七星農業發展基金會",
+      "official_name": "財團法人七星農業發展基金會",
+      "parent_ministry": "農業部",
+      "parent_source": "農業部",
+      "relationship": "government_donated_foundation",
+      "evidence_urls": [
+        "https://www.moa.gov.tw/ws.php?id=2504775",
+        "https://www.moa.gov.tw/ws.php?id=2514347"
+      ],
+      "homepage": null,
+      "news_urls": [],
+      "rss_urls": [],
+      "status": "pending",
+      "reason": "待驗證具日期、標題、文章連結之獨立新聞入口與RSS；不以全母站流冒充此機構。",
+      "attempts": [],
+      "attempted_urls": [],
+      "checked_at": "2026-10-12",
+      "audit_file": "docs/audits/four-ministry-agriculture-20261012.json"
+    },
+    {
+      "name": "財團法人桃園農田水利研究發展基金會",
+      "official_name": "財團法人桃園農田水利研究發展基金會",
+      "parent_ministry": "農業部",
+      "parent_source": "農業部",
+      "relationship": "government_donated_foundation",
+      "evidence_urls": [
+        "https://www.moa.gov.tw/ws.php?id=2504775",
+        "https://www.moa.gov.tw/ws.php?id=2514347"
+      ],
+      "homepage": null,
+      "news_urls": [],
+      "rss_urls": [],
+      "status": "pending",
+      "reason": "待驗證具日期、標題、文章連結之獨立新聞入口與RSS；不以全母站流冒充此機構。",
+      "attempts": [],
+      "attempted_urls": [],
+      "checked_at": "2026-10-12",
+      "audit_file": "docs/audits/four-ministry-agriculture-20261012.json"
+    },
+    {
+      "name": "財團法人臺中環境綠化基金會",
+      "official_name": "財團法人臺中環境綠化基金會",
+      "parent_ministry": "農業部",
+      "parent_source": "農業部",
+      "relationship": "government_donated_foundation",
+      "evidence_urls": [
+        "https://www.moa.gov.tw/ws.php?id=2504775",
+        "https://www.moa.gov.tw/ws.php?id=2514347"
+      ],
+      "homepage": "https://www.tchegf.com/",
+      "news_urls": [],
+      "rss_urls": [],
+      "status": "pending",
+      "reason": "待驗證具日期、標題、文章連結之獨立新聞入口與RSS；不以全母站流冒充此機構。 已GET官網並探索公開RSS/新聞鏈結；尚無通過日期、標題及連結檢核的RSS，HTML selector仍待實測。 HTML第二輪已實GET公開新聞入口：；尚未取得可用日期列（可能JS或入口變動），保留明確HTTP證據。",
+      "attempts": [
+        {
+          "url": "https://www.tchegf.com/",
+          "status": 200
+        },
+        {
+          "url": "https://www.tchegf.com/",
+          "status": 200,
+          "phase": "dated_html"
+        }
+      ],
+      "attempted_urls": [
+        "https://www.tchegf.com/"
+      ],
+      "checked_at": "2026-10-12",
+      "audit_file": "docs/audits/four-ministry-agriculture-20261012.json"
+    },
+    {
+      "name": "財團法人水利研究發展中心",
+      "official_name": "財團法人水利研究發展中心",
+      "parent_ministry": "農業部",
+      "parent_source": "農業部",
+      "relationship": "government_donated_foundation",
+      "evidence_urls": [
+        "https://www.moa.gov.tw/ws.php?id=2504775",
+        "https://www.moa.gov.tw/ws.php?id=2514347"
+      ],
+      "homepage": "https://www.wcwc.com.tw/",
+      "news_urls": [],
+      "rss_urls": [],
+      "status": "pending",
+      "reason": "待驗證具日期、標題、文章連結之獨立新聞入口與RSS；不以全母站流冒充此機構。 已GET官網並探索公開RSS/新聞鏈結；尚無通過日期、標題及連結檢核的RSS，HTML selector仍待實測。 HTML第二輪已實GET公開新聞入口：；尚未取得可用日期列（可能JS或入口變動），保留明確HTTP證據。",
+      "attempts": [
+        {
+          "url": "https://www.wcwc.com.tw/",
+          "status": 200
+        },
+        {
+          "url": "https://www.wcwc.com.tw/",
+          "status": 200,
+          "phase": "dated_html"
+        }
+      ],
+      "attempted_urls": [
+        "https://www.wcwc.com.tw/"
+      ],
+      "checked_at": "2026-10-12",
+      "audit_file": "docs/audits/four-ministry-agriculture-20261012.json"
+    },
+    {
+      "name": "財團法人曹公農業水利研究發展基金會",
+      "official_name": "財團法人曹公農業水利研究發展基金會",
+      "parent_ministry": "農業部",
+      "parent_source": "農業部",
+      "relationship": "government_donated_foundation",
+      "evidence_urls": [
+        "https://www.moa.gov.tw/ws.php?id=2504775",
+        "https://www.moa.gov.tw/ws.php?id=2514347"
+      ],
+      "homepage": null,
+      "news_urls": [],
+      "rss_urls": [],
+      "status": "pending",
+      "reason": "待驗證具日期、標題、文章連結之獨立新聞入口與RSS；不以全母站流冒充此機構。",
+      "attempts": [],
+      "attempted_urls": [],
+      "checked_at": "2026-10-12",
+      "audit_file": "docs/audits/four-ministry-agriculture-20261012.json"
+    },
+    {
+      "name": "財團法人七星環境綠化基金會",
+      "official_name": "財團法人七星環境綠化基金會",
+      "parent_ministry": "農業部",
+      "parent_source": "農業部",
+      "relationship": "government_donated_foundation",
+      "evidence_urls": [
+        "https://www.moa.gov.tw/ws.php?id=2504775",
+        "https://www.moa.gov.tw/ws.php?id=2514347"
+      ],
+      "homepage": "https://chi-garden.org.tw/seven/intro",
+      "news_urls": [],
+      "rss_urls": [],
+      "status": "pending",
+      "reason": "待驗證具日期、標題、文章連結之獨立新聞入口與RSS；不以全母站流冒充此機構。 已GET官網並探索公開RSS/新聞鏈結；尚無通過日期、標題及連結檢核的RSS，HTML selector仍待實測。 HTML第二輪已實GET公開新聞入口：；尚未取得可用日期列（可能JS或入口變動），保留明確HTTP證據。",
+      "attempts": [
+        {
+          "url": "https://chi-garden.org.tw/seven/intro",
+          "status": 200
+        },
+        {
+          "url": "https://chi-garden.org.tw/seven/intro",
+          "status": 200,
+          "phase": "dated_html"
+        }
+      ],
+      "attempted_urls": [
+        "https://chi-garden.org.tw/seven/intro"
+      ],
+      "checked_at": "2026-10-12",
+      "audit_file": "docs/audits/four-ministry-agriculture-20261012.json"
+    },
+    {
+      "name": "北基管理處",
+      "official_name": "農業部農田水利署北基管理處",
+      "parent_ministry": "農業部",
+      "parent_source": "農田水利署",
+      "relationship": "internal_management_office",
+      "evidence_urls": [
+        "https://www.ia.gov.tw/"
+      ],
+      "homepage": "https://www.iapke.nat.gov.tw/",
+      "news_urls": [
+        "https://www.iapke.nat.gov.tw/news/Articles?a=10051",
+        "https://www.iapke.nat.gov.tw/",
+        "https://www.iapke.nat.gov.tw/news/Articles?a=10054",
+        "https://www.iapke.nat.gov.tw/news/NewsPage?a=10051"
+      ],
+      "rss_urls": [],
+      "status": "pending",
+      "reason": "獨立域名官方列表實GET，但目前具日期樣本僅母署新聞/協助宣導，沒有自身分類新聞實證；禁止歸屬此管理處。",
+      "attempts": [
+        {
+          "url": "https://www.iapke.nat.gov.tw/",
+          "status": 200
+        },
+        {
+          "url": "https://www.iapke.nat.gov.tw/",
+          "status": 200,
+          "phase": "dated_html"
+        },
+        {
+          "url": "https://www.iapke.nat.gov.tw/news/Articles?a=10051",
+          "status": 200,
+          "phase": "dated_html"
+        },
+        {
+          "url": "https://www.iapke.nat.gov.tw/news/NewsPage?a=10051",
+          "status": 200,
+          "phase": "own_category_verification"
+        }
+      ],
+      "attempted_urls": [
+        "https://www.iapke.nat.gov.tw/",
+        "https://www.iapke.nat.gov.tw/news/Articles?a=10051",
+        "https://www.iapke.nat.gov.tw/news/NewsPage?a=10051"
+      ],
+      "html_validation": {
+        "http_status": 200,
+        "dated_rows": 2,
+        "fixture_rows": 1,
+        "sample_week_rows": 1,
+        "selectors": {
+          "item": "li.commonList-item",
+          "link": "a[title]",
+          "title": "a[title]",
+          "date": "span.newsItem__meta-item",
+          "title_attribute": "title"
+        },
+        "requires_rust_fixture_validation": true
+      },
+      "candidate_source_definition": {
+        "name": "農業部農田水利署北基管理處",
+        "parent_ministry": "農業部",
+        "urls": [
+          "https://www.iapke.nat.gov.tw/news/NewsPage?a=10051"
+        ],
+        "routes": [
+          {
+            "id": "official-news-html",
+            "url": "https://www.iapke.nat.gov.tw/news/NewsPage?a=10051",
+            "kind": "html",
+            "parser": "standard",
+            "priority": 1,
+            "selectors": {
+              "item": "li.commonList-item",
+              "link": "a[title]",
+              "title": ".newsItem__content-title",
+              "date": "span.newsItem__meta-item",
+              "department": ".newsItem__meta-item:nth-child(3)",
+              "category": ".newsItem__meta-item:nth-child(2)"
+            }
+          }
+        ]
+      },
+      "candidate_fixtures": [
+        {
+          "route_id": "official-news-html",
+          "path": "src-tauri/tests/fixtures/four-ministry-agriculture/source-083-html.html"
+        }
+      ],
+      "ownership_evidence": {
+        "host": "www.iapke.nat.gov.tw",
+        "observed_categories": [
+          "協助宣導"
+        ],
+        "own_dated_items": 0
+      },
+      "checked_at": "2026-10-12",
+      "audit_file": "docs/audits/four-ministry-agriculture-20261012.json"
+    },
+    {
+      "name": "瑠公管理處",
+      "official_name": "農業部農田水利署瑠公管理處",
+      "parent_ministry": "農業部",
+      "parent_source": "農田水利署",
+      "relationship": "internal_management_office",
+      "evidence_urls": [
+        "https://www.ia.gov.tw/"
+      ],
+      "homepage": "https://www.ialgo.nat.gov.tw/",
+      "news_urls": [
+        "https://www.ialgo.nat.gov.tw/news/Articles?a=10008",
+        "https://www.ialgo.nat.gov.tw/",
+        "https://www.ialgo.nat.gov.tw/news/Articles?a=10011",
+        "https://www.ialgo.nat.gov.tw/news/NewsPage?a=10008"
+      ],
+      "rss_urls": [],
+      "status": "pending",
+      "reason": "獨立域名官方列表實GET，但目前具日期樣本僅母署新聞/協助宣導，沒有自身分類新聞實證；禁止歸屬此管理處。",
+      "attempts": [
+        {
+          "url": "https://www.ialgo.nat.gov.tw/",
+          "status": 200
+        },
+        {
+          "url": "https://www.ialgo.nat.gov.tw/",
+          "status": 200,
+          "phase": "dated_html"
+        },
+        {
+          "url": "https://www.ialgo.nat.gov.tw/news/Articles?a=10008",
+          "status": 200,
+          "phase": "dated_html"
+        },
+        {
+          "url": "https://www.ialgo.nat.gov.tw/news/NewsPage?a=10008",
+          "status": 200,
+          "phase": "own_category_verification"
+        }
+      ],
+      "attempted_urls": [
+        "https://www.ialgo.nat.gov.tw/",
+        "https://www.ialgo.nat.gov.tw/news/Articles?a=10008",
+        "https://www.ialgo.nat.gov.tw/news/NewsPage?a=10008"
+      ],
+      "html_validation": {
+        "http_status": 200,
+        "dated_rows": 6,
+        "fixture_rows": 1,
+        "sample_week_rows": 1,
+        "selectors": {
+          "item": "li.commonList-item",
+          "link": "a[title]",
+          "title": "a[title]",
+          "date": "span.newsItem__meta-item",
+          "title_attribute": "title"
+        },
+        "requires_rust_fixture_validation": true
+      },
+      "candidate_source_definition": {
+        "name": "農業部農田水利署瑠公管理處",
+        "parent_ministry": "農業部",
+        "urls": [
+          "https://www.ialgo.nat.gov.tw/news/NewsPage?a=10008"
+        ],
+        "routes": [
+          {
+            "id": "official-news-html",
+            "url": "https://www.ialgo.nat.gov.tw/news/NewsPage?a=10008",
+            "kind": "html",
+            "parser": "standard",
+            "priority": 1,
+            "selectors": {
+              "item": "li.commonList-item",
+              "link": "a[title]",
+              "title": ".newsItem__content-title",
+              "date": "span.newsItem__meta-item",
+              "department": ".newsItem__meta-item:nth-child(3)",
+              "category": ".newsItem__meta-item:nth-child(2)"
+            }
+          }
+        ]
+      },
+      "candidate_fixtures": [
+        {
+          "route_id": "official-news-html",
+          "path": "src-tauri/tests/fixtures/four-ministry-agriculture/source-098-html.html"
+        }
+      ],
+      "ownership_evidence": {
+        "host": "www.ialgo.nat.gov.tw",
+        "observed_categories": [
+          "協助宣導",
+          "轉發農業部"
+        ],
+        "own_dated_items": 0
+      },
+      "checked_at": "2026-10-12",
+      "audit_file": "docs/audits/four-ministry-agriculture-20261012.json"
+    },
+    {
+      "name": "臺灣土壤陳列館",
+      "official_name": "臺灣土壤陳列館",
+      "parent_ministry": "農業部",
+      "parent_source": "農業試驗所",
+      "relationship": "museum_or_exhibition_platform",
+      "evidence_urls": [
+        "https://www.tari.gov.tw/sub/content/index.asp?Parser=1%2C27%2C286%2C274%2C%2C%2C23",
+        "https://www.moa.gov.tw/ws.php?id=2514347"
+      ],
+      "homepage": "https://www.tari.gov.tw/",
+      "news_urls": [
+        "https://www.tari.gov.tw/news/index.asp?Parser=9,4,25",
+        "https://www.tari.gov.tw/news/index.asp?Parser=9,4,26",
+        "https://www.tari.gov.tw/news/index.asp?Parser=10,4,27"
+      ],
+      "rss_urls": [],
+      "status": "pending",
+      "reason": "子館/典藏平台缺獨立新聞歸屬；母機關全流或影音不是此館自身新聞。已嘗試首頁列於attempts。 子站實測失敗：Cannot read properties of null (reading 'split')",
+      "attempts": [
+        {
+          "url": "https://www.tari.gov.tw/",
+          "status": 200
+        },
+        {
+          "url": "https://www.tari.gov.tw/NewsRss.asp",
+          "status": 200
+        },
+        {
+          "url": "https://www.tari.gov.tw/",
+          "status": 200,
+          "phase": "scoped_branch"
+        }
+      ],
+      "attempted_urls": [
+        "https://www.tari.gov.tw/",
+        "https://www.tari.gov.tw/NewsRss.asp"
+      ],
+      "checked_at": "2026-10-12",
+      "audit_file": "docs/audits/four-ministry-agriculture-20261012.json"
+    },
+    {
+      "name": "臺北植物園腊葉館",
+      "official_name": "臺北植物園腊葉館",
+      "parent_ministry": "農業部",
+      "parent_source": "林業試驗所",
+      "relationship": "museum_or_exhibition_platform",
+      "evidence_urls": [
+        "https://www.tfri.gov.tw/News_Content.aspx?n=7648&s=32548&sms=12314",
+        "https://www.moa.gov.tw/ws.php?id=2514347"
+      ],
+      "homepage": "https://taif.tfri.gov.tw/tpbgherbarium/",
+      "news_urls": [],
+      "rss_urls": [],
+      "status": "pending",
+      "reason": "子館/典藏平台缺獨立新聞歸屬；母機關全流或影音不是此館自身新聞。已嘗試首頁列於attempts。",
+      "attempts": [
+        {
+          "url": "https://taif.tfri.gov.tw/tpbgherbarium/",
+          "error": "fetch failed"
+        }
+      ],
+      "attempted_urls": [
+        "https://taif.tfri.gov.tw/tpbgherbarium/"
+      ],
+      "checked_at": "2026-10-12",
+      "audit_file": "docs/audits/four-ministry-agriculture-20261012.json"
+    },
+    {
+      "name": "阿里山博物館",
+      "official_name": "阿里山博物館",
+      "parent_ministry": "農業部",
+      "parent_source": "林業及自然保育署嘉義分署",
+      "relationship": "museum_or_exhibition_platform",
+      "evidence_urls": [
+        "https://chiayi.forest.gov.tw/museum",
+        "https://www.moa.gov.tw/ws.php?id=2514347"
+      ],
+      "homepage": "https://chiayi.forest.gov.tw/museum",
+      "news_urls": [
+        "https://chiayi.forest.gov.tw/news"
+      ],
+      "rss_urls": [],
+      "status": "pending",
+      "reason": "子館/典藏平台缺獨立新聞歸屬；母機關全流或影音不是此館自身新聞。已嘗試首頁列於attempts。",
+      "attempts": [
+        {
+          "url": "https://chiayi.forest.gov.tw/museum",
+          "status": 200
+        },
+        {
+          "url": "https://chiayi.forest.gov.tw/rss",
+          "status": 200
+        },
+        {
+          "url": "https://chiayi.forest.gov.tw/rss#c",
+          "status": 200
+        },
+        {
+          "url": "https://chiayi.forest.gov.tw/rss#menuMobile",
+          "status": 200
+        },
+        {
+          "url": "https://chiayi.forest.gov.tw/rss#u",
+          "status": 200
+        },
+        {
+          "url": "https://chiayi.forest.gov.tw/rss#",
+          "status": 200
+        },
+        {
+          "url": "https://chiayi.forest.gov.tw/news",
+          "status": 200
+        }
+      ],
+      "attempted_urls": [
+        "https://chiayi.forest.gov.tw/museum",
+        "https://chiayi.forest.gov.tw/rss",
+        "https://chiayi.forest.gov.tw/rss#c",
+        "https://chiayi.forest.gov.tw/rss#menuMobile",
+        "https://chiayi.forest.gov.tw/rss#u",
+        "https://chiayi.forest.gov.tw/rss#",
+        "https://chiayi.forest.gov.tw/news"
+      ],
+      "checked_at": "2026-10-12",
+      "audit_file": "docs/audits/four-ministry-agriculture-20261012.json"
+    },
+    {
+      "name": "臺灣農田水利數位博物館",
+      "official_name": "臺灣農田水利數位博物館",
+      "parent_ministry": "農業部",
+      "parent_source": "財團法人桃園農田水利研究發展基金會",
+      "relationship": "museum_or_exhibition_platform",
+      "evidence_urls": [
+        "https://digimuseum.iatyu.nat.gov.tw/",
+        "https://www.moa.gov.tw/ws.php?id=2514347"
+      ],
+      "homepage": "https://digimuseum.iatyu.nat.gov.tw/",
+      "news_urls": [],
+      "rss_urls": [],
+      "status": "pending",
+      "reason": "子館/典藏平台缺獨立新聞歸屬；母機關全流或影音不是此館自身新聞。已嘗試首頁列於attempts。",
+      "attempts": [
+        {
+          "url": "https://digimuseum.iatyu.nat.gov.tw/",
+          "error": "fetch failed"
+        }
+      ],
+      "attempted_urls": [
+        "https://digimuseum.iatyu.nat.gov.tw/"
+      ],
+      "checked_at": "2026-10-12",
+      "audit_file": "docs/audits/four-ministry-agriculture-20261012.json"
+    },
+    {
+      "name": "農業部虛擬博物館",
+      "official_name": "農業部虛擬博物館",
+      "parent_ministry": "農業部",
+      "parent_source": "農業部",
+      "relationship": "museum_or_exhibition_platform",
+      "evidence_urls": [
+        "https://video.moa.gov.tw/",
+        "https://www.moa.gov.tw/ws.php?id=2514347"
+      ],
+      "homepage": "https://video.moa.gov.tw/",
+      "news_urls": [],
+      "rss_urls": [],
+      "status": "pending",
+      "reason": "子館/典藏平台缺獨立新聞歸屬；母機關全流或影音不是此館自身新聞。已嘗試首頁列於attempts。",
+      "attempts": [
+        {
+          "url": "https://video.moa.gov.tw/",
+          "status": 200
+        },
+        {
+          "url": "https://video.moa.gov.tw/ws.php?id=9",
+          "status": 200
+        },
+        {
+          "url": "https://video.moa.gov.tw/open_data_download.php",
+          "status": 200
+        },
+        {
+          "url": "https://video.moa.gov.tw/open_data.php?format=rss&func=new_videos",
+          "status": 200
+        },
+        {
+          "url": "https://video.moa.gov.tw/open_data.php?format=rss&func=suggest",
+          "status": 200
+        },
+        {
+          "url": "https://video.moa.gov.tw/open_data.php?format=rss&func=foreign_video",
+          "status": 200
+        },
+        {
+          "url": "https://video.moa.gov.tw/open_data.php?format=rss&func=weather",
+          "status": 200
+        }
+      ],
+      "attempted_urls": [
+        "https://video.moa.gov.tw/",
+        "https://video.moa.gov.tw/ws.php?id=9",
+        "https://video.moa.gov.tw/open_data_download.php",
+        "https://video.moa.gov.tw/open_data.php?format=rss&func=new_videos",
+        "https://video.moa.gov.tw/open_data.php?format=rss&func=suggest",
+        "https://video.moa.gov.tw/open_data.php?format=rss&func=foreign_video",
+        "https://video.moa.gov.tw/open_data.php?format=rss&func=weather"
+      ],
+      "checked_at": "2026-10-12",
+      "audit_file": "docs/audits/four-ministry-agriculture-20261012.json"
+    },
+    {
+      "name": "財團法人全國農漁業及金融資訊中心",
+      "official_name": "財團法人全國農漁業及金融資訊中心",
+      "parent_ministry": "農業部",
+      "parent_source": "農業部",
+      "relationship": "supervised_foundation_unverified_donation",
+      "evidence_urls": [
+        "https://data.moa.gov.tw/Service/OpenData/DataFileService.aspx?UnitId=F88",
+        "https://www.moa.gov.tw/ws.php?id=2514347"
+      ],
+      "homepage": null,
+      "news_urls": [],
+      "rss_urls": [],
+      "status": "pending",
+      "reason": "官方主管名冊列名，不在政府捐助章程24家清單；須驗證政府捐助關係才新增。",
+      "attempts": [],
+      "attempted_urls": [],
+      "checked_at": "2026-10-12",
+      "audit_file": "docs/audits/four-ministry-agriculture-20261012.json"
+    },
+    {
+      "name": "火炎山生態教育館",
+      "parent_source": "林業及自然保育署新竹分署",
+      "homepage": "https://hsinchu.forest.gov.tw/0000686",
+      "official_name": "火炎山生態教育館",
+      "parent_ministry": "農業部",
+      "relationship": "museum_or_exhibition_platform",
+      "evidence_urls": [
+        "https://hsinchu.forest.gov.tw/0000686"
+      ],
+      "news_urls": [],
+      "rss_urls": [],
+      "status": "pending",
+      "reason": "官方館舍頁證實上級所屬；靜態介紹不能當新聞，獨立展覽活動消息歸屬待母機關分類核實。",
+      "attempted_urls": [
+        "https://hsinchu.forest.gov.tw/0000686"
+      ],
+      "attempts": [
+        {
+          "url": "https://hsinchu.forest.gov.tw/0000686",
+          "verification": "official_page_read_with_web"
+        }
+      ],
+      "checked_at": "2026-10-12",
+      "audit_file": "docs/audits/four-ministry-agriculture-20261012.json"
+    },
+    {
+      "name": "內灣林業展示館",
+      "parent_source": "林業及自然保育署新竹分署",
+      "homepage": "https://hsinchu.forest.gov.tw/culture",
+      "official_name": "內灣林業展示館",
+      "parent_ministry": "農業部",
+      "relationship": "museum_or_exhibition_platform",
+      "evidence_urls": [
+        "https://hsinchu.forest.gov.tw/culture"
+      ],
+      "news_urls": [],
+      "rss_urls": [],
+      "status": "pending",
+      "reason": "官方館舍頁證實上級所屬；靜態介紹不能當新聞，獨立展覽活動消息歸屬待母機關分類核實。",
+      "attempted_urls": [
+        "https://hsinchu.forest.gov.tw/culture"
+      ],
+      "attempts": [
+        {
+          "url": "https://hsinchu.forest.gov.tw/culture",
+          "verification": "official_page_read_with_web"
+        }
+      ],
+      "checked_at": "2026-10-12",
+      "audit_file": "docs/audits/four-ministry-agriculture-20261012.json"
+    },
+    {
+      "name": "林田山林業文化園區",
+      "parent_source": "林業及自然保育署花蓮分署",
+      "homepage": "https://www.forest.gov.tw/0000221",
+      "official_name": "林田山林業文化園區",
+      "parent_ministry": "農業部",
+      "relationship": "museum_or_exhibition_platform",
+      "evidence_urls": [
+        "https://www.forest.gov.tw/0000221"
+      ],
+      "news_urls": [],
+      "rss_urls": [],
+      "status": "pending",
+      "reason": "官方館舍頁證實上級所屬；靜態介紹不能當新聞，獨立展覽活動消息歸屬待母機關分類核實。",
+      "attempted_urls": [
+        "https://www.forest.gov.tw/0000221"
+      ],
+      "attempts": [
+        {
+          "url": "https://www.forest.gov.tw/0000221",
+          "verification": "official_page_read_with_web"
+        }
+      ],
+      "checked_at": "2026-10-12",
+      "audit_file": "docs/audits/four-ministry-agriculture-20261012.json"
+    },
+    {
+      "name": "保育教育館",
+      "parent_source": "生物多樣性研究所",
+      "homepage": "https://www.tbri.gov.tw/view.php?font-size=m&id=84&subtheme=&theme=web_structure",
+      "official_name": "保育教育館",
+      "parent_ministry": "農業部",
+      "relationship": "museum_or_exhibition_platform",
+      "evidence_urls": [
+        "https://www.tbri.gov.tw/view.php?font-size=m&id=84&subtheme=&theme=web_structure"
+      ],
+      "news_urls": [],
+      "rss_urls": [],
+      "status": "pending",
+      "reason": "官方館舍頁證實上級所屬；靜態介紹不能當新聞，獨立展覽活動消息歸屬待母機關分類核實。",
+      "attempted_urls": [
+        "https://www.tbri.gov.tw/view.php?font-size=m&id=84&subtheme=&theme=web_structure"
+      ],
+      "attempts": [
+        {
+          "url": "https://www.tbri.gov.tw/view.php?font-size=m&id=84&subtheme=&theme=web_structure",
+          "verification": "official_page_read_with_web"
+        }
+      ],
+      "checked_at": "2026-10-12",
+      "audit_file": "docs/audits/four-ministry-agriculture-20261012.json"
+    }
+  ]
+}

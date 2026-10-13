@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import {checkSourceCatalog} from './check-source-catalog.mjs';
 
 // A foreground, one-job runner for a reviewed main-branch release only.
 // Registration credentials never enter files or diagnostic output.
@@ -22,15 +23,36 @@ if (run.event !== 'workflow_dispatch' || run.head_branch !== 'main'
   throw Error('Runner requires an active manual main release at the exact reviewed local commit.');
 }
 const queuedGate = api(`actions/runs/${runId}/jobs?per_page=100`).jobs.find(job =>
-  job.name === 'Gate all 88 live sources' && job.status === 'queued'
+  job.name === 'Gate all approved live sources' && job.status === 'queued'
   && ['self-hosted', 'macOS', 'news-source-gate'].every(label => job.labels.includes(label)));
-if (!queuedGate) throw Error('The release has no queued self-hosted 88-source gate.');
+if (!queuedGate) throw Error('The release has no queued self-hosted approved-source gate.');
+checkSourceCatalog();
 const chrome = process.env.NEWS_SCRAPER_CHROME_BIN
   ?? '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
 fs.accessSync(chrome, fs.constants.X_OK);
-for (const command of ['cargo', 'rustup', 'jq', 'tar']) {
+for (const command of ['curl', 'jq', 'tar']) {
   execFileSync('/bin/sh', ['-c', 'command -v "$1"', 'preflight', command], { stdio: 'ignore' });
 }
+// Inspect existing Rust without repairing or replacing the user's tool binaries.
+// The job bootstraps its own rustup/cargo under RUNNER_TEMP before toolchain/cache actions.
+let existingCargo;
+try {
+  const cargo = execFileSync('/bin/sh', ['-c', 'command -v cargo'], {encoding:'utf8'}).trim();
+  execFileSync(cargo, ['--version'], {stdio:'ignore'});
+  existingCargo = cargo;
+} catch {
+  const toolchains = path.join(process.env.RUSTUP_HOME ?? path.join(os.homedir(), '.rustup'), 'toolchains');
+  for (const name of fs.existsSync(toolchains) ? fs.readdirSync(toolchains).sort() : []) {
+    const cargo = path.join(toolchains, name, 'bin', 'cargo');
+    try {
+      fs.accessSync(cargo, fs.constants.X_OK);
+      execFileSync(cargo, ['--version'], {stdio:'ignore'});
+      existingCargo = cargo;
+      break;
+    } catch { /* Continue only through the user's existing installed toolchains. */ }
+  }
+}
+if (!existingCargo) throw Error('No usable existing Cargo toolchain found; runner preflight did not modify local Rust.');
 const architecture = os.arch() === 'arm64' ? 'arm64' : os.arch() === 'x64' ? 'x64' : null;
 const distribution = api('actions/runners/downloads').find(item =>
   item.os === 'osx' && item.architecture === architecture);
@@ -69,7 +91,7 @@ try {
   const exitCode = await new Promise((resolve, reject) => {
     const child = spawn(path.join(directory, 'run.sh'), [], {
       cwd: directory, stdio: 'inherit',
-      env: { ...process.env, NEWS_SCRAPER_CHROME_BIN: chrome },
+      env: { ...process.env, NEWS_SCRAPER_CHROME_BIN: chrome, NEWS_SOURCE_EXISTING_CARGO: existingCargo },
     });
     const interrupt = () => child.kill('SIGINT');
     process.once('SIGINT', interrupt);

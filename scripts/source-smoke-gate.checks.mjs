@@ -1,9 +1,10 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {evaluateSourceSmoke} from './source-smoke-gate.mjs';
-const names = Array.from({length: 88}, (_, i) => `source-${i}`);
+import {loadApprovedSources} from './check-source-catalog.mjs';
+const names = loadApprovedSources();
 const report = (failed, runId = 'run-1') => ({run_id: runId, status: failed.length ? 'partial_failure' : 'success',
-  report_schema_version: 4, selected_source_count: 88, selected_sources: names, news_count: 10,
+  report_schema_version: 4, selected_source_count: names.length, selected_sources: names, news_count: 10,
   failed_sources: failed, quality: {alert_reasons: []}, relevance_policy: {ruleset_hash: 'a'.repeat(64)},
   source_diagnostics: names.map(source => ({source, status: failed.includes(source) ? 'failed' : 'success'}))});
 const retry = (source, recovered = false) => ({source, selected_source_count: 1, selected_sources: [source],
@@ -46,6 +47,11 @@ test('invalid reports cannot rewrite a previously valid failure history', () => 
   const missing = evaluateSourceSmoke(report([names[0]]), [], previous);
   assert.equal(missing.history_update_allowed, false);
   assert.equal(missing.history.streaks[names[0]], 2);
+  const changed=[...names];changed[0]='unapproved-source';
+  const mismatch=evaluateSourceSmoke({...report([]),selected_sources:changed},[],previous);
+  assert.equal(mismatch.accepted,false);
+  assert.equal(mismatch.history_update_allowed,false);
+  assert.equal(mismatch.history.streaks[names[0]],2);
 });
 
 test('command stores failure history even on gate rejection and preserves it for invalid evidence', async () => {

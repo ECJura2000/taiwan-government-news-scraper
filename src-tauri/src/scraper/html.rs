@@ -25,9 +25,39 @@ pub(crate) fn clean_text(element: scraper::ElementRef<'_>) -> String {
 }
 
 pub(crate) fn parse_list_date(value: &str) -> Option<NaiveDate> {
-    let captures = Regex::new(r"\b(\d{2,4})[-/.年](\d{1,2})[-/.月](\d{1,2})(?:日)?(?:\b|T|\s|$)")
+    let english = Regex::new(r"(?i)(\d)(?:st|nd|rd|th)\b")
         .ok()?
-        .captures(value)?;
+        .replace_all(value, "$1");
+    for format in ["%B %e, %Y", "%b %e, %Y", "%B %e %Y", "%b %e %Y"] {
+        if let Ok(date) = NaiveDate::parse_from_str(english.trim(), format) {
+            return Some(date);
+        }
+    }
+    let ordinal =
+        Regex::new(r"(?i)\b(\d{1,2})(?:st|nd|rd|th)\s+([a-z]{3,9}),?\s+(\d{4})\b").ok()?;
+    if let Some(parts) = ordinal.captures(value) {
+        let month = match parts[2].to_ascii_lowercase().as_str() {
+            "jan" | "january" => 1,
+            "feb" | "february" => 2,
+            "mar" | "march" => 3,
+            "apr" | "april" => 4,
+            "may" => 5,
+            "jun" | "june" => 6,
+            "jul" | "july" => 7,
+            "aug" | "august" => 8,
+            "sep" | "sept" | "september" => 9,
+            "oct" | "october" => 10,
+            "nov" | "november" => 11,
+            "dec" | "december" => 12,
+            _ => return None,
+        };
+        return NaiveDate::from_ymd_opt(parts[3].parse().ok()?, month, parts[1].parse().ok()?);
+    }
+    let captures = Regex::new(
+        r"\b(\d{2,4})(?:\s*[-/.年]\s*|\s+)(\d{1,2})\s*[-/.月]\s*(\d{1,2})(?:日)?(?:\b|T|\s|$)",
+    )
+    .ok()?
+    .captures(value)?;
     let mut year: i32 = captures.get(1)?.as_str().parse().ok()?;
     if year < 1911 {
         year += 1911;
@@ -44,6 +74,16 @@ pub fn parse_dated_list(
     html: &str,
     base_url: &str,
     selectors: &DatedListSelectors<'_>,
+) -> Result<Vec<NewsItem>, ScraperError> {
+    parse_dated_list_with_title_attribute(source, html, base_url, selectors, None)
+}
+
+pub fn parse_dated_list_with_title_attribute(
+    source: &str,
+    html: &str,
+    base_url: &str,
+    selectors: &DatedListSelectors<'_>,
+    title_attribute: Option<&str>,
 ) -> Result<Vec<NewsItem>, ScraperError> {
     let document = Html::parse_document(html);
     let item_selector = Selector::parse(selectors.item).map_err(|error| {
@@ -102,7 +142,11 @@ pub fn parse_dated_list(
         let Some(date_element) = row.select(&date_selector).next() else {
             continue;
         };
-        let title = clean_text(title_element);
+        let title = title_attribute
+            .and_then(|attribute| title_element.value().attr(attribute))
+            .map(|value| value.split_whitespace().collect::<Vec<_>>().join(" "))
+            .filter(|value| !value.is_empty())
+            .unwrap_or_else(|| clean_text(title_element));
         let Some(date) = parse_list_date(&clean_text(date_element)) else {
             continue;
         };

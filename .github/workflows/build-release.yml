@@ -48,7 +48,7 @@ jobs:
           echo "version=$version" >> "$GITHUB_OUTPUT"
 
   source-health:
-    name: Gate all 88 live sources
+    name: Gate all approved live sources
     needs: validate
     # Self-hosted execution is selected only by a manual main-branch release.
     # The validate job rejects manual requests from every other ref.
@@ -79,6 +79,17 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+      - name: Bootstrap isolated release-gate Rust tools
+        shell: bash
+        run: |
+          cargo_home="$(mktemp -d "$RUNNER_TEMP/news-source-gate-cargo.XXXXXX")"
+          rustup_home="$(mktemp -d "$RUNNER_TEMP/news-source-gate-rustup.XXXXXX")"
+          echo "CARGO_HOME=$cargo_home" >> "$GITHUB_ENV"
+          echo "RUSTUP_HOME=$rustup_home" >> "$GITHUB_ENV"
+          echo "$cargo_home/bin" >> "$GITHUB_PATH"
+          curl --fail --silent --show-error --location https://sh.rustup.rs -o "$RUNNER_TEMP/news-source-gate-rustup-init.sh"
+          CARGO_HOME="$cargo_home" RUSTUP_HOME="$rustup_home" sh "$RUNNER_TEMP/news-source-gate-rustup-init.sh" \
+            -y --no-modify-path --profile minimal --default-toolchain none
       - uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # master
         with:
           toolchain: stable
@@ -101,12 +112,14 @@ jobs:
             '{commit: $commit, run_id: $run_id, event: $event, source_gate_runner: $runner, os: $os}' \
             > "$SOURCE_HEALTH_ROOT/execution-context.json"
           cargo build --release --bin news-scraper
+          target/release/news-scraper list-sources > "$SOURCE_HEALTH_ROOT/approved-source-list.txt"
+          expected_sources="$(node scripts/check-source-catalog.mjs "$SOURCE_HEALTH_ROOT/approved-source-list.txt")"
           target/release/news-scraper collect \
             --output-dir "$SOURCE_HEALTH_ROOT/output" \
             --report-dir "$SOURCE_HEALTH_ROOT/reports" \
             --max-workers 8 | tee "$SOURCE_HEALTH_ROOT/summary.jsonl"
           report="$(find "$SOURCE_HEALTH_ROOT/reports" -name 'news_scraper_run_*.json' -type f | sort | tail -n 1)"
-          jq -e '.report_schema_version == 4 and .selected_source_count == 88 and (.news_count > 0) and (.quality.alert_reasons | length == 0)' "$report"
+          jq -e --argjson expected_sources "$expected_sources" '.report_schema_version == 4 and .selected_source_count == $expected_sources and (.news_count > 0) and (.quality.alert_reasons | length == 0)' "$report"
           cp "$report" "$SOURCE_HEALTH_ROOT/source-health-report.json"
           mkdir -p "$SOURCE_HEALTH_ROOT/retries"
           jq -r '.failed_sources[]' "$report" | while IFS= read -r source; do
@@ -198,7 +211,8 @@ jobs:
             codesign --verify --deep --strict --verbose=2 "$app_bundle"
           fi
           "target/release/${{ matrix.cli }}" --version
-          test "$("target/release/${{ matrix.cli }}" list-sources | wc -l | tr -d ' ')" = 88
+          "target/release/${{ matrix.cli }}" list-sources > approved-source-list.txt
+          node scripts/check-source-catalog.mjs approved-source-list.txt
           if [[ "${{ runner.os }}" == "Windows" ]]; then
             test -s target/release/taiwan-government-news.exe
           fi

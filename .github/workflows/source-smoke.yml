@@ -55,6 +55,7 @@ jobs:
         shell: bash
         run: |
           mkdir -p source-smoke/output source-smoke/reports
+          node scripts/check-source-catalog.mjs
           cargo run --release --bin news-scraper -- collect \
             --output-dir source-smoke/output \
             --report-dir source-smoke/reports \
@@ -67,7 +68,8 @@ jobs:
           test -n "$report"
           jq -e '.report_schema_version == 4 and (.news_count | type == "number") and .news_count > 0' "$report"
           jq '{status, news_count, failed_sources, source_health, quality: {alert_reasons: .quality.alert_reasons}}' "$report" | tee source-smoke/source-health-summary.json
-          test "$(jq '.selected_source_count' "$report")" = 88
+          expected_sources="$(node scripts/check-source-catalog.mjs)"
+          test "$(jq '.selected_source_count' "$report")" = "$expected_sources"
           mkdir -p source-smoke/retries
           jq -r '.failed_sources[]' "$report" | while IFS= read -r source; do
             safe_name="$(printf '%s' "$source" | sha256sum | cut -c1-12)"

@@ -24,6 +24,17 @@ static PROFILE_SEQUENCE: AtomicU64 = AtomicU64::new(1);
 // other dynamic source, while still keeping Chrome process pressure bounded.
 static BROWSER_SEMAPHORE: Semaphore = Semaphore::const_new(2);
 
+// Chrome wraps JSON responses in a viewer document, just as it does XML.
+// Return the original JSON text so the route's existing parser receives its
+// declared format; ordinary HTML and verification pages keep their full DOM.
+const CAPTURE_DOCUMENT: &str = r#"(() => {
+  const type = (document.contentType || '').split(';')[0].trim().toLowerCase();
+  if (type === 'application/json' || type === 'text/json' || type.endsWith('+json')) {
+    return document.querySelector('pre')?.textContent || document.body?.innerText || '';
+  }
+  return document.getElementById('webkit-xml-viewer-source-xml')?.innerHTML || document.documentElement.outerHTML;
+})()"#;
+
 /// Fetch a rendered page through the system Chromium browser DevTools Protocol.
 ///
 /// The browser process is scoped to one request and is terminated before the
@@ -237,7 +248,7 @@ async fn fetch_from_target(
             &mut socket,
             id,
             "Runtime.evaluate",
-            json!({"expression":"document.getElementById('webkit-xml-viewer-source-xml')?.innerHTML || document.documentElement.outerHTML", "returnByValue":true}),
+            json!({"expression":CAPTURE_DOCUMENT, "returnByValue":true}),
         )
         .await?;
         let response = wait_for_response(&mut socket, id).await?;
@@ -478,5 +489,65 @@ mod tests {
         if let Some(path) = find_browser() {
             assert!(path.is_file());
         }
+    }
+
+    #[test]
+    fn nlma_browser_fallback_parses_real_json_news() {
+        let source = crate::scraper::catalog::find_source("國土管理署").unwrap();
+        let route = source
+            .routes
+            .iter()
+            .find(|route| route.id == "official-json-browser-fallback")
+            .expect("verified same-endpoint browser fallback");
+        assert_eq!(route.kind, "browser");
+        assert_eq!(route.parser, "nlma-json");
+        let records = crate::scraper::adapters::parse_route_records(
+            &source.name,
+            route,
+            include_str!("../tests/fixtures/nlma-browser-20261013.json"),
+        )
+        .unwrap();
+        assert_eq!(records.len(), 2);
+        assert_eq!(records[0].item.date, "2026-10-08");
+        assert!(records[0].item.title.starts_with("中央補助2.45億元"));
+        assert_eq!(
+            records[0].item.link,
+            "https://www.nlma.gov.tw/ch/titlelist/news/17810"
+        );
+        assert!(records[0].item.full_text.starts_with("內政部次長董建宏"));
+        assert_eq!(records[1].item.date, "2026-10-07");
+    }
+
+    #[tokio::test]
+    #[ignore = "requires a system Chrome or Chromium executable"]
+    async fn captures_json_document_text_without_chrome_html_viewer() {
+        use tokio::io::{AsyncReadExt, AsyncWriteExt};
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let address = listener.local_addr().unwrap();
+        let json_body = r#"[{"title":"原文 <b>& 符號","content":"<p>正文</p>"}]"#;
+        let server = tokio::spawn(async move {
+            let (mut stream, _) = listener.accept().await.unwrap();
+            let mut request = [0_u8; 4096];
+            let received = stream.read(&mut request).await.unwrap();
+            assert!(std::str::from_utf8(&request[..received])
+                .unwrap()
+                .starts_with("GET /news.json "));
+            let response = format!(
+                "HTTP/1.1 200 OK\r\nContent-Type: application/json; charset=utf-8\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{json_body}",
+                json_body.len()
+            );
+            stream.write_all(response.as_bytes()).await.unwrap();
+            stream.shutdown().await.unwrap();
+        });
+        let captured = fetch_rendered_html_after_with_timeout(
+            &format!("http://{address}/news.json"),
+            None,
+            Duration::from_secs(30),
+        )
+        .await
+        .unwrap();
+        server.await.unwrap();
+        assert_eq!(captured, json_body);
+        assert!(serde_json::from_str::<Value>(&captured).unwrap().is_array());
     }
 }

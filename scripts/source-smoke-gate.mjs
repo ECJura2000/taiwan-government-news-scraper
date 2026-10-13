@@ -2,12 +2,14 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {pathToFileURL} from 'node:url';
 import {evaluateGate} from './release-source-gate.mjs';
+import {loadApprovedSources, matchesApprovedSources} from './check-source-catalog.mjs';
 
 export function evaluateSourceSmoke(report, retries, previous = null, {
   maxFailed = 8, maxFailureRate = 0.10, maxConsecutiveFailures = 3,
+  expectedSources = loadApprovedSources(),
 } = {}) {
   if (!Number.isInteger(maxConsecutiveFailures) || maxConsecutiveFailures < 1) throw Error('Invalid consecutive failure limit');
-  const gate = evaluateGate(report, retries, {maxFailed, maxFailureRate, criticalSources: []});
+  const gate = evaluateGate(report, retries, {maxFailed, maxFailureRate, criticalSources: [], expectedSources});
   const errors = [...gate.errors];
   const selected = Array.isArray(report.selected_sources) ? report.selected_sources : [];
   const initial = Array.isArray(report.failed_sources) ? report.failed_sources : [];
@@ -32,8 +34,8 @@ export function evaluateSourceSmoke(report, retries, previous = null, {
   const runId = report.run_id ?? report.started_at;
   if (typeof runId !== 'string' || !runId) errors.push('missing run identity');
   const historyUpdateAllowed = validHistory && typeof runId === 'string' && !!runId &&
-    report.report_schema_version === 4 && report.selected_source_count === 88 && selected.length === 88 &&
-    new Set(selected).size === 88 && Array.isArray(report.failed_sources) && new Set(initial).size === initial.length &&
+    report.report_schema_version === 4 && report.selected_source_count === expectedSources.length &&
+    matchesApprovedSources(selected, expectedSources) && Array.isArray(report.failed_sources) && new Set(initial).size === initial.length &&
     initial.every(source => selected.includes(source)) && Array.isArray(report.quality?.alert_reasons) &&
     report.status === (initial.length ? "partial_failure" : report.quality.alert_reasons.length ? "attention" : "success") &&
     Number.isSafeInteger(report.news_count) && report.news_count > 0 &&
