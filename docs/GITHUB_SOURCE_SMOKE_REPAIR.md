@@ -26,4 +26,10 @@ Mac 2026-10-05 週全量 `20261013_164019_513440` 取得 528 則，原始狀態 
 
 前端檢查／建置、Rust 格式／完整測試／Clippy、CLI 精確來源集合及 Linux CI 均已通過初輪；新的範圍測試包含完整集合分割、重複／未知來源、缺證據、到期、重要來源不可排除，以及 cloud 綠色仍不能稱為全量／發布驗證。
 
-修正後實際雲端收集結果將於完成後補入；上述成功 CI 與獨立網路診斷本身不表示實際收集已通過。
+第一輪 [雲端實際收集 38372304934](https://github.com/ECJura2000/taiwan-government-news-scraper/actions/runs/38372304934) 選取 169 個來源取得 130 則。三個補鏈主機均成功，路徑紀錄有 `tls_intermediate_profile=twca-secure2023`；其他暫時失敗仍如實保留。此提交尚未包含故宮 Chrome 備援，重試仍遭 HTTP 403，因此 gate 正確為 false；環境部、最高檢察署重試已恢復。没有以成功 CI 替代實際收集結果。
+
+Mac 全量原始五個失敗來源以正式 CLI 逐一重試後，國防院、故宮、農田水利署宜蘭管理處恢復，勞動力發展署、林業試驗所仍故障。原完整 192 來源發布門檻評估為 `accepted=true`，重要四來源都通過；原始 JSON 仍是 `partial_failure`，沒有改寫為全成功。國家標準時間 NTP 已同步，原始報告／Excel 成對校驗值與 17 欄再次核對一致。
+
+第二輪 [38373763113](https://github.com/ECJura2000/taiwan-government-news-scraper/actions/runs/38373763113) 169 個來源取得 134 則，故宮與國防院均透過官方 Chrome 路徑成功，嘉南管理處重試恢復。原始狀態仍 `partial_failure`，重試後林業試驗所、工程會仍故障；嚴格 gate `accepted=true`、無錯誤。摘要明示另 23 個來源沒有在 cloud 收集、發布驗證未評估，不表示全部 192 個成功。
+
+後續針對 WDA 反覆故障補查發現壓縮 RSS 已傳出完整 XML，但 HTTP 串流未結束：啟用 gzip 的 curl 15 秒逾時，僅要求 identity 的同一官方 URL 2.7 秒正常完成。新增 `transport.accept_compression=false` 僅宣告於 WDA RSS；其他列表／內文不變。Mac `20261013_171433_631876` 成功取得 2026-10-05 週 1 則；RSS 50 筆由官方 channel 指向的列表與分頁補到 90 筆原始資料，合併去重後沒有品質警示。Linux 另以正式 CLI 作單來源 live regression，不把單來源成功當作全目錄門檻。

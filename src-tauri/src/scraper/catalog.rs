@@ -224,6 +224,7 @@ pub fn parse_catalog(json: &str) -> Result<Vec<SourceDefinition>, String> {
                             if !matches!(
                                 field.as_str(),
                                 "host"
+                                    | "accept_compression"
                                     | "timeout_seconds"
                                     | "retry_attempts"
                                     | "host_concurrency"

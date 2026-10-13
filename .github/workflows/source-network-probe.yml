@@ -13,6 +13,54 @@ on:
 permissions:
   contents: read
 jobs:
+  wda-rss:
+    name: Live WDA RSS framing regression
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+      - uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # master
+        with:
+          toolchain: stable
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
+        with:
+          key: source-smoke-${{ runner.os }}
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+      - name: Verify official RSS plus list supplement through the production CLI
+        run: |
+          cargo run --release --bin news-scraper -- collect --sources 勞動力發展署 \
+            --output-dir wda-regression/output --report-dir wda-regression/reports --fail-on-source-error > wda-regression.log
+          node --input-type=module <<'JS'
+          import fs from 'node:fs';
+          import assert from 'node:assert/strict';
+          const root='wda-regression/reports/';
+          const pointer=JSON.parse(fs.readFileSync(root+'latest_run.json'));
+          const report=JSON.parse(fs.readFileSync(pointer.report_file));
+          assert.equal(report.report_schema_version,4);
+          assert.equal(report.status,'success');
+          assert.deepEqual(report.selected_sources,['勞動力發展署']);
+          assert.equal(report.selected_source_count,1);
+          assert.deepEqual(report.failed_sources,[]);
+          assert.deepEqual(report.quality.alert_reasons,[]);
+          assert.ok(report.source_diagnostics[0].discovery.list_items>0);
+          assert.ok(report.source_attempts.some(row=>row.route_kind==='rss' && row.status==='success'));
+          assert.ok(report.source_attempts.some(row=>row.route_id==='official-news-list' && row.status==='success'));
+          assert.match(report.relevance_policy.ruleset_hash,/^[0-9a-f]{64}$/);
+          console.log(JSON.stringify({run_id:report.run_id,status:report.status,news_count:report.news_count,source_only:true,not_a_full_catalog_gate:true}));
+          JS
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: wda-rss-regression
+          path: |
+            wda-regression/
+            wda-regression.log
+          retention-days: 7
   networking:
     runs-on: ubuntu-22.04
     timeout-minutes: 10

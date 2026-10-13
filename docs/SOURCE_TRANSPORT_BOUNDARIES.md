@@ -44,3 +44,5 @@
 在 NPS 前綴解析移入來源元件後，再以國家公園署與國防部重跑同一固定週：兩次報告均為 `success`、2 則新聞、無失敗／異常／品質警示，來源嘗試的 route、篇數與分類相同（完成順序可因並行而變）。兩份 Excel 的第一工作表 XML 與 workbook XML SHA-256 相同；整個 ZIP 的位元組雜湊不同，不應據此誤判內容回歸。
 
 公路局瀏覽器列表另宣告 `routes[].transport.browser_entry_url`，在同一次隔離 Chrome session 中先開官方首頁，再進入新聞列表，保留正常導覽 cookie。入口限同來源、無帳密 HTTP(S)，不新增 TLS 例外，也不跳過正式頁的驗證頁及解析檢查；其他路徑與詳細頁不繼承此設定。Cookie、profile 與完整週報不納入版本控制。
+
+2026-10-13 的 GitHub 修正增加兩個可選的傳輸欄位。`tls_intermediate` 是固定官方 TWCA 中繼憑證與精確主機的政策；使用者明確核准消防署、農科園區、國健署三個主機，僅 Linux 使用，仍要求既有系統信任根、正確主機名稱及有效期限，不跟隨跨主機／HTTP 跳轉，沒有扩大國防部 invalid-certificate 例外。`accept_compression=false` 要求 identity 回應，目前只宣告在 WDA RSS，修復壓縮串流不正常結束；HTML 補足與詳細頁仍使用原預設。HTTP 用戶端只接受解析後的政策，不依政府網站名稱分支。查核與測試見 [GitHub 來源檢查修正](GITHUB_SOURCE_SMOKE_REPAIR.md)。

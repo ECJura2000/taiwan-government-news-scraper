@@ -24,6 +24,7 @@ pub struct DetailPolicy {
 #[derive(Debug, Clone, Default, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct PolicyOverrides {
+    pub accept_compression: Option<bool>,
     pub tls_intermediate: Option<TlsIntermediatePolicy>,
     pub timeout_seconds: Option<u64>,
     pub retry_attempts: Option<usize>,
@@ -53,6 +54,7 @@ pub enum TlsIntermediateCertificate {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TransportPolicy {
+    pub accept_compression: bool,
     pub tls_intermediate: Option<TlsIntermediatePolicy>,
     pub timeout: Duration,
     pub retry_attempts: usize,
@@ -69,6 +71,7 @@ pub struct TransportPolicy {
 impl TransportPolicy {
     pub fn list_default() -> Self {
         Self {
+            accept_compression: true,
             tls_intermediate: None,
             timeout: Duration::from_secs(60),
             retry_attempts: 3,
@@ -91,6 +94,9 @@ impl TransportPolicy {
     }
 
     fn overlay(mut self, settings: &PolicyOverrides) -> Self {
+        if let Some(value) = settings.accept_compression {
+            self.accept_compression = value;
+        }
         if let Some(value) = &settings.tls_intermediate {
             self.tls_intermediate = Some(value.clone());
         }
@@ -197,6 +203,25 @@ impl TransportPolicy {
 mod tests {
     use super::*;
     use crate::scraper::catalog::{find_source, routes_for};
+
+    #[test]
+    fn identity_encoding_is_scoped_to_wdas_official_rss_only() {
+        let source = find_source("勞動力發展署").unwrap();
+        for route in routes_for(source) {
+            assert_eq!(
+                TransportPolicy::for_route(source, &route).accept_compression,
+                route.kind != "rss"
+            );
+        }
+        assert!(
+            TransportPolicy::for_detail(
+                source,
+                "https://www.wda.gov.tw/News_Content.aspx?n=31&s=1"
+            )
+            .accept_compression
+        );
+        assert!(TransportPolicy::list_default().accept_compression);
+    }
 
     #[test]
     fn intermediate_profile_is_limited_to_the_three_approved_https_hosts() {

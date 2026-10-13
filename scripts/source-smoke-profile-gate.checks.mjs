@@ -8,7 +8,7 @@ import {buildSmokeSummary} from './source-smoke-summary.mjs';
 
 const approved = loadApprovedSources();
 const evidence = JSON.parse(fs.readFileSync('src-tauri/resources/source_verification_profiles.json'));
-const options = {approved, evidence, today:'2026-10-13'};
+const options = {approved, evidence, today:evidence.manual_mac_sources.map(row=>row.checked_at).sort().at(-1)};
 test('cloud and manual verification exactly partition the approved catalog', () => {
   const cloud = resolveSmokeProfile('cloud', options);
   const full = resolveSmokeProfile('full', options);
@@ -19,18 +19,20 @@ test('cloud and manual verification exactly partition the approved catalog', () 
 });
 test('unknown, duplicate, stale and unproven exclusions fail closed', () => {
   assert.throws(()=>resolveSmokeProfile('other', options));
-  assert.throws(()=>resolveSmokeProfile('cloud', {...options,today:'2026-11-13'}));
+  assert.throws(()=>resolveSmokeProfile('cloud', {...options,today:evidence.review_after}));
   for (const change of [
     data=>data.manual_mac_sources.push(data.manual_mac_sources[0]),
     data=>data.manual_mac_sources[0].source='未知來源',
     data=>data.manual_mac_sources[0].source='國科會',
     data=>data.manual_mac_sources[0].mac_status='failed',
     data=>data.manual_mac_sources[0].network_probe_run='',
+    data=>data.review_after='2026-02-31',
+    data=>data.review_after='2099-01-01',
   ]) {
     const copy = structuredClone(evidence); change(copy);
     assert.throws(()=>resolveSmokeProfile('cloud',{...options,evidence:copy}));
   }
-  assert.deepEqual(resolveSmokeProfile('full',{...options,today:'2026-11-13'}).expected_sources,approved);
+  assert.deepEqual(resolveSmokeProfile('full',{...options,today:evidence.review_after}).expected_sources,approved);
 });
 test('a cloud green gate still cannot claim full or Mac release verification', () => {
   const profile = resolveSmokeProfile('cloud',options);

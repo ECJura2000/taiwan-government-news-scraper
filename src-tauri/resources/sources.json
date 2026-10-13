@@ -1058,7 +1058,8 @@
   {
     "name": "勞動力發展署",
     "urls": [
-      "https://www.wda.gov.tw/OpenData.aspx?SN=8C4FEB29449A1601"
+      "https://www.wda.gov.tw/OpenData.aspx?SN=8C4FEB29449A1601",
+      "https://www.wda.gov.tw/News.aspx?n=31&sms=10306"
     ],
     "transport": {
       "list": {
@@ -1072,7 +1073,30 @@
         "url": "https://www.wda.gov.tw/OpenData.aspx?SN=8C4FEB29449A1601",
         "kind": "rss",
         "parser": "standard-rss",
-        "priority": 1
+        "priority": 1,
+        "transport": {
+          "accept_compression": false
+        },
+        "coverage_reduced": true
+      },
+      {
+        "id": "official-news-list",
+        "url": "https://www.wda.gov.tw/News.aspx?n=31&sms=10306",
+        "kind": "html",
+        "parser": "standard",
+        "priority": 2,
+        "selectors": {
+          "item": "tr:has(td[data-title=\"標題\"])",
+          "link": "td[data-title=\"標題\"] a[href]",
+          "title": "td[data-title=\"標題\"] a",
+          "date": "td[data-title=\"發布日期\"]",
+          "department": "td[data-title=\"發布單位\"]"
+        },
+        "pagination": {
+          "parameter": "page",
+          "first_page": 1,
+          "max_pages": 20
+        }
       }
     ]
   },

@@ -322,6 +322,9 @@ impl HttpClient {
             None
         };
         let mut request = client.get(url).timeout(policy.timeout);
+        if !policy.accept_compression {
+            request = request.header(ACCEPT_ENCODING, "identity");
+        }
         if let Some(cached) = &cached {
             if let Some(etag) = &cached.etag {
                 request = request.header(IF_NONE_MATCH, etag);
@@ -558,6 +561,37 @@ fn validate_status(status: StatusCode) -> Result<(), ScraperError> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[tokio::test]
+    async fn identity_policy_recovers_a_compression_dependent_framing_stall() {
+        use std::io::{Read, Write};
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let url = format!("http://{}/rss", listener.local_addr().unwrap());
+        let body = "<rss><channel><title>Official feed</title></channel></rss>";
+        let server = std::thread::spawn(move || {
+            for _ in 0..2 {
+                let (mut socket, _) = listener.accept().unwrap();
+                let mut request = [0_u8; 4096];
+                let count = socket.read(&mut request).unwrap();
+                let request = String::from_utf8_lossy(&request[..count]).to_ascii_lowercase();
+                let identity = request.contains("accept-encoding: identity");
+                let length = body.len() + if identity { 0 } else { 16 };
+                socket.write_all(format!("HTTP/1.1 200 OK\r\nContent-Type: application/rss+xml\r\nContent-Length: {length}\r\nConnection: close\r\n\r\n{body}").as_bytes()).unwrap();
+                if !identity {
+                    std::thread::sleep(Duration::from_millis(150));
+                }
+            }
+        });
+        let client = HttpClient::new().unwrap();
+        let mut policy = TransportPolicy::list_default();
+        policy.retry_attempts = 1;
+        policy.timeout = Duration::from_millis(50);
+        assert!(client.fetch_text(&url, &policy).await.is_err());
+        policy.accept_compression = false;
+        policy.timeout = Duration::from_secs(2);
+        assert_eq!(client.fetch_text(&url, &policy).await.unwrap(), body);
+        server.join().unwrap();
+    }
 
     #[tokio::test]
     async fn connection_failure_keeps_underlying_tcp_evidence() {

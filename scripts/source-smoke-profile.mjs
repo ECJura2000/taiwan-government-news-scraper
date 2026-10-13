@@ -2,6 +2,9 @@ import fs from 'node:fs';
 import {pathToFileURL} from 'node:url';
 import {loadApprovedSources, validateSourceNames} from './check-source-catalog.mjs';
 
+const validDay = value => typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value) &&
+  Number.isFinite(Date.parse(value+'T00:00:00Z')) && new Date(value+'T00:00:00Z').toISOString().slice(0,10) === value;
+
 export function resolveSmokeProfile(profile, {
   approved = loadApprovedSources(),
   evidence = undefined,
@@ -11,7 +14,7 @@ export function resolveSmokeProfile(profile, {
   if (profile === 'full') return {name:'full', expected_sources:approved, unverified_sources:[], approved_source_count:approved.length};
   if (profile !== 'cloud') throw Error(`Unknown smoke profile: ${profile}`);
   evidence ??= JSON.parse(fs.readFileSync('src-tauri/resources/source_verification_profiles.json', 'utf8'));
-  if (evidence.version !== 1 || !/^\d{4}-\d{2}-\d{2}$/.test(evidence.review_after ?? '') ||
+  if (evidence.version !== 1 || !validDay(evidence.review_after) || !validDay(today) ||
       evidence.review_after <= today || !Array.isArray(evidence.manual_mac_sources)) throw Error('Cloud profile evidence requires review');
   const manual = evidence.manual_mac_sources;
   validateSourceNames(manual.map(row=>row.source), 'manual Mac sources');
@@ -19,7 +22,8 @@ export function resolveSmokeProfile(profile, {
   for (const row of manual) {
     if (!approved.includes(row.source) || critical.has(row.source) || row.mac_status !== 'success' ||
         !row.mac_run_id || !row.host || !['official_verification_page','hosted_connection_timeout'].includes(row.reason) ||
-        !/^\d{4}-\d{2}-\d{2}$/.test(row.checked_at ?? '') || row.checked_at > today ||
+        !validDay(row.checked_at) || row.checked_at > today ||
+        Date.parse(evidence.review_after)-Date.parse(row.checked_at) > 45*86400000 ||
         !row.cloud_run?.startsWith('https://github.com/ECJura2000/taiwan-government-news-scraper/actions/runs/') ||
         !row.network_probe_run?.startsWith('https://github.com/ECJura2000/taiwan-government-news-scraper/actions/runs/')) {
       throw Error(`Invalid manual verification evidence: ${row.source}`);
