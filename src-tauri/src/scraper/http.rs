@@ -21,6 +21,7 @@ use tokio::sync::{Mutex, Notify};
 #[derive(Clone)]
 pub struct HttpClient {
     client: Client,
+    intermediate_client: Option<Client>,
     insecure_tls_client: Client,
     host_limits: Arc<Mutex<HashMap<String, Arc<HostGate>>>>,
     cache_dir: Option<PathBuf>,
@@ -110,8 +111,43 @@ impl HttpClient {
             .map_err(|error| {
                 ScraperError::Unknown(format!("TLS fallback client initialization failed: {error}"))
             })?;
+        // Explicitly user-approved Linux-only chain repair. Actual Linux TLS
+        // tests prove the intermediate still needs an existing trusted root.
+        #[cfg(target_os = "linux")]
+        let intermediate_client = {
+            let der = include_bytes!("../../resources/tls/twca-secure-2023.der");
+            if format!("{:x}", Sha256::digest(der))
+                != "1a2c75fd096e0499e9ff6ac74e526f61eaae3edfc8c2ea4436fee0c24d8b7d0e"
+            {
+                return Err(ScraperError::Unknown(
+                    "Pinned intermediate certificate changed".into(),
+                ));
+            }
+            let certificate = reqwest::Certificate::from_der(der).map_err(|error| {
+                ScraperError::Unknown(format!("Intermediate certificate: {error}"))
+            })?;
+            Some(Client::builder()
+                .timeout(Duration::from_secs(60))
+                .user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36")
+                .default_headers(headers)
+                .gzip(true)
+                .add_root_certificate(certificate)
+                .redirect(reqwest::redirect::Policy::custom(|attempt| {
+                    if attempt.previous().len() >= 10 {
+                        attempt.error("too many redirects")
+                    } else if attempt.url().scheme() == "https" && attempt.previous().first().and_then(url::Url::host_str) == attempt.url().host_str() {
+                        attempt.follow()
+                    } else {
+                        attempt.stop()
+                    }
+                }))
+                .build().map_err(|error| ScraperError::Unknown(format!("Intermediate client: {error}")))?)
+        };
+        #[cfg(not(target_os = "linux"))]
+        let intermediate_client = None;
         Ok(Self {
             client,
+            intermediate_client,
             insecure_tls_client,
             host_limits: Arc::new(Mutex::new(HashMap::new())),
             cache_dir: None,
@@ -163,8 +199,13 @@ impl HttpClient {
         policy: &TransportPolicy,
     ) -> Result<String, ScraperError> {
         let mut last_error = None;
+        let client = if policy.intermediate_certificate_for(url).is_some() {
+            self.intermediate_client.as_ref().unwrap_or(&self.client)
+        } else {
+            &self.client
+        };
         for attempt in 0..policy.retry_attempts {
-            match self.fetch_once(&self.client, url, policy).await {
+            match self.fetch_once(client, url, policy).await {
                 Ok(body) => return Ok(body),
                 Err(error)
                     if policy.allows_tls_fallback_for(url)
@@ -281,6 +322,9 @@ impl HttpClient {
             None
         };
         let mut request = client.get(url).timeout(policy.timeout);
+        if !policy.accept_compression {
+            request = request.header(ACCEPT_ENCODING, "identity");
+        }
         if let Some(cached) = &cached {
             if let Some(etag) = &cached.etag {
                 request = request.header(IF_NONE_MATCH, etag);
@@ -472,7 +516,7 @@ fn parse_retry_after(value: &HeaderValue) -> Option<Duration> {
 }
 
 fn classify_request_error(error: reqwest::Error) -> ScraperError {
-    let message = error.to_string();
+    let message = request_error_chain(&error);
     if message.to_ascii_lowercase().contains("certificate") {
         ScraperError::TlsCertificate(message)
     } else if error.is_timeout() || error.is_connect() {
@@ -482,6 +526,23 @@ fn classify_request_error(error: reqwest::Error) -> ScraperError {
     } else {
         ScraperError::Unknown(message)
     }
+}
+
+fn request_error_chain(error: &(dyn std::error::Error + 'static)) -> String {
+    let mut message = error.to_string();
+    let mut cause = error.source();
+    // Keep DNS/TCP/TLS evidence that reqwest's outer Display omits. Bound the
+    // chain in case a third-party error implementation accidentally cycles.
+    for _ in 0..12 {
+        let Some(inner) = cause else { break };
+        let text = inner.to_string();
+        if !text.is_empty() && !message.ends_with(&text) {
+            message.push_str(": ");
+            message.push_str(&text);
+        }
+        cause = inner.source();
+    }
+    message
 }
 
 fn validate_status(status: StatusCode) -> Result<(), ScraperError> {
@@ -500,6 +561,61 @@ fn validate_status(status: StatusCode) -> Result<(), ScraperError> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[tokio::test]
+    async fn identity_policy_recovers_a_compression_dependent_framing_stall() {
+        use std::io::{Read, Write};
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let url = format!("http://{}/rss", listener.local_addr().unwrap());
+        let body = "<rss><channel><title>Official feed</title></channel></rss>";
+        let server = std::thread::spawn(move || {
+            for _ in 0..2 {
+                let (mut socket, _) = listener.accept().unwrap();
+                let mut request = [0_u8; 4096];
+                let count = socket.read(&mut request).unwrap();
+                let request = String::from_utf8_lossy(&request[..count]).to_ascii_lowercase();
+                let identity = request.contains("accept-encoding: identity");
+                let length = body.len() + if identity { 0 } else { 16 };
+                socket.write_all(format!("HTTP/1.1 200 OK\r\nContent-Type: application/rss+xml\r\nContent-Length: {length}\r\nConnection: close\r\n\r\n{body}").as_bytes()).unwrap();
+                if !identity {
+                    std::thread::sleep(Duration::from_millis(150));
+                }
+            }
+        });
+        let client = HttpClient::new().unwrap();
+        let mut policy = TransportPolicy::list_default();
+        policy.retry_attempts = 1;
+        policy.timeout = Duration::from_millis(50);
+        assert!(client.fetch_text(&url, &policy).await.is_err());
+        policy.accept_compression = false;
+        policy.timeout = Duration::from_secs(2);
+        assert_eq!(client.fetch_text(&url, &policy).await.unwrap(), body);
+        server.join().unwrap();
+    }
+
+    #[tokio::test]
+    async fn connection_failure_keeps_underlying_tcp_evidence() {
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let address = listener.local_addr().unwrap();
+        drop(listener);
+        let error = Client::builder()
+            .no_proxy()
+            .build()
+            .unwrap()
+            .get(format!("http://{address}/"))
+            .send()
+            .await
+            .unwrap_err();
+        let message = request_error_chain(&error);
+        assert!(
+            message.to_ascii_lowercase().contains("refused"),
+            "{message}"
+        );
+        assert!(matches!(
+            classify_request_error(error),
+            ScraperError::RunnerNetwork(_)
+        ));
+    }
 
     #[test]
     fn client_can_be_constructed() {

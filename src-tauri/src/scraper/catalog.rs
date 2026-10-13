@@ -224,12 +224,14 @@ pub fn parse_catalog(json: &str) -> Result<Vec<SourceDefinition>, String> {
                             if !matches!(
                                 field.as_str(),
                                 "host"
+                                    | "accept_compression"
                                     | "timeout_seconds"
                                     | "retry_attempts"
                                     | "host_concurrency"
                                     | "cache"
                                     | "max_response_bytes"
                                     | "tls_fallback_host"
+                                    | "tls_intermediate"
                                     | "browser_fallback"
                                     | "browser_wait_for_selector"
                                     | "browser_native_user_agent"
@@ -301,6 +303,17 @@ pub fn parse_catalog(json: &str) -> Result<Vec<SourceDefinition>, String> {
                 }
                 validate_settings(&detail.settings)
                     .map_err(|e| format!("來源 {} detail {}：{e}", source.name, detail.host))?;
+                if detail
+                    .settings
+                    .tls_intermediate
+                    .as_ref()
+                    .is_some_and(|profile| profile.host != detail.host)
+                {
+                    return Err(format!(
+                        "來源 {} detail：中繼政策主機必須與詳細頁主機一致",
+                        source.name
+                    ));
+                }
                 if detail.settings.tls_fallback_host.is_some() {
                     return Err(format!("來源 {} detail：不得設定 TLS 例外", source.name));
                 }
@@ -476,6 +489,15 @@ fn validate_url(value: &str) -> Result<url::Url, String> {
 }
 
 fn validate_settings(settings: &PolicyOverrides) -> Result<(), String> {
+    if let Some(profile) = &settings.tls_intermediate {
+        if !matches!(
+            profile.host.as_str(),
+            "www.nfa.gov.tw" | "www.atp.gov.tw" | "www.hpa.gov.tw"
+        ) || settings.tls_fallback_host.is_some()
+        {
+            return Err("tls_intermediate 僅限已核准的三個主機，且不得與 TLS 例外合用".into());
+        }
+    }
     if let Some(entry) = &settings.browser_entry_url {
         validate_url(entry).map_err(|error| format!("browser_entry_url：{error}"))?;
     }

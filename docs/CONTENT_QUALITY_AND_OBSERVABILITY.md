@@ -28,6 +28,12 @@
 
 `source-smoke-gate.mjs` 共用發布門檻：對首次失敗來源做一次單來源重測後，尚未恢復的來源不得超過八個，失敗比例不得超過 10%。持續解析、拒絕存取及瀏覽器錯誤仍阻擋；全文品質警示也阻擋。來源成功而零篇不算失敗。
 
-同一來源連續三次完整檢查（包含重測）仍失敗時，阻擋並列出次數。成功或重測恢復會歸零，同一 run ID 不重複累加。歷史由前一次同分支 `rust-source-smoke` artifact 讀回；產物保留 90 天，即使門檻失敗仍上傳歷史。工作流程序列化，避免平行執行覆寫歷史。首次啟用或找不到保留歷史時，工作流程會顯示重新建立歷史的 notice；無法讀回或歷史格式錯誤會失敗，不靜默忽略。
+同一來源連續三次完整檢查（包含重測）仍失敗時，阻擋並列出次數。成功或重測恢復會歸零，同一 run ID 不重複累加。歷史由前一次同分支 `rust-source-smoke` artifact 讀回；產物保留 7 天，即使門檻失敗仍上傳歷史。工作流程序列化，避免平行執行覆寫歷史。首次啟用或找不到保留歷史時，工作流程會顯示重新建立歷史的 notice；無法讀回或歷史格式錯誤會失敗，不靜默忽略。
 
-沒有修改 88 來源清單、CLI 選項、JSON schema v4、17 欄 Excel、預設 full／prefilter off 或國防部 TLS 例外。這些新增診斷與本機報告不代表已在 GitHub 執行。
+核准來源集合仍完整比對 `approved_sources.json`（192 個）。日常預設 `cloud` 範圍依 `source_verification_profiles.json` 的逐來源證據執行 169 個；23 個在兩次 GitHub 查核連線逾時／驗證頁阻擋而 Mac 全量成功的來源，明示「本次未收集、須由 Mac 驗證」，不算本次成功，也不從 GUI、CLI 或發布清單移除。範圍證據於 2026-11-13 必須複查，到期或證據缺漏會阻擋 cloud 工作，不靜默沿用；不得把重要來源移入此清單。手動 `full` 仍嘗試全部 192 個，原始失敗分類及門檻保留。
+
+`environment-summary.json`／`.md` 與 Actions 摘要區分選取範圍、完整来源是否驗證及門檻結果。cloud 的綠色門檻只代表其明確選取範圍符合原有最多八個且 10% 的限制；分母是實際範圍 169，完整檢查仍為 192，沒有提高允許失敗比例。解析、拒絕存取、Chrome 執行錯誤及連續三次未恢復仍阻擋。cloud/full 的歷史分別存於 `rust-source-smoke-cloud`／`rust-source-smoke`，不混合計算。
+
+日常雲端檢查不能代替發布檢查。發布仍需發布時才啟動、只接一個工作的本機 Mac 執行器，以全部 192 個核准來源及原嚴格門檻驗證。雲端產物沒有配對的本機發布證據時，`release_verification.status` 固定為 `not_evaluated`；cloud 永遠不能宣稱全目錄或發布驗證成功，也不新增永久 Mac 排程。
+
+本次沒有修改核准來源集合（192 個）、CLI 選項、JSON schema v4、17 欄 Excel、預設 full／prefilter off 或國防部 TLS 例外。OS、Chrome／Chromium、OpenSSL、curl 版本另存 `environment-versions.json`，不輸出憑證或環境變數。新增診斷不代表發布檢查已通過。

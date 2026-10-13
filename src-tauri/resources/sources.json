@@ -148,7 +148,24 @@
     "name": "消防署",
     "urls": [
       "https://www.nfa.gov.tw/pro/index.php?code=list&ids=1470"
-    ]
+    ],
+    "transport": {
+      "list": {
+        "tls_intermediate": {
+          "host": "www.nfa.gov.tw",
+          "certificate": "twca-secure2023"
+        }
+      },
+      "detail": [
+        {
+          "host": "www.nfa.gov.tw",
+          "tls_intermediate": {
+            "host": "www.nfa.gov.tw",
+            "certificate": "twca-secure2023"
+          }
+        }
+      ]
+    }
   },
   {
     "name": "外交部",
@@ -258,7 +275,32 @@
     "name": "國防院",
     "urls": [
       "https://indsr.org.tw/informationlist?uid=7"
-    ]
+    ],
+    "routes": [
+      {
+        "id": "primary",
+        "url": "https://indsr.org.tw/informationlist?uid=7",
+        "kind": "html",
+        "parser": "standard",
+        "priority": 1
+      },
+      {
+        "id": "official-browser",
+        "url": "https://indsr.org.tw/informationlist?uid=7",
+        "kind": "browser",
+        "parser": "standard",
+        "priority": 2,
+        "wait_for_selector": "div.col-lg-6.card p.time1"
+      }
+    ],
+    "transport": {
+      "detail": [
+        {
+          "host": "indsr.org.tw",
+          "browser_fallback": true
+        }
+      ]
+    }
   },
   {
     "name": "財政部",
@@ -850,7 +892,24 @@
     "parent_ministry": "農業部",
     "aliases": [
       "農業科技園區管理中心"
-    ]
+    ],
+    "transport": {
+      "list": {
+        "tls_intermediate": {
+          "host": "www.atp.gov.tw",
+          "certificate": "twca-secure2023"
+        }
+      },
+      "detail": [
+        {
+          "host": "www.atp.gov.tw",
+          "tls_intermediate": {
+            "host": "www.atp.gov.tw",
+            "certificate": "twca-secure2023"
+          }
+        }
+      ]
+    }
   },
   {
     "name": "衛生福利部",
@@ -926,7 +985,24 @@
         "parser": "standard",
         "priority": 1
       }
-    ]
+    ],
+    "transport": {
+      "list": {
+        "tls_intermediate": {
+          "host": "www.hpa.gov.tw",
+          "certificate": "twca-secure2023"
+        }
+      },
+      "detail": [
+        {
+          "host": "www.hpa.gov.tw",
+          "tls_intermediate": {
+            "host": "www.hpa.gov.tw",
+            "certificate": "twca-secure2023"
+          }
+        }
+      ]
+    }
   },
   {
     "name": "社家署",
@@ -982,7 +1058,8 @@
   {
     "name": "勞動力發展署",
     "urls": [
-      "https://www.wda.gov.tw/OpenData.aspx?SN=8C4FEB29449A1601"
+      "https://www.wda.gov.tw/OpenData.aspx?SN=8C4FEB29449A1601",
+      "https://www.wda.gov.tw/News.aspx?n=31&sms=10306"
     ],
     "transport": {
       "list": {
@@ -996,7 +1073,30 @@
         "url": "https://www.wda.gov.tw/OpenData.aspx?SN=8C4FEB29449A1601",
         "kind": "rss",
         "parser": "standard-rss",
-        "priority": 1
+        "priority": 1,
+        "transport": {
+          "accept_compression": false
+        },
+        "coverage_reduced": true
+      },
+      {
+        "id": "official-news-list",
+        "url": "https://www.wda.gov.tw/News.aspx?n=31&sms=10306",
+        "kind": "html",
+        "parser": "standard",
+        "priority": 2,
+        "selectors": {
+          "item": "tr:has(td[data-title=\"標題\"])",
+          "link": "td[data-title=\"標題\"] a[href]",
+          "title": "td[data-title=\"標題\"] a",
+          "date": "td[data-title=\"發布日期\"]",
+          "department": "td[data-title=\"發布單位\"]"
+        },
+        "pagination": {
+          "parameter": "page",
+          "first_page": 1,
+          "max_pages": 20
+        }
       }
     ]
   },
@@ -1052,7 +1152,32 @@
     "name": "故宮",
     "urls": [
       "https://www.npm.gov.tw/News-List.aspx?sno=01000001&l=1&q=&s_date=&e_date=&type=03000096"
-    ]
+    ],
+    "routes": [
+      {
+        "id": "primary",
+        "url": "https://www.npm.gov.tw/News-List.aspx?sno=01000001&l=1&q=&s_date=&e_date=&type=03000096",
+        "kind": "html",
+        "parser": "standard",
+        "priority": 1
+      },
+      {
+        "id": "official-browser",
+        "url": "https://www.npm.gov.tw/News-List.aspx?sno=01000001&l=1&q=&s_date=&e_date=&type=03000096",
+        "kind": "browser",
+        "parser": "standard",
+        "priority": 2,
+        "wait_for_selector": "ul.mt-12.news-list > li span.mr-5"
+      }
+    ],
+    "transport": {
+      "detail": [
+        {
+          "host": "www.npm.gov.tw",
+          "browser_fallback": true
+        }
+      ]
+    }
   },
   {
     "name": "數位發展部",

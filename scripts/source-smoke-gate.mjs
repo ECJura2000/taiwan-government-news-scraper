@@ -3,6 +3,7 @@ import path from 'node:path';
 import {pathToFileURL} from 'node:url';
 import {evaluateGate} from './release-source-gate.mjs';
 import {loadApprovedSources, matchesApprovedSources} from './check-source-catalog.mjs';
+import {resolveSmokeProfile} from './source-smoke-profile.mjs';
 
 export function evaluateSourceSmoke(report, retries, previous = null, {
   maxFailed = 8, maxFailureRate = 0.10, maxConsecutiveFailures = 3,
@@ -59,12 +60,14 @@ export function evaluateSourceSmoke(report, retries, previous = null, {
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  const [reportPath, retryRoot, historyPath, outputPath] = process.argv.slice(2);
+  const [reportPath, retryRoot, historyPath, outputPath, profileName = 'full'] = process.argv.slice(2);
+  const profile = resolveSmokeProfile(profileName);
   const report = JSON.parse(fs.readFileSync(reportPath, 'utf8'));
   const retries = fs.readdirSync(retryRoot).map(dir => path.join(retryRoot, dir, 'retry-evidence.json'))
     .filter(file => fs.existsSync(file)).map(file => JSON.parse(fs.readFileSync(file, 'utf8')));
   const previous = fs.existsSync(historyPath) ? JSON.parse(fs.readFileSync(historyPath, 'utf8')) : null;
-  const result = evaluateSourceSmoke(report, retries, previous);
+  const result = evaluateSourceSmoke(report, retries, previous, {expectedSources:profile.expected_sources});
+  result.verification_scope = profile;
   fs.writeFileSync(outputPath, JSON.stringify(result, null, 2) + '\n');
   // Preserve evidence after a failed gate, so a persistent outage cannot reset itself.
   if (result.history_update_allowed) {

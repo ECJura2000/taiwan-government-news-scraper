@@ -278,17 +278,27 @@ async fn fetch_from_target(
     )
     .await?;
     wait_for_response(&mut socket, 4).await?;
+    send_command(&mut socket, 4_001, "Network.enable", json!({})).await?;
+    wait_for_response(&mut socket, 4_001).await?;
+    send_command(
+        &mut socket,
+        4_002,
+        "Page.setLifecycleEventsEnabled",
+        json!({"enabled":true}),
+    )
+    .await?;
+    wait_for_response(&mut socket, 4_002).await?;
     if let Some(entry) = entry_url {
         // Preserve the ordinary homepage-to-news navigation state in this
         // request's isolated profile. The requested page still passes all
         // normal verification and parser checks below.
-        send_command(&mut socket, 5_000, "Page.navigate", json!({"url": entry})).await?;
-        wait_for_response(&mut socket, 5_000).await?;
+        navigate_document(&mut socket, 5_000, entry).await?;
         tokio::time::sleep(Duration::from_secs(7)).await;
     }
-    send_command(&mut socket, 5, "Page.navigate", json!({"url": url})).await?;
-    wait_for_response(&mut socket, 5).await?;
-    let _ = wait_for_event(&mut socket, "Page.loadEventFired").await;
+    let mut navigation = navigate_document(&mut socket, 5, url).await?;
+    // Navigation can emit its load lifecycle event before its command response.
+    // Keep the loader ID so a previous entry page cannot satisfy this wait.
+    wait_for_document_load(&mut socket, &mut navigation).await?;
     tokio::time::sleep(Duration::from_millis(1_500)).await;
     let mut pending_script = page_script;
     for attempt in 0..30_u64 {
@@ -408,12 +418,145 @@ async fn wait_for_response(
         .map_err(|_| format!("CDP command {id} 等待逾時"))?
 }
 
-async fn wait_for_event(
+#[derive(Default)]
+struct NavigationState {
+    target_url: String,
+    document_requests: Vec<String>,
+    loader_id: Option<String>,
+    loaded_loaders: Vec<String>,
+    loaded: bool,
+}
+
+impl NavigationState {
+    fn observe(&mut self, payload: &Value) -> Result<(), String> {
+        match payload.get("method").and_then(Value::as_str) {
+            Some("Network.requestWillBeSent")
+                if payload.pointer("/params/type").and_then(Value::as_str) == Some("Document") =>
+            {
+                // Match the requested navigation (redirects retain requestId),
+                // not unrelated iframe, image or analytics failures.
+                if payload
+                    .pointer("/params/request/url")
+                    .and_then(Value::as_str)
+                    == Some(self.target_url.as_str())
+                {
+                    if let Some(id) = payload.pointer("/params/requestId").and_then(Value::as_str) {
+                        self.document_requests.push(id.to_owned());
+                    }
+                }
+            }
+            Some("Network.loadingFailed") => {
+                let id = payload.pointer("/params/requestId").and_then(Value::as_str);
+                if id.is_some_and(|id| self.document_requests.iter().any(|known| known == id)) {
+                    let error = payload
+                        .pointer("/params/errorText")
+                        .and_then(Value::as_str)
+                        .unwrap_or("unknown document network error");
+                    return Err(navigation_error(error));
+                }
+            }
+            Some("Page.lifecycleEvent")
+                if payload.pointer("/params/name").and_then(Value::as_str) == Some("load") =>
+            {
+                if let Some(loader) = payload.pointer("/params/loaderId").and_then(Value::as_str) {
+                    self.loaded_loaders.push(loader.to_owned());
+                    self.loaded |= self.loader_id.as_deref() == Some(loader);
+                }
+            }
+            _ => {}
+        }
+        Ok(())
+    }
+}
+
+fn navigation_error(error: &str) -> String {
+    let prefix = if error.starts_with("net::ERR_CERT_") {
+        "browser_navigation_tls"
+    } else if matches!(
+        error,
+        "net::ERR_NAME_NOT_RESOLVED"
+            | "net::ERR_CONNECTION_REFUSED"
+            | "net::ERR_ADDRESS_UNREACHABLE"
+            | "net::ERR_NETWORK_CHANGED"
+            | "net::ERR_INTERNET_DISCONNECTED"
+            | "net::ERR_PROXY_CONNECTION_FAILED"
+            | "net::ERR_TUNNEL_CONNECTION_FAILED"
+    ) {
+        "browser_navigation_network"
+    } else if matches!(
+        error,
+        "net::ERR_TIMED_OUT"
+            | "net::ERR_CONNECTION_TIMED_OUT"
+            | "net::ERR_CONNECTION_RESET"
+            | "net::ERR_CONNECTION_CLOSED"
+            | "net::ERR_EMPTY_RESPONSE"
+    ) {
+        "browser_navigation_outage"
+    } else {
+        // Cancellation, protocol or renderer errors are not proof that the
+        // runner's network failed. Keep them visible as browser runtime errors.
+        "browser_navigation_runtime"
+    };
+    format!("{prefix}: {error}")
+}
+
+async fn navigate_document(
     socket: &mut tokio_tungstenite::WebSocketStream<
         tokio_tungstenite::MaybeTlsStream<tokio::net::TcpStream>,
     >,
-    method: &str,
+    id: u64,
+    url: &str,
+) -> Result<NavigationState, String> {
+    send_command(socket, id, "Page.navigate", json!({"url": url})).await?;
+    let receive = async {
+        let mut state = NavigationState {
+            target_url: url.to_owned(),
+            ..Default::default()
+        };
+        while let Some(message) = socket.next().await {
+            let message = message.map_err(|error| format!("CDP websocket 讀取失敗：{error}"))?;
+            let Message::Text(text) = message else {
+                continue;
+            };
+            let payload: Value = serde_json::from_str(&text)
+                .map_err(|error| format!("CDP 回應 JSON 無效：{error}"))?;
+            state.observe(&payload)?;
+            if payload.get("id").and_then(Value::as_u64) == Some(id) {
+                if let Some(error) = payload.get("error") {
+                    return Err(format!("CDP command error：{error}"));
+                }
+                if let Some(error) = payload.pointer("/result/errorText").and_then(Value::as_str) {
+                    return Err(navigation_error(error));
+                }
+                state.loader_id = payload
+                    .pointer("/result/loaderId")
+                    .and_then(Value::as_str)
+                    .map(str::to_owned);
+                state.loaded = state
+                    .loader_id
+                    .as_ref()
+                    .is_none_or(|loader| state.loaded_loaders.contains(loader));
+                return Ok(state);
+            }
+        }
+        Err("CDP websocket 已關閉".into())
+    };
+    tokio::time::timeout(Duration::from_secs(30), receive)
+        .await
+        .map_err(|_| {
+            format!("CDP Page.navigate command {id} 等待逾時（{url}）；尚無文件網路失敗證據")
+        })?
+}
+
+async fn wait_for_document_load(
+    socket: &mut tokio_tungstenite::WebSocketStream<
+        tokio_tungstenite::MaybeTlsStream<tokio::net::TcpStream>,
+    >,
+    state: &mut NavigationState,
 ) -> Result<(), String> {
+    if state.loaded {
+        return Ok(());
+    }
     let receive = async {
         while let Some(message) = socket.next().await {
             let message = message.map_err(|error| format!("CDP websocket 讀取失敗：{error}"))?;
@@ -422,15 +565,19 @@ async fn wait_for_event(
             };
             let payload: Value = serde_json::from_str(&text)
                 .map_err(|error| format!("CDP 回應 JSON 無效：{error}"))?;
-            if payload.get("method").and_then(Value::as_str) == Some(method) {
+            state.observe(&payload)?;
+            if state.loaded {
                 return Ok(());
             }
         }
         Err("CDP websocket 已關閉".into())
     };
+    // Some official pages keep a subresource pending indefinitely. Once the
+    // document navigation succeeded, continue to the DOM/verification checks
+    // after a bounded load wait; an observed document network failure is fatal.
     tokio::time::timeout(Duration::from_secs(30), receive)
         .await
-        .map_err(|_| "CDP event 等待逾時".to_owned())?
+        .unwrap_or(Ok(()))
 }
 
 fn find_browser() -> Option<PathBuf> {
@@ -509,6 +656,129 @@ fn browser_candidates(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn navigation_network_evidence_ignores_unrelated_documents_and_subresources() {
+        let mut state = NavigationState {
+            target_url: "https://official.example/news".into(),
+            ..Default::default()
+        };
+        for (id, kind, url) in [
+            ("iframe", "Document", "https://other.example/frame"),
+            ("image", "Image", "https://official.example/news"),
+        ] {
+            state.observe(&json!({"method":"Network.requestWillBeSent", "params":{"requestId":id,"type":kind,"request":{"url":url}}})).unwrap();
+            state.observe(&json!({"method":"Network.loadingFailed", "params":{"requestId":id,"errorText":"net::ERR_CONNECTION_RESET"}})).unwrap();
+        }
+        state.observe(&json!({"method":"Network.requestWillBeSent", "params":{"requestId":"news","type":"Document","request":{"url":"https://official.example/news"}}})).unwrap();
+        assert_eq!(state.observe(&json!({"method":"Network.loadingFailed", "params":{"requestId":"news","errorText":"net::ERR_CONNECTION_TIMED_OUT"}})).unwrap_err(), "browser_navigation_outage: net::ERR_CONNECTION_TIMED_OUT");
+    }
+
+    #[test]
+    fn navigation_error_classes_require_explicit_chrome_evidence() {
+        assert_eq!(
+            navigation_error("net::ERR_CERT_AUTHORITY_INVALID"),
+            "browser_navigation_tls: net::ERR_CERT_AUTHORITY_INVALID"
+        );
+        assert_eq!(
+            navigation_error("net::ERR_CONNECTION_RESET"),
+            "browser_navigation_outage: net::ERR_CONNECTION_RESET"
+        );
+        assert_eq!(
+            navigation_error("net::ERR_CONNECTION_REFUSED"),
+            "browser_navigation_network: net::ERR_CONNECTION_REFUSED"
+        );
+        assert_eq!(
+            navigation_error("net::ERR_ABORTED"),
+            "browser_navigation_runtime: net::ERR_ABORTED"
+        );
+    }
+
+    #[test]
+    fn entry_page_load_cannot_satisfy_target_navigation() {
+        let mut state = NavigationState {
+            loader_id: Some("news".into()),
+            ..Default::default()
+        };
+        state
+            .observe(
+                &json!({"method":"Page.lifecycleEvent","params":{"name":"load","loaderId":"home"}}),
+            )
+            .unwrap();
+        assert!(!state.loaded);
+        state
+            .observe(
+                &json!({"method":"Page.lifecycleEvent","params":{"name":"load","loaderId":"news"}}),
+            )
+            .unwrap();
+        assert!(state.loaded);
+    }
+
+    #[tokio::test]
+    #[ignore = "requires a system Chrome or Chromium executable"]
+    async fn unreachable_document_reports_chrome_connection_error() {
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let address = listener.local_addr().unwrap();
+        drop(listener);
+        let error = fetch_rendered_html(&format!("http://{address}/news"))
+            .await
+            .unwrap_err();
+        assert_eq!(
+            error,
+            "browser_navigation_network: net::ERR_CONNECTION_REFUSED"
+        );
+    }
+
+    #[tokio::test]
+    async fn navigation_response_exposes_network_error_instead_of_runtime_success() {
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let address = listener.local_addr().unwrap();
+        let server = tokio::spawn(async move {
+            let (stream, _) = listener.accept().await.unwrap();
+            let mut socket = tokio_tungstenite::accept_async(stream).await.unwrap();
+            socket.next().await.unwrap().unwrap();
+            socket.send(Message::Text(json!({"id":5,"result":{"frameId":"main","errorText":"net::ERR_NAME_NOT_RESOLVED"}}).to_string().into())).await.unwrap();
+        });
+        let (mut socket, _) = connect_async(format!("ws://{address}")).await.unwrap();
+        let error = navigate_document(&mut socket, 5, "https://official.example/news")
+            .await
+            .err()
+            .unwrap();
+        assert_eq!(
+            error,
+            "browser_navigation_network: net::ERR_NAME_NOT_RESOLVED"
+        );
+        server.await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn navigation_preserves_load_event_received_before_command_response() {
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let address = listener.local_addr().unwrap();
+        let server = tokio::spawn(async move {
+            let (stream, _) = listener.accept().await.unwrap();
+            let mut socket = tokio_tungstenite::accept_async(stream).await.unwrap();
+            socket.next().await.unwrap().unwrap();
+            for payload in [
+                json!({"method":"Page.lifecycleEvent","params":{"name":"load","loaderId":"news","timestamp":1}}),
+                json!({"id":5,"result":{"frameId":"main","loaderId":"news"}}),
+            ] {
+                socket
+                    .send(Message::Text(payload.to_string().into()))
+                    .await
+                    .unwrap();
+            }
+        });
+        let (mut socket, _) = connect_async(format!("ws://{address}")).await.unwrap();
+        let mut state = navigate_document(&mut socket, 5, "https://official.example/news")
+            .await
+            .unwrap();
+        assert!(state.loaded);
+        wait_for_document_load(&mut socket, &mut state)
+            .await
+            .unwrap();
+        server.await.unwrap();
+    }
 
     #[test]
     fn configured_browser_is_the_first_candidate() {

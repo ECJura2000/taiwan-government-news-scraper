@@ -1,7 +1,13 @@
-name: Rust source smoke
+name: Rust source smoke (cloud scope; Mac required for full verification)
 
 on:
   workflow_dispatch:
+    inputs:
+      profile:
+        description: 'cloud = verified cloud scope; full = attempt all approved sources'
+        type: choice
+        options: [cloud, full]
+        default: cloud
   schedule:
     - cron: "20 22 * * 1"
 
@@ -10,13 +16,16 @@ permissions:
   actions: read
 
 concurrency:
-  group: source-smoke-history-${{ github.ref }}
+  group: source-smoke-history-${{ github.ref }}-${{ inputs.profile || 'cloud' }}
   cancel-in-progress: false
 
 jobs:
   all-sources:
     runs-on: ubuntu-22.04
     timeout-minutes: 90
+    env:
+      SOURCE_SMOKE_PROFILE: ${{ inputs.profile || 'cloud' }}
+      SOURCE_SMOKE_ARTIFACT: ${{ inputs.profile == 'full' && 'rust-source-smoke' || 'rust-source-smoke-cloud' }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Install Linux Tauri and browser dependencies
@@ -29,16 +38,18 @@ jobs:
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
         with:
           key: source-smoke-${{ runner.os }}
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 22
+      - name: Record OS and browser TLS tool versions
+        run: node scripts/source-smoke-environment.mjs source-smoke/environment-versions.json
       - name: Restore previous full-check history
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
           mkdir -p source-smoke
-          gh api "repos/$GITHUB_REPOSITORY/actions/artifacts?name=rust-source-smoke&per_page=100" > /tmp/source-smoke-artifacts.json
+          gh api "repos/$GITHUB_REPOSITORY/actions/artifacts?name=$SOURCE_SMOKE_ARTIFACT&per_page=100" > /tmp/source-smoke-artifacts.json
           jq -r --arg branch "$GITHUB_REF_NAME" --argjson current "$GITHUB_RUN_ID" '[.artifacts[] | select(.expired == false and .workflow_run.head_branch == $branch and .workflow_run.id != $current)] | sort_by(.created_at) | reverse | .[].id' /tmp/source-smoke-artifacts.json > /tmp/source-smoke-artifact-ids.txt
           while IFS= read -r artifact; do
             gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/$artifact/zip" > /tmp/source-smoke-previous.zip
@@ -51,12 +62,19 @@ jobs:
           if [ ! -f source-smoke/source-health-history.json ]; then
             echo "::notice::No retained history found; starting a new source-health history."
           fi
-      - name: Run all official sources through the Rust engine
+      - name: Run declared official-source verification scope
         shell: bash
         run: |
           mkdir -p source-smoke/output source-smoke/reports
           node scripts/check-source-catalog.mjs
+          node scripts/source-smoke-profile.mjs "$SOURCE_SMOKE_PROFILE" > source-smoke/verification-profile.json
+          source_args=()
+          if [ "$SOURCE_SMOKE_PROFILE" = "cloud" ]; then
+            mapfile -t sources < <(node scripts/source-smoke-profile.mjs cloud --sources)
+            for source in "${sources[@]}"; do source_args+=(--sources "$source"); done
+          fi
           cargo run --release --bin news-scraper -- collect \
+            "${source_args[@]}" \
             --output-dir source-smoke/output \
             --report-dir source-smoke/reports \
             --max-workers 8 | tee source-smoke/summary.jsonl
@@ -68,7 +86,7 @@ jobs:
           test -n "$report"
           jq -e '.report_schema_version == 4 and (.news_count | type == "number") and .news_count > 0' "$report"
           jq '{status, news_count, failed_sources, source_health, quality: {alert_reasons: .quality.alert_reasons}}' "$report" | tee source-smoke/source-health-summary.json
-          expected_sources="$(node scripts/check-source-catalog.mjs)"
+          expected_sources="$(jq '.expected_sources | length' source-smoke/verification-profile.json)"
           test "$(jq '.selected_source_count' "$report")" = "$expected_sources"
           mkdir -p source-smoke/retries
           jq -r '.failed_sources[]' "$report" | while IFS= read -r source; do
@@ -91,12 +109,17 @@ jobs:
               '{source: $source, exit_code: $exit_code, retry_status: $report[0].status, failed_sources: $report[0].failed_sources, failure_class_counts: $report[0].failure_class_counts, selected_source_count: $report[0].selected_source_count, selected_sources: $report[0].selected_sources, quality: {alert_reasons: $report[0].quality.alert_reasons}}' \
               > "source-smoke/retries/$safe_name/retry-evidence.json"
           done
-          node scripts/source-smoke-gate.mjs "$report" source-smoke/retries source-smoke/source-health-history.json source-smoke/gate-result.json
+          node scripts/source-smoke-gate.mjs "$report" source-smoke/retries source-smoke/source-health-history.json source-smoke/gate-result.json "$SOURCE_SMOKE_PROFILE"
+      - name: Explain cloud scope without changing the strict gate
+        if: always()
+        env:
+          SOURCE_SMOKE_EXECUTION_ENVIRONMENT: github-hosted
+        run: node scripts/source-smoke-summary.mjs source-smoke
       - name: Upload source-health evidence
         if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: rust-source-smoke
+          name: ${{ env.SOURCE_SMOKE_ARTIFACT }}
           path: source-smoke/
           if-no-files-found: warn
-          retention-days: 90
+          retention-days: 7
