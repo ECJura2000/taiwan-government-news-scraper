@@ -28,3 +28,8 @@ release-assets/
 # Keep the desktop icon set only.
 src-tauri/icons/ios/
 src-tauri/icons/android/
+
+/cloud-publish/
+
+/rclone.conf
+/output/

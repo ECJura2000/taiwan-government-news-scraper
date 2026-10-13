@@ -113,3 +113,7 @@ npm run tauri build
 政策詞逐項核對紀錄見 [政策詞來源核對](docs/policy-keywords-audit.md)。文字大小提供 100%、125%、150%、200%，與顯示模式分別保留。
 
 本次測試與實際操作結果見 [第一階段驗證紀錄](docs/stage1-verification.md)。
+
+## 手機手動雲端執行
+
+使用 GitHub Actions 手動抓取，Excel 與 JSON 存入 Google Drive，並保留 30 天 Artifacts。首次設定與手機操作見 [手機雲端執行指南](docs/MOBILE_CLOUD_RUN.md)。
