@@ -358,6 +358,13 @@ pub fn parse_cms_json(source: &str, body: &str) -> Result<Vec<NewsItem>, Scraper
             }
         };
         let mut news = item(source, date, title.to_owned(), link);
+        if let Some(category) = row["jsh_titlelist_categories"]["title"]
+            .as_str()
+            .map(str::trim)
+            .filter(|value| !value.is_empty())
+        {
+            news.category = category.to_owned();
+        }
         if let Some(content) = row["content"].as_str() {
             let full_text = clean_text(Html::parse_fragment(content).root_element());
             if !full_text.is_empty() {
@@ -374,6 +381,126 @@ pub fn parse_cms_json(source: &str, body: &str) -> Result<Vec<NewsItem>, Scraper
         items.push(news);
     }
     Ok(items)
+}
+
+pub fn parse_thb_xml(source: &str, body: &str) -> Result<Vec<NewsItem>, ScraperError> {
+    use quick_xml::{events::Event, Reader};
+    let mut reader = Reader::from_str(body);
+    let mut rows = Vec::new();
+    let mut row = serde_json::Map::new();
+    let mut field = String::new();
+    let mut value = String::new();
+    let mut has_root = false;
+    let mut closed_root = false;
+    let mut in_row = false;
+    loop {
+        match reader.read_event() {
+            Ok(Event::Start(tag)) if tag.name().as_ref() == "Datas" => has_root = true,
+            Ok(Event::End(tag)) if tag.name().as_ref() == "Datas" => closed_root = true,
+            Ok(Event::Start(tag)) if tag.name().as_ref() == "Data" && has_root => {
+                in_row = true;
+                row.clear();
+            }
+            Ok(Event::Start(tag)) if in_row => {
+                field = tag
+                    .attributes()
+                    .filter_map(Result::ok)
+                    .find(|attr| attr.key.as_ref() == "name")
+                    .map(|attr| attr.value.to_string())
+                    .unwrap_or_default();
+                value.clear();
+            }
+            Ok(Event::Text(text)) if in_row && !field.is_empty() => {
+                value.push_str(&text.xml10_content())
+            }
+            Ok(Event::CData(text)) if in_row && !field.is_empty() => {
+                value.push_str(&text.xml10_content())
+            }
+            Ok(Event::GeneralRef(reference)) if in_row && !field.is_empty() => {
+                let encoded = format!("&{};", reference.xml10_content());
+                value.push_str(
+                    &quick_xml::escape::unescape(&encoded)
+                        .map_err(|error| ScraperError::ParserRegression(error.to_string()))?,
+                );
+            }
+            Ok(Event::End(tag)) if tag.name().as_ref() == "Data" && in_row => {
+                if row
+                    .get("公告日期")
+                    .and_then(Value::as_str)
+                    .and_then(parse_list_date)
+                    .is_none()
+                    || ["Title", "Source"].iter().any(|key| {
+                        row.get(*key)
+                            .and_then(Value::as_str)
+                            .is_none_or(|text| text.trim().is_empty())
+                    })
+                {
+                    return Err(ScraperError::ParserRegression(
+                        "official XML row missing published date, title or article URL".into(),
+                    ));
+                }
+                rows.push(Value::Object(std::mem::take(&mut row)));
+                in_row = false;
+            }
+            Ok(Event::End(_)) if in_row && !field.is_empty() => {
+                row.insert(
+                    std::mem::take(&mut field),
+                    Value::String(std::mem::take(&mut value)),
+                );
+            }
+            Ok(Event::Eof) => break,
+            Err(error) => return Err(ScraperError::ParserRegression(error.to_string())),
+            _ => {}
+        }
+    }
+    if !has_root || !closed_root || in_row {
+        return Err(ScraperError::ParserRegression(
+            "invalid official Datas XML document".into(),
+        ));
+    }
+    let mut items = parse_thb_json(source, &Value::Array(rows).to_string())?;
+    for item in &mut items {
+        item.full_text = item.summary.clone();
+    }
+    Ok(items)
+}
+
+#[cfg(test)]
+mod thb_xml_tests {
+    #[test]
+    fn official_xml_retains_published_dates_formal_links_and_full_text() {
+        let items = super::parse_thb_xml(
+            "公路局",
+            include_str!("../../tests/fixtures/thb-official-news.xml"),
+        )
+        .unwrap();
+        assert_eq!(items.len(), 50);
+        assert_eq!(items[0].date, "2026-10-12");
+        assert_eq!(items[49].date, "2026-10-05");
+        assert_eq!(items[0].date_source, "published");
+        assert_eq!(
+            items[0].link,
+            "https://www.thb.gov.tw/News_Content_table.aspx?n=12181&s=306887"
+        );
+        assert!(items[0].full_text.contains("苓雅監理站統計115年度第3季"));
+        assert_eq!(items[0].full_text, items[0].summary);
+        assert!(!items[0].full_text.contains("&lt;p"));
+    }
+
+    #[test]
+    fn malformed_xml_or_missing_published_date_cannot_be_an_empty_week() {
+        for body in [
+            "<html>not XML data</html>",
+            "<Datas><Data><Column_0 name=\"Title\">missing date</Column_0></Data></Datas>",
+            "<Datas><Data>",
+            "<Datas>",
+        ] {
+            assert!(super::parse_thb_xml("公路局", body).is_err());
+        }
+        assert!(super::parse_thb_xml("公路局", "<Datas></Datas>")
+            .unwrap()
+            .is_empty());
+    }
 }
 
 pub fn parse_thb_json(source: &str, body: &str) -> Result<Vec<NewsItem>, ScraperError> {

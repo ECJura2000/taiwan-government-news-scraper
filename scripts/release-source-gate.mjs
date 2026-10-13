@@ -1,15 +1,18 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
+import {loadApprovedSources, matchesApprovedSources, validateSourceNames} from './check-source-catalog.mjs';
 
 export function evaluateGate(report, retries, {
   maxFailed = 8, maxFailureRate = 0.10,
   criticalSources = ['數位發展部', '國發會', '國科會', '經濟部'],
+  expectedSources = loadApprovedSources(),
 } = {}) {
   const errors = [];
+  validateSourceNames(expectedSources, 'expected sources');
   if (!Number.isInteger(maxFailed) || maxFailed < 0 || !Number.isFinite(maxFailureRate) || maxFailureRate < 0 || maxFailureRate > 1) throw Error('Invalid release gate limits');
   const selected = Array.isArray(report.selected_sources) ? report.selected_sources : [];
-  if (report.report_schema_version !== 4 || report.selected_source_count !== 88 || selected.length !== 88 || new Set(selected).size !== 88 || !(report.news_count > 0) || !/^[0-9a-f]{64}$/.test(report.relevance_policy?.ruleset_hash ?? '') || !Array.isArray(report.quality?.alert_reasons) || report.quality.alert_reasons.length) errors.push('invalid full-run contract or quality alerts');
+  if (report.report_schema_version !== 4 || report.selected_source_count !== expectedSources.length || !matchesApprovedSources(selected, expectedSources) || !(report.news_count > 0) || !/^[0-9a-f]{64}$/.test(report.relevance_policy?.ruleset_hash ?? '') || !Array.isArray(report.quality?.alert_reasons) || report.quality.alert_reasons.length) errors.push('invalid full-run contract or quality alerts');
   const failures = Array.isArray(report.failed_sources) ? report.failed_sources : [];
   if (!Array.isArray(report.failed_sources) || new Set(failures).size !== failures.length || failures.some(source => !selected.includes(source))) errors.push('invalid failed source evidence');
   if (report.status !== (failures.length ? 'partial_failure' : 'success')) errors.push('status does not match final source evidence');
@@ -23,7 +26,7 @@ export function evaluateGate(report, retries, {
     if (evidence.retry_status !== 'partial_failure' || evidence.exit_code !== 1 || !Array.isArray(evidence.failed_sources) || evidence.failed_sources.length !== 1 || evidence.failed_sources[0] !== source || classes.length === 0 || classes.some(([c, count]) => !['source_outage', 'runner_network', 'tls_certificate'].includes(c) || !Number.isInteger(count) || count < 1)) errors.push(`unresolved parser/access/runtime failure: ${source}`);
     finalFailures.push(source);
   }
-  if (finalFailures.length > maxFailed || finalFailures.length / 88 > maxFailureRate) errors.push('final source failures exceed count/rate limit');
+  if (finalFailures.length > maxFailed || finalFailures.length / expectedSources.length > maxFailureRate) errors.push('final source failures exceed count/rate limit');
   for (const source of criticalSources) {
     if (!selected.includes(source)) errors.push(`missing critical source: ${source}`);
     if (finalFailures.includes(source)) errors.push(`critical source still failed: ${source}`);

@@ -31,6 +31,9 @@ pub struct PolicyOverrides {
     pub max_response_bytes: Option<usize>,
     pub tls_fallback_host: Option<String>,
     pub browser_fallback: Option<bool>,
+    pub browser_wait_for_selector: Option<String>,
+    pub browser_native_user_agent: Option<bool>,
+    pub browser_entry_url: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -42,6 +45,9 @@ pub struct TransportPolicy {
     pub max_response_bytes: usize,
     pub tls_fallback_host: Option<String>,
     pub browser_fallback: bool,
+    pub browser_wait_for_selector: Option<String>,
+    pub browser_native_user_agent: bool,
+    pub browser_entry_url: Option<String>,
 }
 
 impl TransportPolicy {
@@ -54,6 +60,9 @@ impl TransportPolicy {
             max_response_bytes: DEFAULT_MAX_RESPONSE_BYTES,
             tls_fallback_host: None,
             browser_fallback: false,
+            browser_wait_for_selector: None,
+            browser_native_user_agent: false,
+            browser_entry_url: None,
         }
     }
 
@@ -86,7 +95,25 @@ impl TransportPolicy {
         if let Some(value) = settings.browser_fallback {
             self.browser_fallback = value;
         }
+        if let Some(value) = &settings.browser_wait_for_selector {
+            self.browser_wait_for_selector = Some(value.clone());
+        }
+        if let Some(value) = settings.browser_native_user_agent {
+            self.browser_native_user_agent = value;
+        }
+        if let Some(value) = &settings.browser_entry_url {
+            self.browser_entry_url = Some(value.clone());
+        }
         self
+    }
+
+    pub fn browser_wait_script(&self) -> Option<String> {
+        self.browser_wait_for_selector.as_ref().map(|selector| {
+            format!(
+                "(async()=>{{for(let i=0;i<30;i++){{if(document.querySelector({}))return;await new Promise(r=>setTimeout(r,1000));}}throw new Error('official article selector not ready');}})()",
+                serde_json::to_string(selector).expect("selector JSON")
+            )
+        })
     }
 
     pub fn for_route(source: &SourceDefinition, route: &SourceRoute) -> Self {
@@ -133,6 +160,71 @@ impl TransportPolicy {
 mod tests {
     use super::*;
     use crate::scraper::catalog::{find_source, routes_for};
+
+    #[test]
+    fn homepage_entry_is_scoped_to_declared_browser_route() {
+        let source = find_source("公路局").unwrap();
+        for route in routes_for(source) {
+            let policy = TransportPolicy::for_route(source, &route);
+            assert_eq!(
+                policy.browser_entry_url.as_deref(),
+                if route.id == "official-browser" {
+                    Some("https://www.thb.gov.tw/")
+                } else {
+                    None
+                }
+            );
+            assert!(!policy.allows_tls_fallback_for(&route.url));
+        }
+        assert!(
+            TransportPolicy::for_detail(source, "https://www.thb.gov.tw/article")
+                .browser_entry_url
+                .is_none()
+        );
+    }
+
+    #[test]
+    fn native_browser_identification_is_declared_and_scoped() {
+        let source = find_source("農業部種苗改良繁殖場").unwrap();
+        let route = routes_for(source)
+            .into_iter()
+            .find(|r| r.kind == "browser")
+            .unwrap();
+        assert!(TransportPolicy::for_route(source, &route).browser_native_user_agent);
+        assert!(
+            !TransportPolicy::for_detail(source, "https://www.tss.gov.tw/article")
+                .browser_native_user_agent
+        );
+        let legacy = find_source("經濟部").unwrap();
+        for route in routes_for(legacy) {
+            assert!(!TransportPolicy::for_route(legacy, &route).browser_native_user_agent);
+        }
+    }
+
+    #[test]
+    fn detail_selector_wait_is_host_scoped_and_keeps_certificate_checks() {
+        let source: SourceDefinition = serde_json::from_value(serde_json::json!({
+            "name":"Dynamic official source", "urls":["https://official.test/news"],
+            "transport":{"detail":[{"host":"official.test","browser_fallback":true,
+                "browser_wait_for_selector":"article[data-ready=\"yes\"]"}]}
+        }))
+        .unwrap();
+        let policy = TransportPolicy::for_detail(&source, "https://official.test/#/article/123");
+        assert!(policy.browser_fallback);
+        assert_eq!(
+            policy.browser_wait_for_selector.as_deref(),
+            Some("article[data-ready=\"yes\"]")
+        );
+        let script = policy.browser_wait_script().unwrap();
+        assert!(script.contains("i<30"));
+        assert!(script.contains("document.querySelector(\"article[data-ready=\\\"yes\\\"]\")"));
+        assert!(script.contains("throw new Error"));
+        assert!(!policy.allows_tls_fallback_for("https://official.test/article/123"));
+        let other = TransportPolicy::for_detail(&source, "https://sub.official.test/article/123");
+        assert!(!other.browser_fallback);
+        assert!(other.browser_wait_script().is_none());
+        assert!(other.tls_fallback_host.is_none());
+    }
 
     #[test]
     fn catalog_policies_preserve_current_fast_fail_contract() {

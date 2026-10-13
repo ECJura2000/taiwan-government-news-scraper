@@ -1,5 +1,6 @@
 pub mod adapters;
 pub mod catalog;
+pub mod filter;
 pub mod html;
 pub mod http;
 pub mod quality;

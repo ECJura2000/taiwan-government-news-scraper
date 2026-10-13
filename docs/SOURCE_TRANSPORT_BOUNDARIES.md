@@ -18,13 +18,15 @@
 
 ## 來源政策契約
 
-來源的 `transport.list` 設定列表預設值；`routes[].transport` 可覆寫單一路由。`transport.detail[]` 依詳細內文網址的完整主機名稱選用政策。可設定 `timeout_seconds`、`retry_attempts`、`host_concurrency`、`cache`、`max_response_bytes`；route 可另外宣告 `tls_fallback_host`。通用列表預設為 60 秒、3 次、同主機 2 筆、使用條件式快取、64 MiB；詳細內文相同但不快取。
+來源的 `transport.list` 設定列表預設值；`routes[].transport` 可覆寫單一路由。`transport.detail[]` 依詳細內文網址的完整主機名稱選用政策。可設定 `timeout_seconds`、`retry_attempts`、`host_concurrency`、`cache`、`max_response_bytes`；route 可另外宣告 `tls_fallback_host`。瀏覽器可另宣告 `browser_native_user_agent`，由已解析的政策傳入 Chrome；預設保留既有相容識別資訊。目前只有逐站實測確認的種苗場列表啟用原生版本與平台資訊，不套用至其他來源或未宣告的詳細頁主機。
+
+通用列表預設為 60 秒、3 次、同主機 2 筆、使用條件式快取、64 MiB；詳細內文相同但不快取。
 
 目錄首次載入即檢查設定，不再把零值偷偷改成 1。逾時允許 1–3600 秒、嘗試次數 1–10、同主機並行 1–64、回應大小 1 byte–128 MiB；未知欄位、重複來源／route、未支援 kind／parser、無效 CSS selector 與非 HTTP(S)／含帳密 URL 都拒絕。詳細頁主機必須為不重複的完整小寫主機名稱。TLS 例外只接受國防部已宣告兩個 route 的 HTTPS `www.mnd.gov.tw`，不得放在來源預設或詳細頁政策。錯誤包含來源、route／主機及欄位，讓目錄修改能在 CI 與啟動時立即被發現。
 
 勞動力發展署列表為 25 秒／1 次，國家資通安全研究院第一個 HTTP route 為 8 秒／1 次；法務部、國家公園署及農業部指定的詳細內文主機為 8 秒／1 次。國防部 TLS fallback 只能由其已宣告的兩個 route 使用，且主機必須精確為 `www.mnd.gov.tw`；不安全 TLS client 不跟隨跨站重導，成功使用仍記入 JSON 報告。瀏覽器 route 不經 HTTP client，保留系統 Chrome／Chromium 路由。
 
-驗收時以固定 mock HTTP 案例檢查重試、429 `Retry-After`、快取、逾時、主機並行與大小限制；即時 smoke 的網路故障須和解析／輸出回歸分開記錄。來源數驗收依現行核准目錄為 **88**，不是舊計畫的 73。
+驗收時以固定 mock HTTP 案例檢查重試、429 `Retry-After`、快取、逾時、主機並行與大小限制；即時 smoke 的網路故障須和解析／輸出回歸分開記錄。來源驗收比對 `src-tauri/resources/approved_sources.json` 的完整名稱集合及數量；既有 88 個來源保留，新來源必須有官方關係、發布入口及解析樣本的驗證證據。
 
 ## 列表穩定性修正（2026-10-05）
 
@@ -40,3 +42,5 @@
 重構後於 2026-09-21 週以 Rust CLI 限定六個特殊來源（國防部、國家資通安全研究院、勞動力發展署、國家公園署、法務部、農業部）驗證：`status=success`、7 則新聞、無失敗來源／異常／品質警示，Excel 正常產生。國家資通安全研究院第一個 HTTP route 遇到 `runner_network`，官方瀏覽器 route 接續成功；`error_counts.connection=1`、`source_health.unstable_count=1`。國防部的受限 TLS fallback 使用記錄使 `ssl_fallback_host_count=1`。這些恢復紀錄不能誤述成「無錯誤」。
 
 在 NPS 前綴解析移入來源元件後，再以國家公園署與國防部重跑同一固定週：兩次報告均為 `success`、2 則新聞、無失敗／異常／品質警示，來源嘗試的 route、篇數與分類相同（完成順序可因並行而變）。兩份 Excel 的第一工作表 XML 與 workbook XML SHA-256 相同；整個 ZIP 的位元組雜湊不同，不應據此誤判內容回歸。
+
+公路局瀏覽器列表另宣告 `routes[].transport.browser_entry_url`，在同一次隔離 Chrome session 中先開官方首頁，再進入新聞列表，保留正常導覽 cookie。入口限同來源、無帳密 HTTP(S)，不新增 TLS 例外，也不跳過正式頁的驗證頁及解析檢查；其他路徑與詳細頁不繼承此設定。Cookie、profile 與完整週報不納入版本控制。

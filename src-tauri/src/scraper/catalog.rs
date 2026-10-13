@@ -1,13 +1,21 @@
 use super::transport::{PolicyOverrides, TransportConfig};
 use serde::Deserialize;
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Default)]
 #[serde(deny_unknown_fields)]
 pub struct SourceDefinition {
     pub name: String,
     pub urls: Vec<String>,
     #[serde(default)]
     pub parent_ministry: Option<String>,
+    #[serde(default)]
+    pub official_name: Option<String>,
+    #[serde(default)]
+    pub aliases: Vec<String>,
+    #[serde(default)]
+    pub parent_source: Option<String>,
+    #[serde(default)]
+    pub filters: ItemFilters,
     #[serde(default)]
     pub aggregate_routes: bool,
     #[serde(default)]
@@ -33,7 +41,7 @@ pub enum DetailExpectation {
     SummaryOnly,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Default)]
 #[serde(deny_unknown_fields)]
 pub struct SourceRoute {
     pub id: String,
@@ -52,14 +60,71 @@ pub struct SourceRoute {
     pub selectors: Option<RouteSelectors>,
     #[serde(default)]
     pub transport: Option<PolicyOverrides>,
+    #[serde(default)]
+    pub filters: ItemFilters,
+    #[serde(default)]
+    pub pagination: Option<Pagination>,
+    #[serde(default)]
+    pub wait_for_selector: Option<String>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ItemFilters {
+    #[serde(default = "default_true")]
+    pub exclude_administrative: bool,
+    #[serde(default)]
+    pub exclude_categories: Vec<String>,
+    #[serde(default)]
+    pub exclude_title_prefixes: Vec<String>,
+    #[serde(default)]
+    pub exclude_title_patterns: Vec<String>,
+    #[serde(default)]
+    pub publisher_allowlist: Vec<String>,
+    #[serde(default)]
+    pub publisher_prefixes: Vec<String>,
+    #[serde(default)]
+    pub include_categories: Vec<String>,
+}
+
+impl Default for ItemFilters {
+    fn default() -> Self {
+        Self {
+            exclude_administrative: true,
+            exclude_categories: Vec::new(),
+            exclude_title_prefixes: Vec::new(),
+            exclude_title_patterns: Vec::new(),
+            publisher_allowlist: Vec::new(),
+            publisher_prefixes: Vec::new(),
+            include_categories: Vec::new(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Pagination {
+    pub parameter: String,
+    #[serde(default = "default_page")]
+    pub first_page: u32,
+    #[serde(default = "default_max_pages")]
+    pub max_pages: u32,
+}
+const fn default_page() -> u32 {
+    1
+}
+const fn default_max_pages() -> u32 {
+    20
+}
+
+#[derive(Debug, Clone, Deserialize, Default)]
 #[serde(deny_unknown_fields)]
 pub struct RouteSelectors {
     pub item: String,
     pub link: String,
     pub title: String,
+    #[serde(default)]
+    pub title_attribute: Option<String>,
     pub date: String,
     #[serde(default)]
     pub summary: Option<String>,
@@ -122,6 +187,9 @@ pub fn routes_for(source: &SourceDefinition) -> Vec<SourceRoute> {
             coverage_reduced: false,
             selectors: None,
             transport: None,
+            filters: ItemFilters::default(),
+            pagination: None,
+            wait_for_selector: None,
         })
         .collect()
 }
@@ -163,6 +231,9 @@ pub fn parse_catalog(json: &str) -> Result<Vec<SourceDefinition>, String> {
                                     | "max_response_bytes"
                                     | "tls_fallback_host"
                                     | "browser_fallback"
+                                    | "browser_wait_for_selector"
+                                    | "browser_native_user_agent"
+                                    | "browser_entry_url"
                             ) {
                                 return Err(format!(
                                     "來源 {name} transport.detail：未知欄位 {field}"
@@ -182,6 +253,13 @@ pub fn parse_catalog(json: &str) -> Result<Vec<SourceDefinition>, String> {
         }
         if source.urls.is_empty() {
             return Err(format!("來源 {}：urls 不得空白", source.name));
+        }
+        validate_filters(&source.filters)
+            .map_err(|error| format!("來源 {} filters：{error}", source.name))?;
+        if source.parent_source.as_deref() == Some(source.name.as_str())
+            || source.parent_ministry.as_deref() == Some(source.name.as_str())
+        {
+            return Err(format!("來源 {}：不得以自己作為上級", source.name));
         }
         for value in &source.urls {
             validate_url(value).map_err(|e| format!("來源 {} urls：{e}", source.name))?;
@@ -235,7 +313,25 @@ pub fn parse_catalog(json: &str) -> Result<Vec<SourceDefinition>, String> {
                 return Err(format!("{context}：id 空白／重複或 priority 為零"));
             }
             let url = validate_url(&route.url).map_err(|e| format!("{context} url：{e}"))?;
-            if !matches!(route.kind.as_str(), "html" | "rss" | "json" | "browser") {
+            validate_filters(&route.filters)
+                .map_err(|error| format!("{context} filters：{error}"))?;
+            if let Some(pagination) = &route.pagination {
+                if pagination.parameter.trim().is_empty()
+                    || pagination.first_page == 0
+                    || pagination.max_pages == 0
+                    || pagination.max_pages > 100
+                {
+                    return Err(format!("{context} pagination：須提供參數及1–100頁上限"));
+                }
+            }
+            if let Some(selector) = &route.wait_for_selector {
+                scraper::Selector::parse(selector)
+                    .map_err(|error| format!("{context} wait_for_selector：{error:?}"))?;
+            }
+            if !matches!(
+                route.kind.as_str(),
+                "html" | "rss" | "json" | "xml" | "browser"
+            ) {
                 return Err(format!("{context} kind：不支援 {}", route.kind));
             }
             if !matches!(
@@ -254,6 +350,7 @@ pub fn parse_catalog(json: &str) -> Result<Vec<SourceDefinition>, String> {
                     | "moea-html"
                     | "thb-html"
                     | "thb-json"
+                    | "thb-xml"
                     | "afna-html"
                     | "fa-html"
                     | "sfaa-html"
@@ -269,6 +366,11 @@ pub fn parse_catalog(json: &str) -> Result<Vec<SourceDefinition>, String> {
             }
             if let Some(settings) = &route.transport {
                 validate_settings(settings).map_err(|e| format!("{context} transport：{e}"))?;
+                if let Some(entry) = &settings.browser_entry_url {
+                    if validate_url(entry)?.origin() != url.origin() {
+                        return Err(format!("{context} browser_entry_url 必須與 route 同來源"));
+                    }
+                }
                 if let Some(host) = &settings.tls_fallback_host {
                     if source.name != "國防部"
                         || host != "www.mnd.gov.tw"
@@ -303,7 +405,62 @@ pub fn parse_catalog(json: &str) -> Result<Vec<SourceDefinition>, String> {
             }
         }
     }
+    let mut identifiers = std::collections::HashMap::new();
+    for source in &sources {
+        for identifier in std::iter::once(&source.name)
+            .chain(source.official_name.iter())
+            .chain(source.aliases.iter())
+        {
+            if identifier.trim().is_empty() {
+                return Err(format!("來源 {}：別名不得空白", source.name));
+            }
+            if let Some(owner) = identifiers.insert(identifier, &source.name) {
+                if owner != &source.name {
+                    return Err(format!(
+                        "來源 {}：別名 {identifier} 與 {owner} 衝突",
+                        source.name
+                    ));
+                }
+            }
+        }
+    }
+    for source in &sources {
+        let mut seen = std::collections::HashSet::new();
+        let mut node = source;
+        while let Some(parent) = node.parent_source.as_deref().and_then(|name| {
+            sources.iter().find(|source| {
+                source.name == name
+                    || source.official_name.as_deref() == Some(name)
+                    || source.aliases.iter().any(|alias| alias == name)
+            })
+        }) {
+            if !seen.insert(&node.name) {
+                return Err(format!("來源 {}：上級關係循環", source.name));
+            }
+            node = parent;
+        }
+    }
     Ok(sources)
+}
+
+fn validate_filters(filters: &ItemFilters) -> Result<(), String> {
+    for value in filters
+        .exclude_categories
+        .iter()
+        .chain(&filters.exclude_title_prefixes)
+        .chain(&filters.exclude_title_patterns)
+        .chain(&filters.publisher_allowlist)
+        .chain(&filters.publisher_prefixes)
+        .chain(&filters.include_categories)
+    {
+        if value.trim().is_empty() {
+            return Err("條件不得為空字串".into());
+        }
+    }
+    for pattern in &filters.exclude_title_patterns {
+        regex::Regex::new(pattern).map_err(|error| error.to_string())?;
+    }
+    Ok(())
 }
 
 fn validate_url(value: &str) -> Result<url::Url, String> {
@@ -319,6 +476,16 @@ fn validate_url(value: &str) -> Result<url::Url, String> {
 }
 
 fn validate_settings(settings: &PolicyOverrides) -> Result<(), String> {
+    if let Some(entry) = &settings.browser_entry_url {
+        validate_url(entry).map_err(|error| format!("browser_entry_url：{error}"))?;
+    }
+    if let Some(selector) = &settings.browser_wait_for_selector {
+        if selector.trim().is_empty() {
+            return Err("browser_wait_for_selector 不得空白".into());
+        }
+        scraper::Selector::parse(selector)
+            .map_err(|error| format!("browser_wait_for_selector：{error:?}"))?;
+    }
     for (field, value, max) in [
         (
             "timeout_seconds",
@@ -349,11 +516,61 @@ fn validate_settings(settings: &PolicyOverrides) -> Result<(), String> {
 }
 
 pub fn find_source(name: &str) -> Option<&'static SourceDefinition> {
-    all_sources().iter().find(|source| source.name == name)
+    all_sources()
+        .iter()
+        .find(|source| matches_source_name(source, name))
+}
+
+fn matches_source_name(source: &SourceDefinition, name: &str) -> bool {
+    source.name == name
+        || source.official_name.as_deref() == Some(name)
+        || source.aliases.iter().any(|alias| alias == name)
 }
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn browser_entry_url_requires_same_origin_and_no_credentials() {
+        let mut source = serde_json::json!({"name":"測試機關","urls":["https://official.test/news"],"routes":[{"id":"browser","url":"https://official.test/news","kind":"browser","parser":"standard","transport":{"browser_entry_url":"https://official.test/"}}]});
+        assert!(super::parse_catalog(&serde_json::json!([source.clone()]).to_string()).is_ok());
+        for entry in [
+            "https://other.test/",
+            "http://official.test/",
+            "https://user:password@official.test/",
+            "file:///tmp/page",
+        ] {
+            source["routes"][0]["transport"]["browser_entry_url"] = serde_json::json!(entry);
+            assert!(
+                super::parse_catalog(&serde_json::json!([source.clone()]).to_string()).is_err()
+            );
+        }
+    }
+
+    #[test]
+    fn detail_browser_wait_requires_valid_css_without_tls_exemption() {
+        let mut source = serde_json::json!({"name":"Official dynamic source",
+            "urls":["https://official.test/news"],
+            "transport":{"detail":[{"host":"official.test","browser_fallback":true,
+                "browser_wait_for_selector":"article .article-content"}]}});
+        assert!(super::parse_catalog(&serde_json::json!([source.clone()]).to_string()).is_ok());
+        for selector in ["", "  ", "article["] {
+            source["transport"]["detail"][0]["browser_wait_for_selector"] =
+                serde_json::json!(selector);
+            assert!(
+                super::parse_catalog(&serde_json::json!([source.clone()]).to_string())
+                    .unwrap_err()
+                    .contains("browser_wait_for_selector")
+            );
+        }
+        source["transport"]["detail"][0]["browser_wait_for_selector"] =
+            serde_json::json!("article");
+        source["transport"]["detail"][0]["tls_fallback_host"] = serde_json::json!("official.test");
+        assert!(
+            super::parse_catalog(&serde_json::json!([source]).to_string())
+                .unwrap_err()
+                .contains("TLS")
+        );
+    }
     use super::*;
 
     #[test]
@@ -446,7 +663,25 @@ mod tests {
 
     #[test]
     fn catalog_contains_all_registered_sources() {
-        assert_eq!(all_sources().len(), 88);
+        let approved: Vec<String> =
+            serde_json::from_str(include_str!("../../resources/approved_sources.json"))
+                .expect("approved source manifest must be valid JSON");
+        let expected: std::collections::BTreeSet<_> = approved.iter().map(String::as_str).collect();
+        let actual: std::collections::BTreeSet<_> = all_sources()
+            .iter()
+            .map(|source| source.name.as_str())
+            .collect();
+        assert!(!approved.is_empty());
+        assert_eq!(
+            expected.len(),
+            approved.len(),
+            "approved names must be unique"
+        );
+        assert_eq!(
+            actual, expected,
+            "catalog must contain the exact approved names"
+        );
+        assert_eq!(all_sources().len(), approved.len());
         assert!(find_source("行政院").is_some());
         assert!(find_source("中選會").is_some());
         assert!(find_source("文策院").is_some());
@@ -471,11 +706,6 @@ mod tests {
             ("婦女權益促進發展基金會", "衛生福利部"),
             ("醫院評鑑暨醫療品質策進會", "衛生福利部"),
         ];
-        let registered: Vec<_> = all_sources()
-            .iter()
-            .filter(|source| source.parent_ministry.is_some())
-            .collect();
-        assert_eq!(registered.len(), approved.len());
         for (name, ministry) in approved {
             let source = find_source(name).expect("approved foundation must be registered");
             assert_eq!(source.parent_ministry.as_deref(), Some(ministry));
@@ -484,6 +714,126 @@ mod tests {
                 &[ministry, name]
             );
         }
+    }
+
+    #[test]
+    fn official_names_and_aliases_resolve_to_the_canonical_source() {
+        let document = serde_json::json!([{
+            "name":"國合會", "official_name":"財團法人國際合作發展基金會",
+            "aliases":["國際合作發展基金會", "TaiwanICDF"],
+            "urls":["https://www.icdf.org.tw/"]
+        }]);
+        let source = &parse_catalog(&document.to_string()).unwrap()[0];
+        for name in [
+            "國合會",
+            "財團法人國際合作發展基金會",
+            "國際合作發展基金會",
+            "TaiwanICDF",
+        ] {
+            assert!(matches_source_name(source, name));
+        }
+        assert!(!matches_source_name(source, "unregistered"));
+        for source in all_sources() {
+            for identifier in std::iter::once(&source.name)
+                .chain(source.official_name.iter())
+                .chain(source.aliases.iter())
+            {
+                assert_eq!(find_source(identifier).unwrap().name, source.name);
+            }
+        }
+    }
+
+    #[test]
+    fn identifier_collisions_across_sources_and_blank_identifiers_are_rejected() {
+        let first = serde_json::json!({"name":"來源甲", "official_name":"正式甲",
+            "aliases":["別名甲"], "urls":["https://example.test/a"]});
+        let second = serde_json::json!({"name":"來源乙", "urls":["https://example.test/b"]});
+        for (field, identifier) in [
+            ("name", "別名甲"),
+            ("official_name", "來源甲"),
+            ("official_name", "正式甲"),
+            ("aliases", "正式甲"),
+            ("aliases", "來源甲"),
+            ("aliases", "別名甲"),
+        ] {
+            let mut row = second.clone();
+            row[field] = if field == "aliases" {
+                serde_json::json!([identifier])
+            } else {
+                serde_json::json!(identifier)
+            };
+            let error =
+                parse_catalog(&serde_json::json!([first.clone(), row]).to_string()).unwrap_err();
+            assert!(error.contains("衝突"), "{error}");
+        }
+        for field in ["official_name", "aliases"] {
+            let mut row = first.clone();
+            row[field] = if field == "aliases" {
+                serde_json::json!([" "])
+            } else {
+                serde_json::json!(" ")
+            };
+            assert!(parse_catalog(&serde_json::json!([row]).to_string())
+                .unwrap_err()
+                .contains("別名不得空白"));
+        }
+        let same_owner = serde_json::json!([{"name":"來源甲", "official_name":"來源甲",
+            "aliases":["來源甲"], "urls":["https://example.test/"]}]);
+        assert!(parse_catalog(&same_owner.to_string()).is_ok());
+    }
+
+    #[test]
+    fn parent_cycles_resolving_official_names_and_aliases_are_rejected() {
+        let first = serde_json::json!({"name":"來源甲", "official_name":"正式甲",
+            "aliases":["別名甲"], "urls":["https://example.test/a"]});
+        for self_parent in ["來源甲", "正式甲", "別名甲"] {
+            let mut row = first.clone();
+            row["parent_source"] = serde_json::json!(self_parent);
+            assert!(parse_catalog(&serde_json::json!([row]).to_string()).is_err());
+        }
+        let mut child = first.clone();
+        child["parent_source"] = serde_json::json!("正式乙");
+        let second = serde_json::json!({"name":"來源乙", "official_name":"正式乙",
+            "parent_source":"別名甲", "urls":["https://example.test/b"]});
+        assert!(
+            parse_catalog(&serde_json::json!([child, second]).to_string())
+                .unwrap_err()
+                .contains("上級關係循環")
+        );
+        let valid = serde_json::json!([first,
+            {"name":"來源乙", "parent_source":"別名甲", "urls":["https://example.test/b"]}]);
+        assert!(parse_catalog(&valid.to_string()).is_ok());
+    }
+
+    #[test]
+    fn invalid_regex_and_empty_filter_conditions_have_source_and_route_context() {
+        let base = serde_json::json!({"name":"測試機關", "urls":["https://example.test/"],
+            "routes":[{"id":"news", "url":"https://example.test/", "parser":"standard"}]});
+        for at_route in [false, true] {
+            for filters in [
+                serde_json::json!({"exclude_title_patterns":["["]}),
+                serde_json::json!({"publisher_prefixes":[""]}),
+            ] {
+                let mut row = base.clone();
+                if at_route {
+                    row["routes"][0]["filters"] = filters;
+                } else {
+                    row["filters"] = filters;
+                }
+                let error = parse_catalog(&serde_json::json!([row]).to_string()).unwrap_err();
+                assert!(
+                    error.contains("測試機關") && error.contains("filters"),
+                    "{error}"
+                );
+                if at_route {
+                    assert!(error.contains("route news"), "{error}");
+                }
+            }
+        }
+        let mut row = base;
+        row["filters"] = serde_json::json!({"exclude_title_patterns":["(?i)^徵才"],
+            "publisher_prefixes":["外交部"]});
+        assert!(parse_catalog(&serde_json::json!([row]).to_string()).is_ok());
     }
 
     #[test]

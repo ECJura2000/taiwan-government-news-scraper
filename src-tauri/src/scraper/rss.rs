@@ -38,7 +38,9 @@ fn assign_field(item: &mut NewsItem, field: &str, value: &str) {
         "description" | "summary" | "content" | "encoded" if item.summary.is_empty() => {
             item.summary = value.to_owned();
         }
-        "pubdate" | "published" | "datetime" | "date" if item.date.is_empty() => {
+        "pubdate" | "published" | "datetime" | "date"
+            if item.date.is_empty() || item.date_source == "updated" =>
+        {
             item.date = value.to_owned();
             item.date_source = "published".into();
         }
@@ -177,7 +179,43 @@ pub(crate) fn is_feed_document(xml: &str) -> bool {
     }
 }
 
+#[derive(Debug, Clone)]
+pub struct FeedRecord {
+    pub item: NewsItem,
+    pub publisher: Option<String>,
+    pub categories: Vec<String>,
+}
+
 pub fn parse_feed(source: &str, xml: &str) -> Result<Vec<NewsItem>, ScraperError> {
+    Ok(parse_feed_records(source, xml)?
+        .into_iter()
+        .map(|record| record.item)
+        .collect())
+}
+
+fn attribute_link(tag: &quick_xml::events::BytesStart<'_>) -> Option<(String, u8)> {
+    let mut href = None;
+    let mut rel = String::new();
+    for attribute in tag.attributes().flatten() {
+        let value = attribute
+            .normalized_value(XmlVersion::Implicit1_0)
+            .ok()?
+            .into_owned();
+        match local_name(attribute.key.as_ref()).as_str() {
+            "href" => href = Some(value),
+            "rel" => rel = value,
+            _ => {}
+        }
+    }
+    let rank = match rel.as_str() {
+        "alternate" => 4,
+        "" => 2,
+        _ => return None,
+    };
+    Some((href?, rank))
+}
+
+pub fn parse_feed_records(source: &str, xml: &str) -> Result<Vec<FeedRecord>, ScraperError> {
     if !is_feed_document(xml) {
         return Err(ScraperError::ParserRegression(
             "RSS endpoint did not return an RSS/Atom document".into(),
@@ -190,6 +228,11 @@ pub fn parse_feed(source: &str, xml: &str) -> Result<Vec<NewsItem>, ScraperError
     let mut field = String::new();
     let mut field_value = String::new();
     let mut current = empty_item(source);
+    let mut publisher: Option<String> = None;
+    let mut publisher_rank = 0;
+    let mut categories = Vec::new();
+    let mut link_rank = 0;
+    let mut guid_permalink = true;
     loop {
         match reader.read_event() {
             Ok(Event::Start(tag)) => {
@@ -197,39 +240,71 @@ pub fn parse_feed(source: &str, xml: &str) -> Result<Vec<NewsItem>, ScraperError
                 if name == "item" || name == "entry" {
                     if item_depth == 0 {
                         current = empty_item(source);
+                        publisher = None;
+                        publisher_rank = 0;
+                        categories.clear();
+                        link_rank = 0;
                     }
                     item_depth += 1;
                     field.clear();
                     field_value.clear();
                 } else if item_depth == 1 {
-                    if name == "link" && current.link.is_empty() {
-                        if let Some(attribute) = tag
+                    if name == "link" {
+                        if let Some((href, rank)) = attribute_link(&tag) {
+                            if rank > link_rank {
+                                current.link = href;
+                                link_rank = rank;
+                            }
+                        }
+                    }
+                    if name == "guid" {
+                        guid_permalink = !tag.attributes().flatten().any(|a| {
+                            local_name(a.key.as_ref()) == "ispermalink"
+                                && a.value.as_ref().eq_ignore_ascii_case("false")
+                        });
+                    }
+                    if !(field == "author" && name == "name") {
+                        field = name;
+                    }
+                    field_value.clear();
+                    if field == "category" {
+                        if let Some(term) = tag
                             .attributes()
                             .flatten()
-                            .find(|attribute| local_name(attribute.key.as_ref()) == "href")
+                            .find(|a| local_name(a.key.as_ref()) == "term")
                         {
-                            current.link = attribute
+                            field_value = term
                                 .normalized_value(XmlVersion::Implicit1_0)
-                                .map_err(|error| ScraperError::ParserRegression(error.to_string()))?
+                                .map_err(|e| ScraperError::ParserRegression(e.to_string()))?
                                 .into_owned();
                         }
                     }
-                    field = name;
-                    field_value.clear();
                 }
             }
             Ok(Event::Empty(tag)) if item_depth == 1 => {
                 let name = local_name(tag.name().as_ref());
-                if name == "link" && current.link.is_empty() {
-                    if let Some(attribute) = tag
+                if name == "link" {
+                    if let Some((href, rank)) = attribute_link(&tag) {
+                        if rank > link_rank {
+                            current.link = href;
+                            link_rank = rank;
+                        }
+                    }
+                }
+                if name == "category" {
+                    if let Some(term) = tag
                         .attributes()
                         .flatten()
-                        .find(|attribute| local_name(attribute.key.as_ref()) == "href")
+                        .find(|a| local_name(a.key.as_ref()) == "term")
                     {
-                        current.link = attribute
+                        let value = term
                             .normalized_value(XmlVersion::Implicit1_0)
-                            .map_err(|error| ScraperError::ParserRegression(error.to_string()))?
+                            .map_err(|e| ScraperError::ParserRegression(e.to_string()))?
                             .into_owned();
+                        if !categories.contains(&value) {
+                            categories.push(value.clone());
+                        }
+                        assign_field(&mut current, "category", &value);
                     }
                 }
                 field.clear();
@@ -256,12 +331,58 @@ pub fn parse_feed(source: &str, xml: &str) -> Result<Vec<NewsItem>, ScraperError
                     item_depth = item_depth.saturating_sub(1);
                     if item_depth == 0 && !current.title.is_empty() && !current.link.is_empty() {
                         finalize_item(&mut current);
-                        items.push(current.clone());
+                        if publisher_rank >= 2 {
+                            if let Some(value) = &publisher {
+                                current.department = value.clone();
+                            }
+                        }
+                        items.push(FeedRecord {
+                            item: current.clone(),
+                            publisher: publisher.clone(),
+                            categories: categories.clone(),
+                        });
                     }
                     field.clear();
                     field_value.clear();
                 } else if item_depth == 1 {
-                    assign_field(&mut current, &field, &field_value);
+                    if field == "category"
+                        && !field_value.trim().is_empty()
+                        && !categories.contains(&field_value)
+                    {
+                        categories.push(field_value.clone());
+                    }
+                    if matches!(
+                        field.as_str(),
+                        "departmentallname" | "deptname" | "source" | "publisher" | "rights"
+                    ) {
+                        let value = normalize_department(&field_value);
+                        let rank = match field.as_str() {
+                            "departmentallname" | "deptname" => 3,
+                            "source" | "publisher" | "rights" => 2,
+                            _ => 1,
+                        };
+                        if !value.is_empty() && rank > publisher_rank {
+                            publisher = Some(value);
+                            publisher_rank = rank;
+                        }
+                    }
+                    if field == "link" {
+                        if !field_value.trim().is_empty() && link_rank < 4 {
+                            assign_field(&mut current, &field, &field_value);
+                            link_rank = 3;
+                        }
+                    } else if field == "guid" {
+                        if guid_permalink
+                            && link_rank == 0
+                            && url::Url::parse(field_value.trim())
+                                .is_ok_and(|u| matches!(u.scheme(), "http" | "https"))
+                        {
+                            assign_field(&mut current, &field, &field_value);
+                            link_rank = 1;
+                        }
+                    } else {
+                        assign_field(&mut current, &field, &field_value);
+                    }
                     field.clear();
                     field_value.clear();
                 }

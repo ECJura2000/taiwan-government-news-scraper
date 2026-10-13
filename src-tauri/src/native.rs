@@ -80,7 +80,16 @@ pub async fn run_with_progress(
             .map(|source| source.name.clone())
             .collect()
     } else {
-        options.sources.clone()
+        let mut seen = HashSet::new();
+        options
+            .sources
+            .iter()
+            .map(|name| {
+                crate::scraper::catalog::find_source(name)
+                    .map_or_else(|| name.clone(), |source| source.name.clone())
+            })
+            .filter(|name| seen.insert(name.clone()))
+            .collect()
     };
     if options.max_workers == 0 {
         return Err("max_workers 必須大於零".into());
@@ -1048,7 +1057,9 @@ mod tests {
                 exclude_title_prefixes: vec![],
                 category_label: None,
                 strip_leading_date: false,
+                ..Default::default()
             }),
+            ..Default::default()
         };
         items.extend(adapters::parse_route("測試機關", &html_route, r#"<article><a href="/n/2"><h2>人工智慧發展</h2></a><time>2026/09/28</time><span>新聞稿</span><p>第二筆摘要</p></article>"#).unwrap());
         items.push(NewsItem {
@@ -1366,6 +1377,7 @@ mod tests {
             coverage_reduced: false,
             selectors: None,
             transport: None,
+            ..Default::default()
         }
     }
 

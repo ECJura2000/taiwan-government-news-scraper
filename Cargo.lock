@@ -3856,7 +3856,7 @@ dependencies = [
 
 [[package]]
 name = "taiwan-government-news"
-version = "2.1.31"
+version = "2.1.32"
 dependencies = [
  "chrono",
  "chrono-tz",

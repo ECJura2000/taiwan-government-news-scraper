@@ -24,6 +24,17 @@ static PROFILE_SEQUENCE: AtomicU64 = AtomicU64::new(1);
 // other dynamic source, while still keeping Chrome process pressure bounded.
 static BROWSER_SEMAPHORE: Semaphore = Semaphore::const_new(2);
 
+// Chrome wraps JSON responses in a viewer document, just as it does XML.
+// Return the original JSON text so the route's existing parser receives its
+// declared format; ordinary HTML and verification pages keep their full DOM.
+const CAPTURE_DOCUMENT: &str = r#"(() => {
+  const type = (document.contentType || '').split(';')[0].trim().toLowerCase();
+  if (type === 'application/json' || type === 'text/json' || type.endsWith('+json')) {
+    return document.querySelector('pre')?.textContent || document.body?.innerText || '';
+  }
+  return document.getElementById('webkit-xml-viewer-source-xml')?.innerHTML || document.documentElement.outerHTML;
+})()"#;
+
 /// Fetch a rendered page through the system Chromium browser DevTools Protocol.
 ///
 /// The browser process is scoped to one request and is terminated before the
@@ -36,7 +47,8 @@ pub async fn fetch_rendered_html_after(
     url: &str,
     page_script: Option<&str>,
 ) -> Result<String, String> {
-    fetch_rendered_html_after_with_certificate_policy(url, page_script, false, None).await
+    fetch_rendered_html_after_with_certificate_policy(url, page_script, false, None, false, None)
+        .await
 }
 
 pub async fn fetch_rendered_html_after_with_timeout(
@@ -44,7 +56,15 @@ pub async fn fetch_rendered_html_after_with_timeout(
     page_script: Option<&str>,
     timeout: Duration,
 ) -> Result<String, String> {
-    fetch_rendered_html_after_with_certificate_policy(url, page_script, false, Some(timeout)).await
+    fetch_rendered_html_after_with_certificate_policy(
+        url,
+        page_script,
+        false,
+        Some(timeout),
+        false,
+        None,
+    )
+    .await
 }
 
 /// Fetch a rendered page while accepting an invalid certificate for the single
@@ -53,7 +73,26 @@ pub async fn fetch_rendered_html_after_allow_invalid_certificates(
     url: &str,
     page_script: Option<&str>,
 ) -> Result<String, String> {
-    fetch_rendered_html_after_with_certificate_policy(url, page_script, true, None).await
+    fetch_rendered_html_after_with_certificate_policy(url, page_script, true, None, false, None)
+        .await
+}
+
+pub async fn fetch_rendered_html_after_with_transport(
+    url: &str,
+    page_script: Option<&str>,
+    timeout: Option<Duration>,
+    native_user_agent: bool,
+    entry_url: Option<&str>,
+) -> Result<String, String> {
+    fetch_rendered_html_after_with_certificate_policy(
+        url,
+        page_script,
+        false,
+        timeout,
+        native_user_agent,
+        entry_url,
+    )
+    .await
 }
 
 async fn fetch_rendered_html_after_with_certificate_policy(
@@ -61,7 +100,23 @@ async fn fetch_rendered_html_after_with_certificate_policy(
     page_script: Option<&str>,
     allow_invalid_certificates: bool,
     timeout: Option<Duration>,
+    native_user_agent: bool,
+    entry_url: Option<&str>,
 ) -> Result<String, String> {
+    if let Some(entry) = entry_url {
+        let target = url::Url::parse(url).map_err(|e| e.to_string())?;
+        let entry = url::Url::parse(entry).map_err(|e| e.to_string())?;
+        if entry.origin() != target.origin()
+            || !matches!(entry.scheme(), "http" | "https")
+            || !entry.username().is_empty()
+            || entry.password().is_some()
+        {
+            return Err(
+                "browser entry URL must be an HTTP(S) URL on the same origin without credentials"
+                    .into(),
+            );
+        }
+    }
     // Keep browser work bounded: two independent profiles let a slow fallback
     // run alongside another dynamic source without starting an unbounded number
     // of Chrome processes on low-resource runners.
@@ -79,10 +134,17 @@ async fn fetch_rendered_html_after_with_certificate_policy(
     } else {
         None
     };
-    let (mut child, profile_dir, endpoint) = launch_browser(allow_invalid_certificates).await?;
+    let (mut child, profile_dir, endpoint) =
+        launch_browser(allow_invalid_certificates, native_user_agent).await?;
     // Scope the deadline inside the owner so timeout still kills Chrome and
     // removes its profile. Semaphore queueing and browser startup are separate.
-    let fetch = fetch_from_target(&endpoint, url, page_script, expected_host.as_deref());
+    let fetch = fetch_from_target(
+        &endpoint,
+        url,
+        page_script,
+        expected_host.as_deref(),
+        entry_url,
+    );
     let result = if let Some(timeout) = timeout {
         tokio::time::timeout(timeout, fetch)
             .await
@@ -97,6 +159,7 @@ async fn fetch_rendered_html_after_with_certificate_policy(
 
 async fn launch_browser(
     allow_invalid_certificates: bool,
+    native_user_agent: bool,
 ) -> Result<(Child, PathBuf, String), String> {
     let program = find_browser().ok_or_else(|| {
         "找不到系統 Chrome/Chromium/Edge；browser route 需要可執行的 Chromium 瀏覽器".to_owned()
@@ -110,35 +173,36 @@ async fn launch_browser(
         .await
         .map_err(|error| format!("CDP profile 建立失敗：{error}"))?;
     let mut command = Command::new(program);
-    command
-        .args([
-            "--allow-pre-commit-input",
-            "--headless=new",
-            "--disable-background-networking",
-            "--disable-background-timer-throttling",
-            "--disable-backgrounding-occluded-windows",
-            "--disable-client-side-phishing-detection",
-            "--disable-default-apps",
-            "--no-sandbox",
-            "--disable-dev-shm-usage",
-            "--disable-blink-features=AutomationControlled",
-            "--disable-features=IgnoreDuplicateNavs,Prewarm",
-            "--disable-hang-monitor",
-            "--disable-popup-blocking",
-            "--disable-prompt-on-repost",
-            "--disable-sync",
-            "--enable-automation",
-            "--enable-logging=stderr",
-            "--log-level=0",
-            "--no-first-run",
-            "--no-service-autorun",
-            "--password-store=basic",
-            "--remote-allow-origins=*",
-            "--test-type=webdriver",
-            "--use-mock-keychain",
-            "--window-size=1920,1080",
-            "--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36",
-        ]);
+    command.args([
+        "--allow-pre-commit-input",
+        "--headless=new",
+        "--disable-background-networking",
+        "--disable-background-timer-throttling",
+        "--disable-backgrounding-occluded-windows",
+        "--disable-client-side-phishing-detection",
+        "--disable-default-apps",
+        "--no-sandbox",
+        "--disable-dev-shm-usage",
+        "--disable-blink-features=AutomationControlled",
+        "--disable-features=IgnoreDuplicateNavs,Prewarm",
+        "--disable-hang-monitor",
+        "--disable-popup-blocking",
+        "--disable-prompt-on-repost",
+        "--disable-sync",
+        "--enable-automation",
+        "--enable-logging=stderr",
+        "--log-level=0",
+        "--no-first-run",
+        "--no-service-autorun",
+        "--password-store=basic",
+        "--remote-allow-origins=*",
+        "--test-type=webdriver",
+        "--use-mock-keychain",
+        "--window-size=1920,1080",
+    ]);
+    if !native_user_agent {
+        command.arg("--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36");
+    }
     if allow_invalid_certificates {
         command.arg("--ignore-certificate-errors");
     }
@@ -191,6 +255,7 @@ async fn fetch_from_target(
     url: &str,
     page_script: Option<&str>,
     expected_host: Option<&str>,
+    entry_url: Option<&str>,
 ) -> Result<String, String> {
     let (mut socket, _) = connect_async(endpoint)
         .await
@@ -213,31 +278,26 @@ async fn fetch_from_target(
     )
     .await?;
     wait_for_response(&mut socket, 4).await?;
+    if let Some(entry) = entry_url {
+        // Preserve the ordinary homepage-to-news navigation state in this
+        // request's isolated profile. The requested page still passes all
+        // normal verification and parser checks below.
+        send_command(&mut socket, 5_000, "Page.navigate", json!({"url": entry})).await?;
+        wait_for_response(&mut socket, 5_000).await?;
+        tokio::time::sleep(Duration::from_secs(7)).await;
+    }
     send_command(&mut socket, 5, "Page.navigate", json!({"url": url})).await?;
     wait_for_response(&mut socket, 5).await?;
     let _ = wait_for_event(&mut socket, "Page.loadEventFired").await;
     tokio::time::sleep(Duration::from_millis(1_500)).await;
-    let first_capture_id = if let Some(script) = page_script {
-        send_command(
-            &mut socket,
-            6,
-            "Runtime.evaluate",
-            json!({"expression":script, "returnByValue":true, "awaitPromise":true}),
-        )
-        .await?;
-        wait_for_response(&mut socket, 6).await?;
-        tokio::time::sleep(Duration::from_secs(3)).await;
-        7
-    } else {
-        6
-    };
+    let mut pending_script = page_script;
     for attempt in 0..30_u64 {
-        let id = first_capture_id + attempt;
+        let id = 6 + attempt;
         send_command(
             &mut socket,
             id,
             "Runtime.evaluate",
-            json!({"expression":"document.getElementById('webkit-xml-viewer-source-xml')?.innerHTML || document.documentElement.outerHTML", "returnByValue":true}),
+            json!({"expression":CAPTURE_DOCUMENT, "returnByValue":true}),
         )
         .await?;
         let response = wait_for_response(&mut socket, id).await?;
@@ -275,6 +335,23 @@ async fn fetch_from_target(
                 if actual_host != expected_host {
                     return Err(format!("TLS fallback 跳轉至未授權主機：{actual_host}"));
                 }
+            }
+            // Wait for the official document before waiting for its news DOM.
+            // A verification page cannot satisfy a source-specific selector.
+            if let Some(script) = pending_script.take() {
+                send_command(
+                    &mut socket,
+                    id + 100,
+                    "Runtime.evaluate",
+                    json!({"expression":script, "returnByValue":true, "awaitPromise":true}),
+                )
+                .await?;
+                let response = wait_for_response(&mut socket, id + 100).await?;
+                if let Some(exception) = response.pointer("/result/exceptionDetails") {
+                    return Err(format!("official page script failed: {exception}"));
+                }
+                tokio::time::sleep(Duration::from_secs(3)).await;
+                continue;
             }
             let _ = socket.close(None).await;
             return Ok(html.to_owned());
@@ -328,7 +405,7 @@ async fn wait_for_response(
     };
     tokio::time::timeout(Duration::from_secs(30), receive)
         .await
-        .map_err(|_| "CDP command 等待逾時".to_owned())?
+        .map_err(|_| format!("CDP command {id} 等待逾時"))?
 }
 
 async fn wait_for_event(
@@ -478,5 +555,137 @@ mod tests {
         if let Some(path) = find_browser() {
             assert!(path.is_file());
         }
+    }
+
+    #[test]
+    fn nlma_browser_fallback_parses_real_json_news() {
+        let source = crate::scraper::catalog::find_source("國土管理署").unwrap();
+        let route = source
+            .routes
+            .iter()
+            .find(|route| route.id == "official-json-browser-fallback")
+            .expect("verified same-endpoint browser fallback");
+        assert_eq!(route.kind, "browser");
+        assert_eq!(route.parser, "nlma-json");
+        let records = crate::scraper::adapters::parse_route_records(
+            &source.name,
+            route,
+            include_str!("../tests/fixtures/nlma-browser-20261013.json"),
+        )
+        .unwrap();
+        assert_eq!(records.len(), 2);
+        assert_eq!(records[0].item.date, "2026-10-08");
+        assert!(records[0].item.title.starts_with("中央補助2.45億元"));
+        assert_eq!(
+            records[0].item.link,
+            "https://www.nlma.gov.tw/ch/titlelist/news/17810"
+        );
+        assert!(records[0].item.full_text.starts_with("內政部次長董建宏"));
+        assert_eq!(records[1].item.date, "2026-10-07");
+    }
+
+    #[tokio::test]
+    #[ignore = "requires a system Chrome or Chromium executable"]
+    async fn normal_entry_navigation_preserves_same_session_cookie() {
+        use tokio::io::{AsyncReadExt, AsyncWriteExt};
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let address = listener.local_addr().unwrap();
+        let server = tokio::spawn(async move {
+            loop {
+                let (mut stream, _) = listener.accept().await.unwrap();
+                let mut request = [0_u8; 4096];
+                let received = stream.read(&mut request).await.unwrap();
+                let request = std::str::from_utf8(&request[..received]).unwrap();
+                let is_news = request.starts_with("GET /news ");
+                let body = if is_news && request.contains("official_entry=yes") {
+                    "<html><head><title>News</title></head><body>entered-via-home</body></html>"
+                } else {
+                    "<html><head><title>Home</title></head><body>Home</body></html>"
+                };
+                let response = format!("HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\nSet-Cookie: official_entry=yes; Path=/\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}", body.len());
+                stream.write_all(response.as_bytes()).await.unwrap();
+                stream.shutdown().await.unwrap();
+                if is_news {
+                    break;
+                }
+            }
+        });
+        let entry = format!("http://{address}/home");
+        let captured = fetch_rendered_html_after_with_transport(
+            &format!("http://{address}/news"),
+            None,
+            Some(Duration::from_secs(45)),
+            false,
+            Some(&entry),
+        )
+        .await
+        .unwrap();
+        server.await.unwrap();
+        assert!(captured.contains("entered-via-home"));
+    }
+
+    #[tokio::test]
+    #[ignore = "requires a system Chrome or Chromium executable"]
+    async fn waits_for_challenge_before_running_official_page_script() {
+        use tokio::io::{AsyncReadExt, AsyncWriteExt};
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let address = listener.local_addr().unwrap();
+        let body = r#"<!doctype html><html><head><title>Just a moment...</title></head><body>
+        <script>window._cf_chl_opt = {}; /* /cdn-cgi/challenge-platform/ */
+        setTimeout(() => { document.title = 'Official news'; document.body.innerHTML = '<main id="official-news">News</main>'; }, 4000);
+        </script></body></html>"#;
+        let server = tokio::spawn(async move {
+            let (mut stream, _) = listener.accept().await.unwrap();
+            let mut request = [0_u8; 4096];
+            let received = stream.read(&mut request).await.unwrap();
+            assert!(received > 0);
+            let response = format!("HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}", body.len());
+            stream.write_all(response.as_bytes()).await.unwrap();
+            stream.shutdown().await.unwrap();
+        });
+        let script = "(() => { const news = document.querySelector('#official-news'); if (!news) throw new Error('script ran before official document'); news.dataset.checked = 'yes'; })()";
+        let captured = fetch_rendered_html_after_with_timeout(
+            &format!("http://{address}/news"),
+            Some(script),
+            Duration::from_secs(30),
+        )
+        .await
+        .unwrap();
+        server.await.unwrap();
+        assert!(captured.contains("data-checked=\"yes\""));
+        assert!(!captured.contains("Just a moment..."));
+    }
+
+    #[tokio::test]
+    #[ignore = "requires a system Chrome or Chromium executable"]
+    async fn captures_json_document_text_without_chrome_html_viewer() {
+        use tokio::io::{AsyncReadExt, AsyncWriteExt};
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let address = listener.local_addr().unwrap();
+        let json_body = r#"[{"title":"原文 <b>& 符號","content":"<p>正文</p>"}]"#;
+        let server = tokio::spawn(async move {
+            let (mut stream, _) = listener.accept().await.unwrap();
+            let mut request = [0_u8; 4096];
+            let received = stream.read(&mut request).await.unwrap();
+            assert!(std::str::from_utf8(&request[..received])
+                .unwrap()
+                .starts_with("GET /news.json "));
+            let response = format!(
+                "HTTP/1.1 200 OK\r\nContent-Type: application/json; charset=utf-8\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{json_body}",
+                json_body.len()
+            );
+            stream.write_all(response.as_bytes()).await.unwrap();
+            stream.shutdown().await.unwrap();
+        });
+        let captured = fetch_rendered_html_after_with_timeout(
+            &format!("http://{address}/news.json"),
+            None,
+            Duration::from_secs(30),
+        )
+        .await
+        .unwrap();
+        server.await.unwrap();
+        assert_eq!(captured, json_body);
+        assert!(serde_json::from_str::<Value>(&captured).unwrap().is_array());
     }
 }

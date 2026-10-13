@@ -1,0 +1,2335 @@
+{
+  "ministry": "文化部、陸委會",
+  "checked_at": "2026-10-12",
+  "selected_week_start": "2026-10-05",
+  "entries": [
+    {
+      "id": "boch",
+      "name": "文化部文化資產局",
+      "official_name": "文化部文化資產局",
+      "parent_ministry": "文化部",
+      "parent_source": "文化部",
+      "relationship": "subordinate_agency",
+      "evidence_urls": [
+        "https://personnel.moc.gov.tw/template/belong.ug"
+      ],
+      "homepage": "https://www.boch.gov.tw/",
+      "news_urls": [],
+      "rss_urls": [],
+      "status": "pending",
+      "reason": "新聞列表未完成可解析發布日期驗證。"
+    },
+    {
+      "id": "bamid",
+      "name": "文化部影視及流行音樂產業局",
+      "official_name": "文化部影視及流行音樂產業局",
+      "parent_ministry": "文化部",
+      "parent_source": "文化部",
+      "relationship": "subordinate_agency",
+      "evidence_urls": [
+        "https://personnel.moc.gov.tw/template/belong.ug"
+      ],
+      "homepage": "https://www.bamid.gov.tw/",
+      "news_urls": [
+        "https://www.bamid.gov.tw/News.aspx?n=3482&sms=12948"
+      ],
+      "rss_urls": [
+        "https://www.bamid.gov.tw/OpenData.aspx?SN=08AB5E0655833283"
+      ],
+      "status": "pending",
+      "reason": "官方 HTTP 回應與固定樣本的發布日期、標題、正式文章連結已核實；Rust 共用解析及篩選驗證通過，等待主 agent 最終啟用名單與完整週收集驗證。",
+      "fixtures": [
+        {
+          "route_id": "official-rss",
+          "path": "src-tauri/tests/fixtures/four-ministry-culture-mac/bamid.xml"
+        },
+        {
+          "route_id": "official-news",
+          "path": "src-tauri/tests/fixtures/four-ministry-culture-mac/bamid.html"
+        }
+      ],
+      "source_definition": {
+        "name": "文化部影視及流行音樂產業局",
+        "parent_ministry": "文化部",
+        "urls": [
+          "https://www.bamid.gov.tw/OpenData.aspx?SN=08AB5E0655833283",
+          "https://www.bamid.gov.tw/News.aspx?n=3482&sms=12948"
+        ],
+        "routes": [
+          {
+            "id": "official-rss",
+            "url": "https://www.bamid.gov.tw/OpenData.aspx?SN=08AB5E0655833283",
+            "kind": "rss",
+            "parser": "standard-rss",
+            "priority": 1,
+            "coverage_reduced": true
+          },
+          {
+            "id": "official-news",
+            "url": "https://www.bamid.gov.tw/News.aspx?n=3482&sms=12948",
+            "kind": "html",
+            "parser": "standard",
+            "priority": 2,
+            "pagination": {
+              "parameter": "page",
+              "first_page": 1,
+              "max_pages": 20
+            },
+            "selectors": {
+              "item": "tr",
+              "link": "a[href*=\"News_Content\"]",
+              "title": "a[href*=\"News_Content\"]",
+              "date": "td[data-title=\"日期\"] span, td[data-title=\"發布日期\"] span, td[data-title=\"發佈日期\"] span, td[data-title=\"公告開始日期\"] span, td[data-title=\"上版日期\"] span",
+              "category": "td[data-title=\"類別\"] span"
+            }
+          }
+        ]
+      },
+      "verification": {
+        "http_status": 200,
+        "sample_items": 6,
+        "selected_week_start": "2026-10-05",
+        "date_basis": "official published list or RSS pubDate",
+        "rss_must_supplement_html": true,
+        "rust_fixture_validation": "passed",
+        "rust_fixture_checked_at": "2026-10-13",
+        "activation_review": "awaiting_root_final_catalog_and_live_week_validation",
+        "routes": [
+          {
+            "route_id": "official-rss",
+            "raw_items": 3,
+            "retained_items": 3,
+            "excluded_items": 0
+          },
+          {
+            "route_id": "official-news",
+            "raw_items": 6,
+            "retained_items": 6,
+            "excluded_items": 0
+          }
+        ]
+      }
+    },
+    {
+      "id": "ncfta",
+      "name": "國立傳統藝術中心",
+      "official_name": "國立傳統藝術中心",
+      "parent_ministry": "文化部",
+      "parent_source": "文化部",
+      "relationship": "subordinate_agency",
+      "evidence_urls": [
+        "https://personnel.moc.gov.tw/template/belong.ug"
+      ],
+      "homepage": "https://www.ncfta.gov.tw/",
+      "news_urls": [
+        "https://www.ncfta.gov.tw/News4.aspx?n=5178&sms=13940"
+      ],
+      "rss_urls": [
+        "https://www.ncfta.gov.tw/OpenData.aspx?SN=E81DC2F252BA30BD"
+      ],
+      "status": "pending",
+      "reason": "官方 HTTP 回應與固定樣本的發布日期、標題、正式文章連結已核實；Rust 共用解析及篩選驗證通過，等待主 agent 最終啟用名單與完整週收集驗證。",
+      "fixtures": [
+        {
+          "route_id": "official-rss",
+          "path": "src-tauri/tests/fixtures/four-ministry-culture-mac/ncfta.xml"
+        },
+        {
+          "route_id": "official-news",
+          "path": "src-tauri/tests/fixtures/four-ministry-culture-mac/ncfta.html"
+        }
+      ],
+      "source_definition": {
+        "name": "國立傳統藝術中心",
+        "parent_ministry": "文化部",
+        "urls": [
+          "https://www.ncfta.gov.tw/OpenData.aspx?SN=E81DC2F252BA30BD",
+          "https://www.ncfta.gov.tw/News4.aspx?n=5178&sms=13940"
+        ],
+        "routes": [
+          {
+            "id": "official-rss",
+            "url": "https://www.ncfta.gov.tw/OpenData.aspx?SN=E81DC2F252BA30BD",
+            "kind": "rss",
+            "parser": "standard-rss",
+            "priority": 1,
+            "coverage_reduced": true
+          },
+          {
+            "id": "official-news",
+            "url": "https://www.ncfta.gov.tw/News4.aspx?n=5178&sms=13940",
+            "kind": "html",
+            "parser": "standard",
+            "priority": 2,
+            "pagination": {
+              "parameter": "page",
+              "first_page": 1,
+              "max_pages": 20
+            },
+            "selectors": {
+              "item": "a.div[href*=\"News_Content\"]",
+              "link": "a",
+              "title": ".caption",
+              "date": ".mark"
+            }
+          }
+        ]
+      },
+      "verification": {
+        "http_status": 200,
+        "sample_items": 6,
+        "selected_week_start": "2026-10-05",
+        "date_basis": "official published list or RSS pubDate",
+        "rss_must_supplement_html": true,
+        "rust_fixture_validation": "passed",
+        "rust_fixture_checked_at": "2026-10-13",
+        "activation_review": "awaiting_root_final_catalog_and_live_week_validation",
+        "routes": [
+          {
+            "route_id": "official-rss",
+            "raw_items": 3,
+            "retained_items": 3,
+            "excluded_items": 0
+          },
+          {
+            "route_id": "official-news",
+            "raw_items": 6,
+            "retained_items": 6,
+            "excluded_items": 0
+          }
+        ],
+        "pagination_evidence": {
+          "next_page_url": "https://www.ncfta.gov.tw/News4.aspx?n=5178&sms=13940&page=2&PageSize=20",
+          "parameter": "page",
+          "basis": "官方列表下一頁連結已由前輪 HTTP 查核核實"
+        }
+      }
+    },
+    {
+      "id": "yatsen",
+      "name": "國立國父紀念館",
+      "official_name": "國立國父紀念館",
+      "parent_ministry": "文化部",
+      "parent_source": "文化部",
+      "relationship": "subordinate_agency",
+      "evidence_urls": [
+        "https://personnel.moc.gov.tw/template/belong.ug"
+      ],
+      "homepage": "https://www.yatsen.gov.tw/",
+      "news_urls": [
+        "https://www.yatsen.gov.tw/News.aspx?n=6519&sms=14501"
+      ],
+      "rss_urls": [],
+      "status": "pending",
+      "reason": "官方 HTTP 回應與固定樣本的發布日期、標題、正式文章連結已核實；Rust 共用解析及篩選驗證通過，等待主 agent 最終啟用名單與完整週收集驗證。",
+      "fixtures": [
+        {
+          "route_id": "official-news",
+          "path": "src-tauri/tests/fixtures/four-ministry-culture-mac/yatsen.html"
+        }
+      ],
+      "source_definition": {
+        "name": "國立國父紀念館",
+        "parent_ministry": "文化部",
+        "urls": [
+          "https://www.yatsen.gov.tw/News.aspx?n=6519&sms=14501"
+        ],
+        "routes": [
+          {
+            "id": "official-news",
+            "url": "https://www.yatsen.gov.tw/News.aspx?n=6519&sms=14501",
+            "kind": "html",
+            "parser": "standard",
+            "priority": 1,
+            "pagination": {
+              "parameter": "page",
+              "first_page": 1,
+              "max_pages": 20
+            },
+            "selectors": {
+              "item": "tr",
+              "link": "a[href*=\"News_Content\"]",
+              "title": "a[href*=\"News_Content\"]",
+              "date": "td[data-title=\"日期\"] span, td[data-title=\"發布日期\"] span, td[data-title=\"發佈日期\"] span, td[data-title=\"公告開始日期\"] span, td[data-title=\"上版日期\"] span",
+              "category": "td[data-title=\"類別\"] span"
+            }
+          }
+        ]
+      },
+      "verification": {
+        "http_status": 200,
+        "sample_items": 6,
+        "selected_week_start": "2026-10-05",
+        "date_basis": "official published list or RSS pubDate",
+        "rss_must_supplement_html": false,
+        "rust_fixture_validation": "passed",
+        "rust_fixture_checked_at": "2026-10-13",
+        "activation_review": "awaiting_root_final_catalog_and_live_week_validation",
+        "routes": [
+          {
+            "route_id": "official-news",
+            "raw_items": 6,
+            "retained_items": 6,
+            "excluded_items": 0
+          }
+        ]
+      }
+    },
+    {
+      "id": "cksmh",
+      "name": "國立中正紀念堂管理處",
+      "official_name": "國立中正紀念堂管理處",
+      "parent_ministry": "文化部",
+      "parent_source": "文化部",
+      "relationship": "subordinate_agency",
+      "evidence_urls": [
+        "https://personnel.moc.gov.tw/template/belong.ug"
+      ],
+      "homepage": "https://www.cksmh.gov.tw/",
+      "news_urls": [
+        "https://www.cksmh.gov.tw/News.aspx?n=6036&sms=14424"
+      ],
+      "rss_urls": [],
+      "status": "pending",
+      "reason": "官方 HTTP 回應與固定樣本的發布日期、標題、正式文章連結已核實；Rust 共用解析及篩選驗證通過，等待主 agent 最終啟用名單與完整週收集驗證。",
+      "fixtures": [
+        {
+          "route_id": "official-news",
+          "path": "src-tauri/tests/fixtures/four-ministry-culture-mac/cksmh.html"
+        }
+      ],
+      "source_definition": {
+        "name": "國立中正紀念堂管理處",
+        "parent_ministry": "文化部",
+        "urls": [
+          "https://www.cksmh.gov.tw/News.aspx?n=6036&sms=14424"
+        ],
+        "routes": [
+          {
+            "id": "official-news",
+            "url": "https://www.cksmh.gov.tw/News.aspx?n=6036&sms=14424",
+            "kind": "html",
+            "parser": "standard",
+            "priority": 1,
+            "selectors": {
+              "item": "tr",
+              "link": "a[href*=\"News_Content\"]",
+              "title": "a[href*=\"News_Content\"]",
+              "date": "td[data-title=\"日期\"] span, td[data-title=\"發布日期\"] span, td[data-title=\"發佈日期\"] span, td[data-title=\"公告開始日期\"] span, td[data-title=\"上版日期\"] span",
+              "category": "td[data-title=\"類別\"] span"
+            }
+          }
+        ]
+      },
+      "verification": {
+        "http_status": 200,
+        "sample_items": 6,
+        "selected_week_start": "2026-10-05",
+        "date_basis": "official published list or RSS pubDate",
+        "rss_must_supplement_html": false,
+        "rust_fixture_validation": "passed",
+        "rust_fixture_checked_at": "2026-10-13",
+        "activation_review": "awaiting_root_final_catalog_and_live_week_validation",
+        "routes": [
+          {
+            "route_id": "official-news",
+            "raw_items": 6,
+            "retained_items": 6,
+            "excluded_items": 0
+          }
+        ]
+      }
+    },
+    {
+      "id": "nmh",
+      "name": "國立歷史博物館",
+      "official_name": "國立歷史博物館",
+      "parent_ministry": "文化部",
+      "parent_source": "文化部",
+      "relationship": "subordinate_agency",
+      "evidence_urls": [
+        "https://personnel.moc.gov.tw/template/belong.ug"
+      ],
+      "homepage": "https://www.nmh.gov.tw/",
+      "news_urls": [
+        "https://www.nmh.gov.tw/News.aspx?n=7149&sms=14802"
+      ],
+      "rss_urls": [],
+      "status": "pending",
+      "reason": "官方 HTTP 回應與固定樣本的發布日期、標題、正式文章連結已核實；Rust 共用解析及篩選驗證通過，等待主 agent 最終啟用名單與完整週收集驗證。",
+      "fixtures": [
+        {
+          "route_id": "official-news",
+          "path": "src-tauri/tests/fixtures/four-ministry-culture-mac/nmh.html"
+        }
+      ],
+      "source_definition": {
+        "name": "國立歷史博物館",
+        "parent_ministry": "文化部",
+        "urls": [
+          "https://www.nmh.gov.tw/News.aspx?n=7149&sms=14802"
+        ],
+        "routes": [
+          {
+            "id": "official-news",
+            "url": "https://www.nmh.gov.tw/News.aspx?n=7149&sms=14802",
+            "kind": "html",
+            "parser": "standard",
+            "priority": 1,
+            "pagination": {
+              "parameter": "page",
+              "first_page": 1,
+              "max_pages": 20
+            },
+            "selectors": {
+              "item": "tr",
+              "link": "a[href*=\"News_Content\"]",
+              "title": "a[href*=\"News_Content\"]",
+              "date": "td[data-title=\"日期\"] span, td[data-title=\"發布日期\"] span, td[data-title=\"發佈日期\"] span, td[data-title=\"公告開始日期\"] span, td[data-title=\"上版日期\"] span",
+              "category": "td[data-title=\"類別\"] span"
+            }
+          }
+        ]
+      },
+      "verification": {
+        "http_status": 200,
+        "sample_items": 6,
+        "selected_week_start": "2026-10-05",
+        "date_basis": "official published list or RSS pubDate",
+        "rss_must_supplement_html": false,
+        "rust_fixture_validation": "passed",
+        "rust_fixture_checked_at": "2026-10-13",
+        "activation_review": "awaiting_root_final_catalog_and_live_week_validation",
+        "routes": [
+          {
+            "route_id": "official-news",
+            "raw_items": 6,
+            "retained_items": 6,
+            "excluded_items": 0
+          }
+        ]
+      }
+    },
+    {
+      "id": "ntmofa",
+      "name": "國立臺灣美術館",
+      "official_name": "國立臺灣美術館",
+      "parent_ministry": "文化部",
+      "parent_source": "文化部",
+      "relationship": "subordinate_agency",
+      "evidence_urls": [
+        "https://personnel.moc.gov.tw/template/belong.ug"
+      ],
+      "homepage": "https://www.ntmofa.gov.tw/",
+      "news_urls": [
+        "https://www.ntmofa.gov.tw/News.aspx?n=1384&sms=11441"
+      ],
+      "rss_urls": [
+        "https://www.ntmofa.gov.tw/OpenData.aspx?SN=2AA80C540D9DCB78"
+      ],
+      "status": "pending",
+      "reason": "官方 HTTP 回應與固定樣本的發布日期、標題、正式文章連結已核實；Rust 共用解析及篩選驗證通過，等待主 agent 最終啟用名單與完整週收集驗證。",
+      "fixtures": [
+        {
+          "route_id": "official-rss",
+          "path": "src-tauri/tests/fixtures/four-ministry-culture-mac/ntmofa.xml"
+        },
+        {
+          "route_id": "official-news",
+          "path": "src-tauri/tests/fixtures/four-ministry-culture-mac/ntmofa.html"
+        }
+      ],
+      "source_definition": {
+        "name": "國立臺灣美術館",
+        "parent_ministry": "文化部",
+        "urls": [
+          "https://www.ntmofa.gov.tw/OpenData.aspx?SN=2AA80C540D9DCB78",
+          "https://www.ntmofa.gov.tw/News.aspx?n=1384&sms=11441"
+        ],
+        "routes": [
+          {
+            "id": "official-rss",
+            "url": "https://www.ntmofa.gov.tw/OpenData.aspx?SN=2AA80C540D9DCB78",
+            "kind": "rss",
+            "parser": "standard-rss",
+            "priority": 1,
+            "coverage_reduced": true
+          },
+          {
+            "id": "official-news",
+            "url": "https://www.ntmofa.gov.tw/News.aspx?n=1384&sms=11441",
+            "kind": "html",
+            "parser": "standard",
+            "priority": 2,
+            "pagination": {
+              "parameter": "page",
+              "first_page": 1,
+              "max_pages": 20
+            },
+            "selectors": {
+              "item": "tr",
+              "link": "a[href*=\"News_Content\"]",
+              "title": "a[href*=\"News_Content\"]",
+              "date": "td[data-title=\"日期\"] span, td[data-title=\"發布日期\"] span, td[data-title=\"發佈日期\"] span, td[data-title=\"公告開始日期\"] span, td[data-title=\"上版日期\"] span",
+              "category": "td[data-title=\"類別\"] span"
+            }
+          }
+        ]
+      },
+      "verification": {
+        "http_status": 200,
+        "sample_items": 6,
+        "selected_week_start": "2026-10-05",
+        "date_basis": "official published list or RSS pubDate",
+        "rss_must_supplement_html": true,
+        "rust_fixture_validation": "passed",
+        "rust_fixture_checked_at": "2026-10-13",
+        "activation_review": "awaiting_root_final_catalog_and_live_week_validation",
+        "routes": [
+          {
+            "route_id": "official-rss",
+            "raw_items": 3,
+            "retained_items": 3,
+            "excluded_items": 0
+          },
+          {
+            "route_id": "official-news",
+            "raw_items": 6,
+            "retained_items": 6,
+            "excluded_items": 0
+          }
+        ]
+      }
+    },
+    {
+      "id": "ntcri",
+      "name": "國立臺灣工藝研究發展中心",
+      "official_name": "國立臺灣工藝研究發展中心",
+      "parent_ministry": "文化部",
+      "parent_source": "文化部",
+      "relationship": "subordinate_agency",
+      "evidence_urls": [
+        "https://personnel.moc.gov.tw/template/belong.ug"
+      ],
+      "homepage": "https://www.ntcri.gov.tw/",
+      "news_urls": [],
+      "rss_urls": [],
+      "status": "pending",
+      "reason": "新聞列表未完成可解析發布日期驗證。"
+    },
+    {
+      "id": "ntm",
+      "name": "國立臺灣博物館",
+      "official_name": "國立臺灣博物館",
+      "parent_ministry": "文化部",
+      "parent_source": "文化部",
+      "relationship": "subordinate_agency",
+      "evidence_urls": [
+        "https://personnel.moc.gov.tw/template/belong.ug"
+      ],
+      "homepage": "https://www.ntm.gov.tw/",
+      "news_urls": [
+        "https://www.ntm.gov.tw/News.aspx?n=5651&sms=14296"
+      ],
+      "rss_urls": [],
+      "status": "pending",
+      "reason": "官方 HTTP 回應與固定樣本的發布日期、標題、正式文章連結已核實；Rust 共用解析及篩選驗證通過，等待主 agent 最終啟用名單與完整週收集驗證。",
+      "fixtures": [
+        {
+          "route_id": "official-news",
+          "path": "src-tauri/tests/fixtures/four-ministry-culture-mac/ntm.html"
+        }
+      ],
+      "source_definition": {
+        "name": "國立臺灣博物館",
+        "parent_ministry": "文化部",
+        "urls": [
+          "https://www.ntm.gov.tw/News.aspx?n=5651&sms=14296"
+        ],
+        "routes": [
+          {
+            "id": "official-news",
+            "url": "https://www.ntm.gov.tw/News.aspx?n=5651&sms=14296",
+            "kind": "html",
+            "parser": "standard",
+            "priority": 1,
+            "pagination": {
+              "parameter": "page",
+              "first_page": 1,
+              "max_pages": 20
+            },
+            "selectors": {
+              "item": "tr",
+              "link": "a[href*=\"News_Content\"]",
+              "title": "a[href*=\"News_Content\"]",
+              "date": "td[data-title=\"日期\"] span, td[data-title=\"發布日期\"] span, td[data-title=\"發佈日期\"] span, td[data-title=\"公告開始日期\"] span, td[data-title=\"上版日期\"] span",
+              "category": "td[data-title=\"類別\"] span"
+            }
+          }
+        ]
+      },
+      "verification": {
+        "http_status": 200,
+        "sample_items": 6,
+        "selected_week_start": "2026-10-05",
+        "date_basis": "official published list or RSS pubDate",
+        "rss_must_supplement_html": false,
+        "rust_fixture_validation": "passed",
+        "rust_fixture_checked_at": "2026-10-13",
+        "activation_review": "awaiting_root_final_catalog_and_live_week_validation",
+        "routes": [
+          {
+            "route_id": "official-news",
+            "raw_items": 6,
+            "retained_items": 6,
+            "excluded_items": 0
+          }
+        ]
+      }
+    },
+    {
+      "id": "nmp",
+      "name": "國立臺灣史前文化博物館",
+      "official_name": "國立臺灣史前文化博物館",
+      "parent_ministry": "文化部",
+      "parent_source": "文化部",
+      "relationship": "subordinate_agency",
+      "evidence_urls": [
+        "https://personnel.moc.gov.tw/template/belong.ug"
+      ],
+      "homepage": "https://www.nmp.gov.tw/",
+      "news_urls": [
+        "https://www.nmp.gov.tw/News.aspx?n=8869&sms=11572"
+      ],
+      "rss_urls": [],
+      "status": "pending",
+      "reason": "官方 HTTP 回應與固定樣本的發布日期、標題、正式文章連結已核實；Rust 共用解析及篩選驗證通過，等待主 agent 最終啟用名單與完整週收集驗證。",
+      "fixtures": [
+        {
+          "route_id": "official-news",
+          "path": "src-tauri/tests/fixtures/four-ministry-culture-mac/nmp.html"
+        }
+      ],
+      "source_definition": {
+        "name": "國立臺灣史前文化博物館",
+        "parent_ministry": "文化部",
+        "urls": [
+          "https://www.nmp.gov.tw/News.aspx?n=8869&sms=11572"
+        ],
+        "routes": [
+          {
+            "id": "official-news",
+            "url": "https://www.nmp.gov.tw/News.aspx?n=8869&sms=11572",
+            "kind": "html",
+            "parser": "standard",
+            "priority": 1,
+            "pagination": {
+              "parameter": "page",
+              "first_page": 1,
+              "max_pages": 20
+            },
+            "selectors": {
+              "item": "tr",
+              "link": "a[href*=\"News_Content\"]",
+              "title": "a[href*=\"News_Content\"]",
+              "date": "td[data-title=\"日期\"] span, td[data-title=\"發布日期\"] span, td[data-title=\"發佈日期\"] span, td[data-title=\"公告開始日期\"] span, td[data-title=\"上版日期\"] span",
+              "category": "td[data-title=\"類別\"] span"
+            }
+          }
+        ]
+      },
+      "verification": {
+        "http_status": 200,
+        "sample_items": 6,
+        "selected_week_start": "2026-10-05",
+        "date_basis": "official published list or RSS pubDate",
+        "rss_must_supplement_html": false,
+        "rust_fixture_validation": "passed",
+        "rust_fixture_checked_at": "2026-10-13",
+        "activation_review": "awaiting_root_final_catalog_and_live_week_validation",
+        "routes": [
+          {
+            "route_id": "official-news",
+            "raw_items": 6,
+            "retained_items": 3,
+            "excluded_items": 3
+          }
+        ]
+      }
+    },
+    {
+      "id": "nhrm",
+      "name": "國家人權博物館",
+      "official_name": "國家人權博物館",
+      "parent_ministry": "文化部",
+      "parent_source": "文化部",
+      "relationship": "subordinate_agency",
+      "evidence_urls": [
+        "https://personnel.moc.gov.tw/template/belong.ug"
+      ],
+      "homepage": "https://www.nhrm.gov.tw/",
+      "news_urls": [
+        "https://www.nhrm.gov.tw/w/nhrm/News?type=21082820465793340"
+      ],
+      "rss_urls": [],
+      "status": "pending",
+      "reason": "官方 HTTP 回應與固定樣本的發布日期、標題、正式文章連結已核實；Rust 共用解析及篩選驗證通過，等待主 agent 最終啟用名單與完整週收集驗證。",
+      "source_definition": {
+        "name": "國家人權博物館",
+        "parent_ministry": "文化部",
+        "urls": [
+          "https://www.nhrm.gov.tw/w/nhrm/News?type=21082820465793340"
+        ],
+        "routes": [
+          {
+            "id": "official-news-html",
+            "url": "https://www.nhrm.gov.tw/w/nhrm/News?type=21082820465793340",
+            "kind": "html",
+            "parser": "standard",
+            "priority": 1,
+            "selectors": {
+              "item": "a.news-item",
+              "link": "a[href]",
+              "title": ".title",
+              "date": ".date",
+              "category_label": "新聞專區"
+            }
+          }
+        ]
+      },
+      "fixtures": [
+        {
+          "route_id": "official-news-html",
+          "path": "src-tauri/tests/fixtures/four-ministry-culture-mac/nhrm-followup.html"
+        }
+      ],
+      "attempts": [
+        {
+          "url": "https://www.nhrm.gov.tw/w/nhrm/News?type=21082820465793340",
+          "status": 200,
+          "phase": "followup_dated_html"
+        }
+      ],
+      "verification": {
+        "rust_fixture_validation": "passed",
+        "rust_fixture_checked_at": "2026-10-13",
+        "activation_review": "awaiting_root_final_catalog_and_live_week_validation",
+        "routes": [
+          {
+            "route_id": "official-news-html",
+            "raw_items": 3,
+            "retained_items": 3,
+            "excluded_items": 0
+          }
+        ]
+      }
+    },
+    {
+      "id": "ntso",
+      "name": "國立臺灣交響樂團",
+      "official_name": "國立臺灣交響樂團",
+      "parent_ministry": "文化部",
+      "parent_source": "文化部",
+      "relationship": "subordinate_agency",
+      "evidence_urls": [
+        "https://personnel.moc.gov.tw/template/belong.ug"
+      ],
+      "homepage": "https://www.ntso.gov.tw/",
+      "news_urls": [
+        "https://www.ntso.gov.tw/News.aspx?n=2225&sms=11579"
+      ],
+      "rss_urls": [],
+      "status": "pending",
+      "reason": "官方 HTTP 回應與固定樣本的發布日期、標題、正式文章連結已核實；Rust 共用解析及篩選驗證通過，等待主 agent 最終啟用名單與完整週收集驗證。",
+      "fixtures": [
+        {
+          "route_id": "official-news",
+          "path": "src-tauri/tests/fixtures/four-ministry-culture-mac/ntso.html"
+        }
+      ],
+      "source_definition": {
+        "name": "國立臺灣交響樂團",
+        "parent_ministry": "文化部",
+        "urls": [
+          "https://www.ntso.gov.tw/News.aspx?n=2225&sms=11579"
+        ],
+        "routes": [
+          {
+            "id": "official-news",
+            "url": "https://www.ntso.gov.tw/News.aspx?n=2225&sms=11579",
+            "kind": "html",
+            "parser": "standard",
+            "priority": 1,
+            "selectors": {
+              "item": "tr",
+              "link": "a[href*=\"News_Content\"]",
+              "title": "a[href*=\"News_Content\"]",
+              "date": "td[data-title=\"日期\"] span, td[data-title=\"發布日期\"] span, td[data-title=\"發佈日期\"] span, td[data-title=\"公告開始日期\"] span, td[data-title=\"上版日期\"] span",
+              "category": "td[data-title=\"類別\"] span"
+            }
+          }
+        ]
+      },
+      "verification": {
+        "http_status": 200,
+        "sample_items": 6,
+        "selected_week_start": "2026-10-05",
+        "date_basis": "official published list or RSS pubDate",
+        "rss_must_supplement_html": false,
+        "rust_fixture_validation": "passed",
+        "rust_fixture_checked_at": "2026-10-13",
+        "activation_review": "awaiting_root_final_catalog_and_live_week_validation",
+        "routes": [
+          {
+            "route_id": "official-news",
+            "raw_items": 6,
+            "retained_items": 6,
+            "excluded_items": 0
+          }
+        ]
+      }
+    },
+    {
+      "id": "nmth",
+      "name": "國立臺灣歷史博物館",
+      "official_name": "國立臺灣歷史博物館",
+      "parent_ministry": "文化部",
+      "parent_source": "文化部",
+      "relationship": "subordinate_agency",
+      "evidence_urls": [
+        "https://personnel.moc.gov.tw/template/belong.ug"
+      ],
+      "homepage": "https://www.nmth.gov.tw/",
+      "news_urls": [
+        "https://www.nmth.gov.tw/News.aspx?n=4233&sms=13200"
+      ],
+      "rss_urls": [],
+      "status": "pending",
+      "reason": "官方 HTTP 回應與固定樣本的發布日期、標題、正式文章連結已核實；Rust 共用解析及篩選驗證通過，等待主 agent 最終啟用名單與完整週收集驗證。",
+      "fixtures": [
+        {
+          "route_id": "official-news",
+          "path": "src-tauri/tests/fixtures/four-ministry-culture-mac/nmth.html"
+        }
+      ],
+      "source_definition": {
+        "name": "國立臺灣歷史博物館",
+        "parent_ministry": "文化部",
+        "urls": [
+          "https://www.nmth.gov.tw/News.aspx?n=4233&sms=13200"
+        ],
+        "routes": [
+          {
+            "id": "official-news",
+            "url": "https://www.nmth.gov.tw/News.aspx?n=4233&sms=13200",
+            "kind": "html",
+            "parser": "standard",
+            "priority": 1,
+            "pagination": {
+              "parameter": "page",
+              "first_page": 1,
+              "max_pages": 20
+            },
+            "selectors": {
+              "item": "tr",
+              "link": "a[href*=\"News_Content\"]",
+              "title": "a[href*=\"News_Content\"]",
+              "date": "td[data-title=\"日期\"] span, td[data-title=\"發布日期\"] span, td[data-title=\"發佈日期\"] span, td[data-title=\"公告開始日期\"] span, td[data-title=\"上版日期\"] span",
+              "category": "td[data-title=\"類別\"] span"
+            }
+          }
+        ]
+      },
+      "verification": {
+        "http_status": 200,
+        "sample_items": 6,
+        "selected_week_start": "2026-10-05",
+        "date_basis": "official published list or RSS pubDate",
+        "rss_must_supplement_html": false,
+        "rust_fixture_validation": "passed",
+        "rust_fixture_checked_at": "2026-10-13",
+        "activation_review": "awaiting_root_final_catalog_and_live_week_validation",
+        "routes": [
+          {
+            "route_id": "official-news",
+            "raw_items": 6,
+            "retained_items": 2,
+            "excluded_items": 4
+          }
+        ]
+      }
+    },
+    {
+      "id": "nmtl",
+      "name": "國立臺灣文學館",
+      "official_name": "國立臺灣文學館",
+      "parent_ministry": "文化部",
+      "parent_source": "文化部",
+      "relationship": "subordinate_agency",
+      "evidence_urls": [
+        "https://personnel.moc.gov.tw/template/belong.ug"
+      ],
+      "homepage": "https://www.nmtl.gov.tw/",
+      "news_urls": [
+        "https://www.nmtl.gov.tw/News.aspx?n=3891&sms=13121"
+      ],
+      "rss_urls": [],
+      "status": "pending",
+      "reason": "官方 HTTP 回應與固定樣本的發布日期、標題、正式文章連結已核實；Rust 共用解析及篩選驗證通過，等待主 agent 最終啟用名單與完整週收集驗證。",
+      "fixtures": [
+        {
+          "route_id": "official-news",
+          "path": "src-tauri/tests/fixtures/four-ministry-culture-mac/nmtl.html"
+        }
+      ],
+      "source_definition": {
+        "name": "國立臺灣文學館",
+        "parent_ministry": "文化部",
+        "urls": [
+          "https://www.nmtl.gov.tw/News.aspx?n=3891&sms=13121"
+        ],
+        "routes": [
+          {
+            "id": "official-news",
+            "url": "https://www.nmtl.gov.tw/News.aspx?n=3891&sms=13121",
+            "kind": "html",
+            "parser": "standard",
+            "priority": 1,
+            "pagination": {
+              "parameter": "page",
+              "first_page": 1,
+              "max_pages": 20
+            },
+            "selectors": {
+              "item": "tr",
+              "link": "a[href*=\"News_Content\"]",
+              "title": "a[href*=\"News_Content\"]",
+              "date": "td[data-title=\"日期\"] span, td[data-title=\"發布日期\"] span, td[data-title=\"發佈日期\"] span, td[data-title=\"公告開始日期\"] span, td[data-title=\"上版日期\"] span",
+              "category": "td[data-title=\"類別\"] span"
+            }
+          }
+        ]
+      },
+      "verification": {
+        "http_status": 200,
+        "sample_items": 6,
+        "selected_week_start": "2026-10-05",
+        "date_basis": "official published list or RSS pubDate",
+        "rss_must_supplement_html": false,
+        "rust_fixture_validation": "passed",
+        "rust_fixture_checked_at": "2026-10-13",
+        "activation_review": "awaiting_root_final_catalog_and_live_week_validation",
+        "routes": [
+          {
+            "route_id": "official-news",
+            "raw_items": 6,
+            "retained_items": 4,
+            "excluded_items": 2
+          }
+        ]
+      }
+    },
+    {
+      "id": "hc",
+      "name": "國立新竹生活美學館",
+      "official_name": "國立新竹生活美學館",
+      "parent_ministry": "文化部",
+      "parent_source": "國立臺灣美術館",
+      "relationship": "subordinate_agency",
+      "evidence_urls": [
+        "https://personnel.moc.gov.tw/template/belong.ug",
+        "https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=H0000109"
+      ],
+      "homepage": "https://www.nhclac.gov.tw/",
+      "news_urls": [
+        "https://www.nhclac.gov.tw/News.aspx?n=5190&sms=14164"
+      ],
+      "rss_urls": [
+        "https://www.nhclac.gov.tw/OpenData.aspx?SN=BB3A843E009CE261"
+      ],
+      "status": "pending",
+      "reason": "官方 HTTP 回應與固定樣本的發布日期、標題、正式文章連結已核實；Rust 共用解析及篩選驗證通過，等待主 agent 最終啟用名單與完整週收集驗證。",
+      "fixtures": [
+        {
+          "route_id": "official-rss",
+          "path": "src-tauri/tests/fixtures/four-ministry-culture-mac/hc.xml"
+        },
+        {
+          "route_id": "official-news",
+          "path": "src-tauri/tests/fixtures/four-ministry-culture-mac/hc.html"
+        }
+      ],
+      "source_definition": {
+        "name": "國立新竹生活美學館",
+        "parent_ministry": "文化部",
+        "urls": [
+          "https://www.nhclac.gov.tw/OpenData.aspx?SN=BB3A843E009CE261",
+          "https://www.nhclac.gov.tw/News.aspx?n=5190&sms=14164"
+        ],
+        "routes": [
+          {
+            "id": "official-rss",
+            "url": "https://www.nhclac.gov.tw/OpenData.aspx?SN=BB3A843E009CE261",
+            "kind": "rss",
+            "parser": "standard-rss",
+            "priority": 1,
+            "coverage_reduced": true
+          },
+          {
+            "id": "official-news",
+            "url": "https://www.nhclac.gov.tw/News.aspx?n=5190&sms=14164",
+            "kind": "html",
+            "parser": "standard",
+            "priority": 2,
+            "selectors": {
+              "item": "tr",
+              "link": "a[href*=\"News_Content\"]",
+              "title": "a[href*=\"News_Content\"]",
+              "date": "td[data-title=\"日期\"] span, td[data-title=\"發布日期\"] span, td[data-title=\"發佈日期\"] span, td[data-title=\"公告開始日期\"] span, td[data-title=\"上版日期\"] span",
+              "category": "td[data-title=\"類別\"] span"
+            }
+          }
+        ]
+      },
+      "verification": {
+        "http_status": 200,
+        "sample_items": 6,
+        "selected_week_start": "2026-10-05",
+        "date_basis": "official published list or RSS pubDate",
+        "rss_must_supplement_html": true,
+        "rust_fixture_validation": "passed",
+        "rust_fixture_checked_at": "2026-10-13",
+        "activation_review": "awaiting_root_final_catalog_and_live_week_validation",
+        "routes": [
+          {
+            "route_id": "official-rss",
+            "raw_items": 5,
+            "retained_items": 5,
+            "excluded_items": 0
+          },
+          {
+            "route_id": "official-news",
+            "raw_items": 6,
+            "retained_items": 6,
+            "excluded_items": 0
+          }
+        ]
+      }
+    },
+    {
+      "id": "ch",
+      "name": "國立彰化生活美學館",
+      "official_name": "國立彰化生活美學館",
+      "parent_ministry": "文化部",
+      "parent_source": "國立臺灣美術館",
+      "relationship": "subordinate_agency",
+      "evidence_urls": [
+        "https://personnel.moc.gov.tw/template/belong.ug",
+        "https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=H0000109"
+      ],
+      "homepage": "https://www.chcsec.gov.tw/",
+      "news_urls": [
+        "https://www.chcsec.gov.tw/News.aspx?n=4004&sms=13144"
+      ],
+      "rss_urls": [],
+      "status": "pending",
+      "reason": "官方 HTTP 回應與固定樣本的發布日期、標題、正式文章連結已核實；Rust 共用解析及篩選驗證通過，等待主 agent 最終啟用名單與完整週收集驗證。",
+      "fixtures": [
+        {
+          "route_id": "official-news",
+          "path": "src-tauri/tests/fixtures/four-ministry-culture-mac/ch.html"
+        }
+      ],
+      "source_definition": {
+        "name": "國立彰化生活美學館",
+        "parent_ministry": "文化部",
+        "urls": [
+          "https://www.chcsec.gov.tw/News.aspx?n=4004&sms=13144"
+        ],
+        "routes": [
+          {
+            "id": "official-news",
+            "url": "https://www.chcsec.gov.tw/News.aspx?n=4004&sms=13144",
+            "kind": "html",
+            "parser": "standard",
+            "priority": 1,
+            "pagination": {
+              "parameter": "page",
+              "first_page": 1,
+              "max_pages": 20
+            },
+            "selectors": {
+              "item": "tr",
+              "link": "a[href*=\"News_Content\"]",
+              "title": "a[href*=\"News_Content\"]",
+              "date": "td[data-title=\"日期\"] span, td[data-title=\"發布日期\"] span, td[data-title=\"發佈日期\"] span, td[data-title=\"公告開始日期\"] span, td[data-title=\"上版日期\"] span",
+              "category": "td[data-title=\"類別\"] span"
+            }
+          }
+        ]
+      },
+      "verification": {
+        "http_status": 200,
+        "sample_items": 6,
+        "selected_week_start": "2026-10-05",
+        "date_basis": "official published list or RSS pubDate",
+        "rss_must_supplement_html": false,
+        "rust_fixture_validation": "passed",
+        "rust_fixture_checked_at": "2026-10-13",
+        "activation_review": "awaiting_root_final_catalog_and_live_week_validation",
+        "routes": [
+          {
+            "route_id": "official-news",
+            "raw_items": 6,
+            "retained_items": 6,
+            "excluded_items": 0
+          }
+        ]
+      }
+    },
+    {
+      "id": "tn",
+      "name": "國立臺南生活美學館",
+      "official_name": "國立臺南生活美學館",
+      "parent_ministry": "文化部",
+      "parent_source": "國立臺灣美術館",
+      "relationship": "subordinate_agency",
+      "evidence_urls": [
+        "https://personnel.moc.gov.tw/template/belong.ug",
+        "https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=H0000109"
+      ],
+      "homepage": "https://www.tncsec.gov.tw/",
+      "news_urls": [
+        "https://www.tncsec.gov.tw/News.aspx?n=1207&sms=11287"
+      ],
+      "rss_urls": [
+        "https://www.tncsec.gov.tw/OpenData.aspx?SN=E710CDBA9299E39B"
+      ],
+      "status": "pending",
+      "reason": "官方 HTTP 回應與固定樣本的發布日期、標題、正式文章連結已核實；Rust 共用解析及篩選驗證通過，等待主 agent 最終啟用名單與完整週收集驗證。",
+      "fixtures": [
+        {
+          "route_id": "official-rss",
+          "path": "src-tauri/tests/fixtures/four-ministry-culture-mac/tn.xml"
+        },
+        {
+          "route_id": "official-news",
+          "path": "src-tauri/tests/fixtures/four-ministry-culture-mac/tn.html"
+        }
+      ],
+      "source_definition": {
+        "name": "國立臺南生活美學館",
+        "parent_ministry": "文化部",
+        "urls": [
+          "https://www.tncsec.gov.tw/OpenData.aspx?SN=E710CDBA9299E39B",
+          "https://www.tncsec.gov.tw/News.aspx?n=1207&sms=11287"
+        ],
+        "routes": [
+          {
+            "id": "official-rss",
+            "url": "https://www.tncsec.gov.tw/OpenData.aspx?SN=E710CDBA9299E39B",
+            "kind": "rss",
+            "parser": "standard-rss",
+            "priority": 1,
+            "coverage_reduced": true
+          },
+          {
+            "id": "official-news",
+            "url": "https://www.tncsec.gov.tw/News.aspx?n=1207&sms=11287",
+            "kind": "html",
+            "parser": "standard",
+            "priority": 2,
+            "pagination": {
+              "parameter": "page",
+              "first_page": 1,
+              "max_pages": 20
+            },
+            "selectors": {
+              "item": "tr",
+              "link": "a[href*=\"News_Content\"]",
+              "title": "a[href*=\"News_Content\"]",
+              "date": "td[data-title=\"日期\"] span, td[data-title=\"發布日期\"] span, td[data-title=\"發佈日期\"] span, td[data-title=\"公告開始日期\"] span, td[data-title=\"上版日期\"] span",
+              "category": "td[data-title=\"類別\"] span"
+            }
+          }
+        ]
+      },
+      "verification": {
+        "http_status": 200,
+        "sample_items": 6,
+        "selected_week_start": "2026-10-05",
+        "date_basis": "official published list or RSS pubDate",
+        "rss_must_supplement_html": true,
+        "rust_fixture_validation": "passed",
+        "rust_fixture_checked_at": "2026-10-13",
+        "activation_review": "awaiting_root_final_catalog_and_live_week_validation",
+        "routes": [
+          {
+            "route_id": "official-rss",
+            "raw_items": 3,
+            "retained_items": 3,
+            "excluded_items": 0
+          },
+          {
+            "route_id": "official-news",
+            "raw_items": 6,
+            "retained_items": 6,
+            "excluded_items": 0
+          }
+        ]
+      }
+    },
+    {
+      "id": "tt",
+      "name": "國立臺東生活美學館",
+      "official_name": "國立臺東生活美學館",
+      "parent_ministry": "文化部",
+      "parent_source": "國立臺灣美術館",
+      "relationship": "subordinate_agency",
+      "evidence_urls": [
+        "https://personnel.moc.gov.tw/template/belong.ug",
+        "https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=H0000109"
+      ],
+      "homepage": "https://www.ttcsec.gov.tw/",
+      "news_urls": [
+        "https://www.ttcsec.gov.tw/News.aspx?n=2381&sms=11612"
+      ],
+      "rss_urls": [],
+      "status": "pending",
+      "reason": "官方 HTTP 回應與固定樣本的發布日期、標題、正式文章連結已核實；Rust 共用解析及篩選驗證通過，等待主 agent 最終啟用名單與完整週收集驗證。",
+      "source_definition": {
+        "name": "國立臺東生活美學館",
+        "parent_ministry": "文化部",
+        "urls": [
+          "https://www.ttcsec.gov.tw/News.aspx?n=2381&sms=11612"
+        ],
+        "routes": [
+          {
+            "id": "official-news",
+            "url": "https://www.ttcsec.gov.tw/News.aspx?n=2381&sms=11612",
+            "kind": "html",
+            "parser": "standard",
+            "priority": 1,
+            "pagination": {
+              "parameter": "page",
+              "first_page": 1,
+              "max_pages": 20
+            },
+            "selectors": {
+              "item": "tr",
+              "link": "a[href*=\"News_Content\"]",
+              "title": "a[href*=\"News_Content\"]",
+              "date": "td[data-title=\"發佈日期\"] span"
+            }
+          }
+        ]
+      },
+      "fixtures": [
+        {
+          "route_id": "official-news",
+          "path": "src-tauri/tests/fixtures/four-ministry-culture-mac/tt.html"
+        }
+      ],
+      "verification": {
+        "http_status": 200,
+        "sample_items": 1,
+        "selected_week_start": "2026-10-05",
+        "date_basis": "official published list",
+        "observed_next_page_url": "https://www.ttcsec.gov.tw/News.aspx?n=2381&sms=11612&page=2&PageSize=10",
+        "rust_fixture_validation": "passed",
+        "rust_fixture_checked_at": "2026-10-13",
+        "activation_review": "awaiting_root_final_catalog_and_live_week_validation",
+        "routes": [
+          {
+            "route_id": "official-news",
+            "raw_items": 1,
+            "retained_items": 1,
+            "excluded_items": 0
+          }
+        ]
+      }
+    },
+    {
+      "id": "nrm",
+      "name": "國家鐵道博物館籌備處",
+      "official_name": "國家鐵道博物館籌備處",
+      "parent_ministry": "文化部",
+      "parent_source": "文化部",
+      "relationship": "subordinate_agency",
+      "evidence_urls": [
+        "https://personnel.moc.gov.tw/template/belong.ug",
+        "https://file.moc.gov.tw/001/Upload/470/relfile/10557/242713/70f3144c-a0ae-4dcb-86de-80f4a9a60bab.pdf"
+      ],
+      "homepage": "https://www.nrm.gov.tw/",
+      "news_urls": [
+        "https://www.nrm.gov.tw/News.aspx?n=3307&sms=12883"
+      ],
+      "rss_urls": [],
+      "status": "pending",
+      "reason": "官方 HTTP 回應與固定樣本的發布日期、標題、正式文章連結已核實；Rust 共用解析及篩選驗證通過，等待主 agent 最終啟用名單與完整週收集驗證。",
+      "fixtures": [
+        {
+          "route_id": "official-news",
+          "path": "src-tauri/tests/fixtures/four-ministry-culture-mac/nrm.html"
+        }
+      ],
+      "source_definition": {
+        "name": "國家鐵道博物館籌備處",
+        "parent_ministry": "文化部",
+        "urls": [
+          "https://www.nrm.gov.tw/News.aspx?n=3307&sms=12883"
+        ],
+        "routes": [
+          {
+            "id": "official-news",
+            "url": "https://www.nrm.gov.tw/News.aspx?n=3307&sms=12883",
+            "kind": "html",
+            "parser": "standard",
+            "priority": 1,
+            "pagination": {
+              "parameter": "page",
+              "first_page": 1,
+              "max_pages": 20
+            },
+            "selectors": {
+              "item": "tr",
+              "link": "a[href*=\"News_Content\"]",
+              "title": "a[href*=\"News_Content\"]",
+              "date": "td[data-title=\"日期\"] span, td[data-title=\"發布日期\"] span, td[data-title=\"發佈日期\"] span, td[data-title=\"公告開始日期\"] span, td[data-title=\"上版日期\"] span",
+              "category": "td[data-title=\"類別\"] span"
+            }
+          }
+        ]
+      },
+      "verification": {
+        "http_status": 200,
+        "sample_items": 6,
+        "selected_week_start": "2026-10-05",
+        "date_basis": "official published list or RSS pubDate",
+        "rss_must_supplement_html": false,
+        "rust_fixture_validation": "passed",
+        "rust_fixture_checked_at": "2026-10-13",
+        "activation_review": "awaiting_root_final_catalog_and_live_week_validation",
+        "routes": [
+          {
+            "route_id": "official-news",
+            "raw_items": 6,
+            "retained_items": 3,
+            "excluded_items": 3
+          }
+        ]
+      }
+    },
+    {
+      "id": "ncfm",
+      "name": "國家兒童未來館籌備處",
+      "official_name": "國家兒童未來館籌備處",
+      "parent_ministry": "文化部",
+      "parent_source": "文化部",
+      "relationship": "subordinate_agency",
+      "evidence_urls": [
+        "https://personnel.moc.gov.tw/template/belong.ug"
+      ],
+      "homepage": "https://www.ncfm.gov.tw/",
+      "news_urls": [
+        "https://www.ncfm.gov.tw/News.aspx?n=8024&sms=15745"
+      ],
+      "rss_urls": [],
+      "status": "pending",
+      "reason": "官方 HTTP 回應與固定樣本的發布日期、標題、正式文章連結已核實；Rust 共用解析及篩選驗證通過，等待主 agent 最終啟用名單與完整週收集驗證。",
+      "fixtures": [
+        {
+          "route_id": "official-news",
+          "path": "src-tauri/tests/fixtures/four-ministry-culture-mac/ncfm.html"
+        }
+      ],
+      "source_definition": {
+        "name": "國家兒童未來館籌備處",
+        "parent_ministry": "文化部",
+        "urls": [
+          "https://www.ncfm.gov.tw/News.aspx?n=8024&sms=15745"
+        ],
+        "routes": [
+          {
+            "id": "official-news",
+            "url": "https://www.ncfm.gov.tw/News.aspx?n=8024&sms=15745",
+            "kind": "html",
+            "parser": "standard",
+            "priority": 1,
+            "pagination": {
+              "parameter": "page",
+              "first_page": 1,
+              "max_pages": 20
+            },
+            "selectors": {
+              "item": "tr",
+              "link": "a[href*=\"News_Content\"]",
+              "title": "a[href*=\"News_Content\"]",
+              "date": "td[data-title=\"日期\"] span, td[data-title=\"發布日期\"] span, td[data-title=\"發佈日期\"] span, td[data-title=\"公告開始日期\"] span, td[data-title=\"上版日期\"] span",
+              "category": "td[data-title=\"類別\"] span"
+            }
+          }
+        ]
+      },
+      "verification": {
+        "http_status": 200,
+        "sample_items": 6,
+        "selected_week_start": "2026-10-05",
+        "date_basis": "official published list or RSS pubDate",
+        "rss_must_supplement_html": false,
+        "rust_fixture_validation": "passed",
+        "rust_fixture_checked_at": "2026-10-13",
+        "activation_review": "awaiting_root_final_catalog_and_live_week_validation",
+        "routes": [
+          {
+            "route_id": "official-news",
+            "raw_items": 6,
+            "retained_items": 6,
+            "excluded_items": 0
+          }
+        ]
+      }
+    },
+    {
+      "id": "ntmc",
+      "name": "國家漫畫博物館籌備處",
+      "official_name": "國家漫畫博物館籌備處",
+      "parent_ministry": "文化部",
+      "parent_source": "文化部",
+      "relationship": "subordinate_agency",
+      "evidence_urls": [
+        "https://personnel.moc.gov.tw/template/belong.ug",
+        "https://gazette.nat.gov.tw/egFront/e_detail.do?metaid=144191"
+      ],
+      "homepage": "https://www.ntmc.gov.tw/home/zh-tw",
+      "news_urls": [],
+      "rss_urls": [],
+      "status": "pending",
+      "reason": "新聞列表未完成可解析發布日期驗證。"
+    },
+    {
+      "id": "momatainan",
+      "name": "臺南國家美術館籌備處",
+      "official_name": "臺南國家美術館籌備處",
+      "parent_ministry": "文化部",
+      "parent_source": "文化部",
+      "relationship": "subordinate_agency",
+      "evidence_urls": [
+        "https://personnel.moc.gov.tw/template/belong.ug",
+        "https://www.moc.gov.tw/News_Content.aspx?n=175&s=233338"
+      ],
+      "homepage": "https://www.momatainan.gov.tw/",
+      "news_urls": [
+        "https://www.momatainan.gov.tw/News.aspx?n=9303&sms=16086"
+      ],
+      "rss_urls": [],
+      "status": "pending",
+      "reason": "官方 HTTP 回應與固定樣本的發布日期、標題、正式文章連結已核實；Rust 共用解析及篩選驗證通過，等待主 agent 最終啟用名單與完整週收集驗證。",
+      "fixtures": [
+        {
+          "route_id": "official-news",
+          "path": "src-tauri/tests/fixtures/four-ministry-culture-mac/momatainan.html"
+        }
+      ],
+      "source_definition": {
+        "name": "臺南國家美術館籌備處",
+        "parent_ministry": "文化部",
+        "urls": [
+          "https://www.momatainan.gov.tw/News.aspx?n=9303&sms=16086"
+        ],
+        "routes": [
+          {
+            "id": "official-news",
+            "url": "https://www.momatainan.gov.tw/News.aspx?n=9303&sms=16086",
+            "kind": "html",
+            "parser": "standard",
+            "priority": 1,
+            "selectors": {
+              "item": "tr",
+              "link": "a[href*=\"News_Content\"]",
+              "title": "a[href*=\"News_Content\"]",
+              "date": "td[data-title=\"日期\"] span, td[data-title=\"發布日期\"] span, td[data-title=\"發佈日期\"] span, td[data-title=\"公告開始日期\"] span, td[data-title=\"上版日期\"] span",
+              "category": "td[data-title=\"類別\"] span"
+            }
+          }
+        ]
+      },
+      "verification": {
+        "http_status": 200,
+        "sample_items": 6,
+        "selected_week_start": "2026-10-05",
+        "date_basis": "official published list or RSS pubDate",
+        "rss_must_supplement_html": false,
+        "rust_fixture_validation": "passed",
+        "rust_fixture_checked_at": "2026-10-13",
+        "activation_review": "awaiting_root_final_catalog_and_live_week_validation",
+        "routes": [
+          {
+            "route_id": "official-news",
+            "raw_items": 6,
+            "retained_items": 6,
+            "excluded_items": 0
+          }
+        ]
+      }
+    },
+    {
+      "id": "taicca",
+      "name": "文策院",
+      "official_name": "文化內容策進院",
+      "parent_ministry": "文化部",
+      "parent_source": "文化部",
+      "relationship": "administrative_corporation",
+      "evidence_urls": [
+        "https://www.moc.gov.tw/News.aspx?PageSize=20&n=105&page=22&sms=10550"
+      ],
+      "homepage": "https://taicca.tw/",
+      "news_urls": [],
+      "rss_urls": [],
+      "status": "existing",
+      "reason": "活動列表未提供可解析發布日期，須詳細頁日期證據。"
+    },
+    {
+      "id": "npac",
+      "name": "國家表演藝術中心",
+      "official_name": "國家表演藝術中心",
+      "parent_ministry": "文化部",
+      "parent_source": "文化部",
+      "relationship": "administrative_corporation",
+      "evidence_urls": [
+        "https://www.npac-ntch.org/npac/zh/about/overview"
+      ],
+      "homepage": "https://www.npac-ntch.org/npac/zh/",
+      "news_urls": [],
+      "rss_urls": [],
+      "status": "pending",
+      "reason": "法人無獨立新聞列表，由下轄四場館團隊分別取得正式公告。"
+    },
+    {
+      "id": "tfai",
+      "name": "國家電影及視聽文化中心",
+      "official_name": "國家電影及視聽文化中心",
+      "parent_ministry": "文化部",
+      "parent_source": "文化部",
+      "relationship": "administrative_corporation",
+      "evidence_urls": [
+        "https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=P0040012"
+      ],
+      "homepage": "https://www.tfai.org.tw/zh/",
+      "news_urls": [
+        "https://www.tfai.org.tw/zh/event/list"
+      ],
+      "rss_urls": [],
+      "status": "pending",
+      "reason": "活動列表未提供可解析發布日期，須詳細頁日期證據。"
+    },
+    {
+      "id": "ntch",
+      "name": "國家兩廳院",
+      "official_name": "國家表演藝術中心國家兩廳院",
+      "parent_ministry": "文化部",
+      "parent_source": "國家表演藝術中心",
+      "relationship": "administrative_corporation_unit",
+      "evidence_urls": [
+        "https://www.npac-ntch.org/npac/zh/about/overview"
+      ],
+      "homepage": "https://www.npac-ntch.org/zh",
+      "news_urls": [],
+      "rss_urls": [],
+      "status": "pending",
+      "reason": "官方新聞入口已列入查核，但尚未取得可用的固定發布日期、標題及文章連結樣本；未配置收集路徑，保留待確認。"
+    },
+    {
+      "id": "ntt",
+      "name": "臺中國家歌劇院",
+      "official_name": "國家表演藝術中心臺中國家歌劇院",
+      "parent_ministry": "文化部",
+      "parent_source": "國家表演藝術中心",
+      "relationship": "administrative_corporation_unit",
+      "evidence_urls": [
+        "https://www.npac-ntch.org/npac/zh/about/overview"
+      ],
+      "homepage": "https://www.npac-ntt.org/",
+      "news_urls": [
+        "https://www.npac-ntt.org/news"
+      ],
+      "rss_urls": [],
+      "status": "pending",
+      "reason": "官方 HTTP 回應與固定樣本的發布日期、標題、正式文章連結已核實；Rust 共用解析及篩選驗證通過，等待主 agent 最終啟用名單與完整週收集驗證。",
+      "fixtures": [
+        {
+          "route_id": "official-news",
+          "path": "src-tauri/tests/fixtures/four-ministry-culture-mac/ntt.html"
+        }
+      ],
+      "source_definition": {
+        "name": "臺中國家歌劇院",
+        "parent_ministry": "文化部",
+        "urls": [
+          "https://www.npac-ntt.org/news"
+        ],
+        "routes": [
+          {
+            "id": "official-news",
+            "url": "https://www.npac-ntt.org/news",
+            "kind": "html",
+            "parser": "standard",
+            "priority": 1,
+            "selectors": {
+              "item": ".item",
+              "link": "h3 a[href]",
+              "title": "h3",
+              "date": ".card-date"
+            }
+          }
+        ]
+      },
+      "verification": {
+        "http_status": 200,
+        "sample_items": 6,
+        "selected_week_start": "2026-10-05",
+        "date_basis": "official published list or RSS pubDate",
+        "rss_must_supplement_html": false,
+        "rust_fixture_validation": "passed",
+        "rust_fixture_checked_at": "2026-10-13",
+        "activation_review": "awaiting_root_final_catalog_and_live_week_validation",
+        "routes": [
+          {
+            "route_id": "official-news",
+            "raw_items": 6,
+            "retained_items": 6,
+            "excluded_items": 0
+          }
+        ]
+      }
+    },
+    {
+      "id": "weiwuying",
+      "name": "衛武營國家藝術文化中心",
+      "official_name": "國家表演藝術中心衛武營國家藝術文化中心",
+      "parent_ministry": "文化部",
+      "parent_source": "國家表演藝術中心",
+      "relationship": "administrative_corporation_unit",
+      "evidence_urls": [
+        "https://www.npac-ntch.org/npac/zh/about/overview"
+      ],
+      "homepage": "https://www.npac-weiwuying.org/",
+      "news_urls": [
+        "https://www.npac-weiwuying.org/news"
+      ],
+      "rss_urls": [],
+      "status": "pending",
+      "reason": "官方 HTTP 回應與固定樣本的發布日期、標題、正式文章連結已核實；Rust 共用解析及篩選驗證通過，等待主 agent 最終啟用名單與完整週收集驗證。",
+      "fixtures": [
+        {
+          "route_id": "official-news",
+          "path": "src-tauri/tests/fixtures/four-ministry-culture-mac/weiwuying.html"
+        }
+      ],
+      "source_definition": {
+        "name": "衛武營國家藝術文化中心",
+        "parent_ministry": "文化部",
+        "urls": [
+          "https://www.npac-weiwuying.org/news"
+        ],
+        "routes": [
+          {
+            "id": "official-news",
+            "url": "https://www.npac-weiwuying.org/news",
+            "kind": "html",
+            "parser": "standard",
+            "priority": 1,
+            "selectors": {
+              "item": ".news_wrap .item",
+              "link": "a[href]",
+              "title": "h3",
+              "date": ".text span",
+              "exclude_title_prefixes": [
+                "衛武營新聞中心"
+              ]
+            }
+          }
+        ]
+      },
+      "verification": {
+        "http_status": 200,
+        "sample_items": 6,
+        "selected_week_start": "2026-10-05",
+        "date_basis": "official published list or RSS pubDate",
+        "rss_must_supplement_html": false,
+        "rust_fixture_validation": "passed",
+        "rust_fixture_checked_at": "2026-10-13",
+        "activation_review": "awaiting_root_final_catalog_and_live_week_validation",
+        "routes": [
+          {
+            "route_id": "official-news",
+            "raw_items": 6,
+            "retained_items": 5,
+            "excluded_items": 1
+          }
+        ]
+      }
+    },
+    {
+      "id": "nso-news",
+      "name": "國家交響樂團",
+      "official_name": "國家表演藝術中心國家交響樂團",
+      "parent_ministry": "文化部",
+      "parent_source": "國家表演藝術中心",
+      "relationship": "administrative_corporation_unit",
+      "evidence_urls": [
+        "https://www.npac-ntch.org/npac/zh/about/overview"
+      ],
+      "homepage": "https://www.npac-nso.org/",
+      "news_urls": [
+        "https://www.npac-nso.org/news"
+      ],
+      "rss_urls": [],
+      "status": "pending",
+      "reason": "官方 HTTP 回應與固定樣本的發布日期、標題、正式文章連結已核實；Rust 共用解析及篩選驗證通過，等待主 agent 最終啟用名單與完整週收集驗證。",
+      "fixtures": [
+        {
+          "route_id": "official-news",
+          "path": "src-tauri/tests/fixtures/four-ministry-culture-mac/nso-news.html"
+        }
+      ],
+      "source_definition": {
+        "name": "國家交響樂團",
+        "parent_ministry": "文化部",
+        "urls": [
+          "https://www.npac-nso.org/news"
+        ],
+        "routes": [
+          {
+            "id": "official-news",
+            "url": "https://www.npac-nso.org/news",
+            "kind": "html",
+            "parser": "standard",
+            "priority": 1,
+            "selectors": {
+              "item": "li.news-item",
+              "link": "a[href]",
+              "title": "h3",
+              "date": ".date",
+              "category": ".category"
+            }
+          }
+        ]
+      },
+      "verification": {
+        "http_status": 200,
+        "sample_items": 4,
+        "selected_week_start": "2026-10-05",
+        "date_basis": "official published list or RSS pubDate",
+        "rss_must_supplement_html": false,
+        "rust_fixture_validation": "passed",
+        "rust_fixture_checked_at": "2026-10-13",
+        "activation_review": "awaiting_root_final_catalog_and_live_week_validation",
+        "routes": [
+          {
+            "route_id": "official-news",
+            "raw_items": 4,
+            "retained_items": 3,
+            "excluded_items": 1
+          }
+        ]
+      }
+    },
+    {
+      "id": "ncaf",
+      "name": "國家文化藝術基金會",
+      "official_name": "財團法人國家文化藝術基金會",
+      "parent_ministry": "文化部",
+      "parent_source": "文化部",
+      "relationship": "government_donated_foundation",
+      "evidence_urls": [
+        "https://file.moc.gov.tw/001/Upload/470/relfile/16391/253690/35667c42-b4da-4e6f-8cf9-3f3161eead2f.csv"
+      ],
+      "homepage": "https://www.ncafroc.org.tw/",
+      "news_urls": [],
+      "rss_urls": [],
+      "status": "existing",
+      "reason": "既有目錄保留。"
+    },
+    {
+      "id": "hulien",
+      "name": "金門酒廠胡璉文化藝術基金會",
+      "official_name": "財團法人金門酒廠胡璉文化藝術基金會",
+      "parent_ministry": "文化部",
+      "parent_source": "文化部",
+      "relationship": "government_donated_foundation",
+      "evidence_urls": [
+        "https://file.moc.gov.tw/001/Upload/470/relfile/16391/253690/35667c42-b4da-4e6f-8cf9-3f3161eead2f.csv"
+      ],
+      "homepage": "https://kkl-hulien.org.tw/",
+      "news_urls": [],
+      "rss_urls": [],
+      "status": "existing",
+      "reason": "既有目錄保留。"
+    },
+    {
+      "id": "tctf",
+      "name": "文化臺灣基金會",
+      "official_name": "財團法人文化臺灣基金會",
+      "parent_ministry": "文化部",
+      "parent_source": "文化部",
+      "relationship": "government_donated_foundation",
+      "evidence_urls": [
+        "https://file.moc.gov.tw/001/Upload/470/relfile/16391/253690/35667c42-b4da-4e6f-8cf9-3f3161eead2f.csv"
+      ],
+      "homepage": "https://www.tctf.org.tw/",
+      "news_urls": [],
+      "rss_urls": [],
+      "status": "existing",
+      "reason": "既有目錄保留。"
+    },
+    {
+      "id": "tfaf",
+      "name": "臺灣美術基金會",
+      "official_name": "財團法人臺灣美術基金會",
+      "parent_ministry": "文化部",
+      "parent_source": "文化部",
+      "relationship": "government_donated_foundation",
+      "evidence_urls": [
+        "https://file.moc.gov.tw/001/Upload/470/relfile/16391/253690/35667c42-b4da-4e6f-8cf9-3f3161eead2f.csv"
+      ],
+      "homepage": "https://www.tfaf.org.tw/",
+      "news_urls": [],
+      "rss_urls": [],
+      "status": "existing",
+      "reason": "既有目錄保留。"
+    },
+    {
+      "id": "museum-foundation",
+      "name": "臺灣博物館文教基金會",
+      "official_name": "財團法人臺灣博物館文教基金會",
+      "parent_ministry": "文化部",
+      "parent_source": "文化部",
+      "relationship": "government_donated_foundation",
+      "evidence_urls": [
+        "https://file.moc.gov.tw/001/Upload/470/relfile/16391/253690/35667c42-b4da-4e6f-8cf9-3f3161eead2f.csv"
+      ],
+      "homepage": "https://www.taiwan-museum.org.tw/",
+      "news_urls": [],
+      "rss_urls": [],
+      "status": "existing",
+      "reason": "既有目錄保留。"
+    },
+    {
+      "id": "fondation",
+      "name": "臺法文化教育基金會",
+      "official_name": "財團法人臺法文化教育基金會",
+      "parent_ministry": "文化部",
+      "parent_source": "文化部",
+      "relationship": "government_donated_foundation",
+      "evidence_urls": [
+        "https://file.moc.gov.tw/001/Upload/470/relfile/16391/253690/35667c42-b4da-4e6f-8cf9-3f3161eead2f.csv"
+      ],
+      "homepage": "https://www.fondation.org.tw/",
+      "news_urls": [
+        "https://www.fondation.org.tw/News.aspx?n=3794&sms=13081"
+      ],
+      "rss_urls": [],
+      "status": "pending",
+      "reason": "最新消息頁HTTP可讀，但列表沒有有效日期標題項目。"
+    },
+    {
+      "id": "rti",
+      "name": "中央廣播電臺",
+      "official_name": "財團法人中央廣播電臺",
+      "parent_ministry": "文化部",
+      "parent_source": "文化部",
+      "relationship": "government_donated_foundation",
+      "evidence_urls": [
+        "https://file.moc.gov.tw/001/Upload/470/relfile/16391/253690/35667c42-b4da-4e6f-8cf9-3f3161eead2f.csv"
+      ],
+      "homepage": "https://www.rti.org.tw/",
+      "news_urls": [],
+      "rss_urls": [],
+      "status": "pending",
+      "reason": "法人政府捐助已核實；尚無獨立機構公告入口，不以媒體每日新聞RSS代替。"
+    },
+    {
+      "id": "pts",
+      "name": "公共電視文化事業基金會",
+      "official_name": "財團法人公共電視文化事業基金會",
+      "parent_ministry": "文化部",
+      "parent_source": "文化部",
+      "relationship": "government_donated_foundation",
+      "evidence_urls": [
+        "https://file.moc.gov.tw/001/Upload/470/relfile/16391/253690/35667c42-b4da-4e6f-8cf9-3f3161eead2f.csv"
+      ],
+      "homepage": "https://about.pts.org.tw/",
+      "news_urls": [
+        "https://about.pts.org.tw/pr/latestnews/"
+      ],
+      "rss_urls": [
+        "https://about.pts.org.tw/rss/XML/newsletter.xml"
+      ],
+      "status": "pending",
+      "reason": "官方 HTTP 回應與固定樣本的發布日期、標題、正式文章連結已核實；Rust 共用解析及篩選驗證通過，等待主 agent 最終啟用名單與完整週收集驗證。",
+      "fixtures": [
+        {
+          "route_id": "official-rss",
+          "path": "src-tauri/tests/fixtures/four-ministry-culture-mac/pts.xml"
+        },
+        {
+          "route_id": "official-news",
+          "path": "src-tauri/tests/fixtures/four-ministry-culture-mac/pts.html"
+        }
+      ],
+      "source_definition": {
+        "name": "公共電視文化事業基金會",
+        "parent_ministry": "文化部",
+        "urls": [
+          "https://about.pts.org.tw/rss/XML/newsletter.xml",
+          "https://about.pts.org.tw/pr/latestnews/"
+        ],
+        "routes": [
+          {
+            "id": "official-rss",
+            "url": "https://about.pts.org.tw/rss/XML/newsletter.xml",
+            "kind": "rss",
+            "parser": "standard-rss",
+            "priority": 1,
+            "coverage_reduced": true
+          },
+          {
+            "id": "official-news",
+            "url": "https://about.pts.org.tw/pr/latestnews/",
+            "kind": "html",
+            "parser": "standard",
+            "priority": 2,
+            "selectors": {
+              "item": "li.list-news-item",
+              "link": ".list-news-title a",
+              "title": ".list-news-title",
+              "date": ".list-news-date"
+            }
+          }
+        ]
+      },
+      "verification": {
+        "http_status": 200,
+        "sample_items": 6,
+        "selected_week_start": "2026-10-05",
+        "date_basis": "official published list or RSS pubDate",
+        "rss_must_supplement_html": true,
+        "rust_fixture_validation": "passed",
+        "rust_fixture_checked_at": "2026-10-13",
+        "activation_review": "awaiting_root_final_catalog_and_live_week_validation",
+        "routes": [
+          {
+            "route_id": "official-rss",
+            "raw_items": 3,
+            "retained_items": 3,
+            "excluded_items": 0
+          },
+          {
+            "route_id": "official-news",
+            "raw_items": 6,
+            "retained_items": 6,
+            "excluded_items": 0
+          }
+        ]
+      }
+    },
+    {
+      "id": "mpfroc",
+      "name": "中華民國電影事業發展基金會",
+      "official_name": "財團法人中華民國電影事業發展基金會",
+      "parent_ministry": "文化部",
+      "parent_source": "文化部",
+      "relationship": "government_donated_foundation",
+      "evidence_urls": [
+        "https://file.moc.gov.tw/001/Upload/470/relfile/16391/253690/35667c42-b4da-4e6f-8cf9-3f3161eead2f.csv"
+      ],
+      "homepage": "https://www.mpfroc.org/",
+      "news_urls": [
+        "https://www.mpfroc.org/news.php?func=1"
+      ],
+      "rss_urls": [],
+      "status": "pending",
+      "reason": "官方 HTTP 回應與固定樣本的發布日期、標題、正式文章連結已核實；Rust 共用解析及篩選驗證通過，等待主 agent 最終啟用名單與完整週收集驗證。",
+      "fixtures": [
+        {
+          "route_id": "official-news",
+          "path": "src-tauri/tests/fixtures/four-ministry-culture-mac/mpfroc.html"
+        }
+      ],
+      "source_definition": {
+        "name": "中華民國電影事業發展基金會",
+        "parent_ministry": "文化部",
+        "urls": [
+          "https://www.mpfroc.org/news.php?func=1"
+        ],
+        "routes": [
+          {
+            "id": "official-news",
+            "url": "https://www.mpfroc.org/news.php?func=1",
+            "kind": "html",
+            "parser": "standard",
+            "priority": 1,
+            "selectors": {
+              "item": "li",
+              "link": "a[href*=\"news.php?func=1\"]",
+              "title": "a[href*=\"news.php?func=1\"]",
+              "date": ".news_date",
+              "category": ".date03"
+            }
+          }
+        ]
+      },
+      "verification": {
+        "http_status": 200,
+        "sample_items": 6,
+        "selected_week_start": "2026-10-05",
+        "date_basis": "official published list or RSS pubDate",
+        "rss_must_supplement_html": false,
+        "rust_fixture_validation": "passed",
+        "rust_fixture_checked_at": "2026-10-13",
+        "activation_review": "awaiting_root_final_catalog_and_live_week_validation",
+        "routes": [
+          {
+            "route_id": "official-news",
+            "raw_items": 6,
+            "retained_items": 6,
+            "excluded_items": 0
+          }
+        ]
+      }
+    },
+    {
+      "id": "cna",
+      "name": "中央通訊社",
+      "official_name": "財團法人中央通訊社",
+      "parent_ministry": "文化部",
+      "parent_source": "文化部",
+      "relationship": "government_donated_foundation",
+      "evidence_urls": [
+        "https://file.moc.gov.tw/001/Upload/470/relfile/16391/253690/35667c42-b4da-4e6f-8cf9-3f3161eead2f.csv"
+      ],
+      "homepage": "https://www.cna.com.tw/",
+      "news_urls": [],
+      "rss_urls": [],
+      "status": "pending",
+      "reason": "法人政府捐助已核實；尚無獨立機構公告入口，不以媒體每日新聞RSS代替。"
+    },
+    {
+      "id": "clab",
+      "name": "臺灣生活美學基金會",
+      "official_name": "財團法人臺灣生活美學基金會",
+      "parent_ministry": "文化部",
+      "parent_source": "文化部",
+      "relationship": "government_donated_foundation",
+      "evidence_urls": [
+        "https://file.moc.gov.tw/001/Upload/470/relfile/16391/253690/35667c42-b4da-4e6f-8cf9-3f3161eead2f.csv"
+      ],
+      "homepage": "https://clab.org.tw/zh/about/",
+      "news_urls": [
+        "https://clab.org.tw/zh/news/"
+      ],
+      "rss_urls": [],
+      "status": "pending",
+      "reason": "官方 HTTP 回應與固定樣本的發布日期、標題、正式文章連結已核實；Rust 共用解析及篩選驗證通過，等待主 agent 最終啟用名單與完整週收集驗證。",
+      "fixtures": [
+        {
+          "route_id": "official-news-html",
+          "path": "src-tauri/tests/fixtures/four-ministry-culture-mac/clab-followup.html"
+        }
+      ],
+      "source_definition": {
+        "name": "臺灣生活美學基金會",
+        "parent_ministry": "文化部",
+        "urls": [
+          "https://clab.org.tw/zh/news/"
+        ],
+        "routes": [
+          {
+            "id": "official-news-html",
+            "url": "https://clab.org.tw/zh/news/",
+            "kind": "html",
+            "parser": "standard",
+            "priority": 1,
+            "selectors": {
+              "item": ".NewsTileItem",
+              "link": "a[href]",
+              "title": ".title .text",
+              "date": ".date",
+              "category": ".category"
+            }
+          }
+        ],
+        "filters": {
+          "exclude_categories": [
+            "招標公告"
+          ]
+        }
+      },
+      "verification": {
+        "http_status": 200,
+        "sample_items": 6,
+        "selected_week_start": "2026-10-05",
+        "date_basis": "official published list or RSS pubDate",
+        "rss_must_supplement_html": false,
+        "rust_fixture_validation": "passed",
+        "rust_fixture_checked_at": "2026-10-13",
+        "activation_review": "awaiting_root_final_catalog_and_live_week_validation",
+        "routes": [
+          {
+            "route_id": "official-news-html",
+            "raw_items": 4,
+            "retained_items": 2,
+            "excluded_items": 2
+          }
+        ]
+      },
+      "attempts": [
+        {
+          "url": "https://clab.org.tw/zh/news/",
+          "status": 200,
+          "phase": "followup_dated_html"
+        }
+      ]
+    },
+    {
+      "id": "mtf",
+      "name": "蒙藏基金會",
+      "official_name": "財團法人蒙藏基金會",
+      "parent_ministry": "文化部",
+      "parent_source": "文化部",
+      "relationship": "government_donated_foundation",
+      "evidence_urls": [
+        "https://file.moc.gov.tw/001/Upload/470/relfile/16391/253690/35667c42-b4da-4e6f-8cf9-3f3161eead2f.csv"
+      ],
+      "homepage": "https://mtf.org.tw/",
+      "news_urls": [
+        "https://mtf.org.tw/News.aspx?n=3446&sms=12937"
+      ],
+      "rss_urls": [],
+      "status": "pending",
+      "reason": "會務列表只有年度標題、沒有發布日期，不能用網站更新日填補。"
+    },
+    {
+      "id": "music",
+      "name": "台灣音樂文化教育基金會",
+      "official_name": "財團法人台灣音樂文化教育基金會",
+      "parent_ministry": "文化部",
+      "parent_source": "文化部",
+      "relationship": "government_donated_foundation",
+      "evidence_urls": [
+        "https://file.moc.gov.tw/001/Upload/470/relfile/16391/253690/35667c42-b4da-4e6f-8cf9-3f3161eead2f.csv"
+      ],
+      "homepage": null,
+      "news_urls": [],
+      "rss_urls": [],
+      "status": "pending",
+      "reason": "官方法人資料沒有有效官網，政府曾捐助但新聞入口pending。"
+    },
+    {
+      "id": "old-tfai",
+      "name": "財團法人國家電影中心",
+      "official_name": "財團法人國家電影中心",
+      "parent_ministry": "文化部",
+      "parent_source": "文化部",
+      "relationship": "historical_or_supervised",
+      "evidence_urls": [
+        "https://file.moc.gov.tw/001/Upload/470/relfile/16391/253690/35667c42-b4da-4e6f-8cf9-3f3161eead2f.csv"
+      ],
+      "homepage": null,
+      "news_urls": [],
+      "rss_urls": [],
+      "status": "excluded",
+      "reason": "已於2020改制行政法人國家電影及視聽文化中心，不重複新增舊法人。"
+    },
+    {
+      "id": "caring",
+      "name": "財團法人中華民國關懷演藝人員基金會",
+      "official_name": "財團法人中華民國關懷演藝人員基金會",
+      "parent_ministry": "文化部",
+      "parent_source": "文化部",
+      "relationship": "historical_or_supervised",
+      "evidence_urls": [
+        "https://file.moc.gov.tw/001/Upload/470/relfile/16391/253690/35667c42-b4da-4e6f-8cf9-3f3161eead2f.csv"
+      ],
+      "homepage": null,
+      "news_urls": [],
+      "rss_urls": [],
+      "status": "excluded",
+      "reason": "清冊政府原始與累計捐助兩欄皆否，未證實政府捐助；純主管不新增。"
+    },
+    {
+      "id": "sef",
+      "name": "海峽交流基金會",
+      "official_name": "財團法人海峽交流基金會",
+      "parent_ministry": "陸委會",
+      "parent_source": "陸委會",
+      "relationship": "government_donated_foundation",
+      "evidence_urls": [
+        "https://www.mac.gov.tw/Content_List.aspx?n=C432107F11D174E4"
+      ],
+      "homepage": "https://www.sef.org.tw/",
+      "news_urls": [
+        "https://www.sef.org.tw/list-1-15"
+      ],
+      "rss_urls": [],
+      "status": "pending",
+      "reason": "官方 HTTP 回應與固定樣本的發布日期、標題、正式文章連結已核實；Rust 共用解析及篩選驗證通過，等待主 agent 最終啟用名單與完整週收集驗證。",
+      "fixtures": [
+        {
+          "route_id": "official-news",
+          "path": "src-tauri/tests/fixtures/four-ministry-culture-mac/sef.html"
+        }
+      ],
+      "source_definition": {
+        "name": "海峽交流基金會",
+        "parent_ministry": "陸委會",
+        "urls": [
+          "https://www.sef.org.tw/list-1-15"
+        ],
+        "routes": [
+          {
+            "id": "official-news",
+            "url": "https://www.sef.org.tw/list-1-15",
+            "kind": "html",
+            "parser": "standard",
+            "priority": 1,
+            "selectors": {
+              "item": "li",
+              "link": "a[href*=\"article-1-15\"]",
+              "title": "a[href*=\"article-1-15\"]",
+              "title_attribute": "title",
+              "date": "time",
+              "category": "b"
+            }
+          }
+        ]
+      },
+      "verification": {
+        "http_status": 200,
+        "sample_items": 6,
+        "selected_week_start": "2026-10-05",
+        "date_basis": "official published list or RSS pubDate",
+        "rss_must_supplement_html": false,
+        "rust_fixture_validation": "passed",
+        "rust_fixture_checked_at": "2026-10-13",
+        "activation_review": "awaiting_root_final_catalog_and_live_week_validation",
+        "routes": [
+          {
+            "route_id": "official-news",
+            "raw_items": 6,
+            "retained_items": 6,
+            "excluded_items": 0
+          }
+        ]
+      }
+    },
+    {
+      "id": "thec",
+      "name": "臺港經濟文化合作策進會",
+      "official_name": "財團法人臺港經濟文化合作策進會",
+      "parent_ministry": "陸委會",
+      "parent_source": "陸委會",
+      "relationship": "government_donated_foundation",
+      "evidence_urls": [
+        "https://www.mac.gov.tw/Content_List.aspx?n=C432107F11D174E4"
+      ],
+      "homepage": "https://www.thec.org.tw/",
+      "news_urls": [
+        "https://www.thec.org.tw/tc/news.aspx?mid=15"
+      ],
+      "rss_urls": [],
+      "status": "pending",
+      "reason": "官方 HTTP 回應與固定樣本的發布日期、標題、正式文章連結已核實；Rust 共用解析及篩選驗證通過，等待主 agent 最終啟用名單與完整週收集驗證。",
+      "fixtures": [
+        {
+          "route_id": "official-news",
+          "path": "src-tauri/tests/fixtures/four-ministry-culture-mac/thec.html"
+        }
+      ],
+      "source_definition": {
+        "name": "臺港經濟文化合作策進會",
+        "parent_ministry": "陸委會",
+        "urls": [
+          "https://www.thec.org.tw/tc/news.aspx?mid=15"
+        ],
+        "routes": [
+          {
+            "id": "official-news",
+            "url": "https://www.thec.org.tw/tc/news.aspx?mid=15",
+            "kind": "html",
+            "parser": "standard",
+            "priority": 1,
+            "selectors": {
+              "item": "section.innernew-box__list",
+              "link": "a.new-link",
+              "title": ".new-subject__tilte",
+              "date": ".new-date",
+              "category": ".new-sign"
+            }
+          }
+        ]
+      },
+      "verification": {
+        "http_status": 200,
+        "sample_items": 6,
+        "selected_week_start": "2026-10-05",
+        "date_basis": "official published list or RSS pubDate",
+        "rss_must_supplement_html": false,
+        "rust_fixture_validation": "passed",
+        "rust_fixture_checked_at": "2026-10-13",
+        "activation_review": "awaiting_root_final_catalog_and_live_week_validation",
+        "routes": [
+          {
+            "route_id": "official-news",
+            "raw_items": 6,
+            "retained_items": 6,
+            "excluded_items": 0
+          }
+        ]
+      }
+    },
+    {
+      "id": "mac-hk",
+      "name": "大陸委員會香港辦事處",
+      "official_name": "大陸委員會香港辦事處",
+      "parent_ministry": "陸委會",
+      "parent_source": "陸委會",
+      "relationship": "subordinate_agency",
+      "evidence_urls": [
+        "https://www.mac.gov.tw/cp.aspx?n=B7DDBFCACE3EB8F9",
+        "https://ws.mac.gov.tw/001/Upload/295/relfile/0/5311/bcc3fa88-db17-4d86-ae26-0f6f23eeb60b.pdf"
+      ],
+      "homepage": null,
+      "news_urls": [],
+      "rss_urls": [],
+      "status": "pending",
+      "reason": "正式所屬辦事處；臺北經濟文化辦事處為外名，不另建來源。尚未核實獨立新聞入口。"
+    },
+    {
+      "id": "mac-macao",
+      "name": "大陸委員會澳門辦事處",
+      "official_name": "大陸委員會澳門辦事處",
+      "parent_ministry": "陸委會",
+      "parent_source": "陸委會",
+      "relationship": "subordinate_agency",
+      "evidence_urls": [
+        "https://www.mac.gov.tw/cp.aspx?n=B7DDBFCACE3EB8F9",
+        "https://ws.mac.gov.tw/001/Upload/295/relfile/0/5311/bcc3fa88-db17-4d86-ae26-0f6f23eeb60b.pdf"
+      ],
+      "homepage": null,
+      "news_urls": [],
+      "rss_urls": [],
+      "status": "pending",
+      "reason": "正式所屬辦事處；臺北經濟文化辦事處為外名，不另建來源。尚未核實獨立新聞入口。"
+    }
+  ],
+  "notes": [
+    "保留既有來源；政府清冊含歷史名稱須以現行組織確認。",
+    "博物館與基金會不合併；行政法人場館保留parent_source。",
+    "未確認RSS不猜SN；只有實GET為RSS且日期可解析才配置。",
+    "媒體法人不採全站每日報導；公視採機構新聞稿RSS。",
+    "日期欄缺漏不能以網頁更新日/活動日期猜填。",
+    "RSS備援HTML皆需經相同內容篩選；coverage_reduced讓混合/最新RSS補讀原列表。"
+  ]
+}

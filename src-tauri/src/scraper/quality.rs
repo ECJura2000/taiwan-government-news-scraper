@@ -133,18 +133,21 @@ fn normalize_url(value: &str) -> Option<String> {
     if !pairs.is_empty() {
         url.query_pairs_mut().extend_pairs(pairs);
     }
-    url.set_fragment(None);
+    // Hash routers identify distinct articles; ordinary in-page anchors do not.
+    if !url
+        .fragment()
+        .is_some_and(|fragment| fragment.starts_with('/') || fragment.starts_with("!/"))
+    {
+        url.set_fragment(None);
+    }
     Some(url.to_string())
 }
 
 pub fn dedupe_affiliated(items: impl IntoIterator<Item = NewsItem>) -> Vec<NewsItem> {
-    let mut kept = Vec::new();
-    let mut affiliated = Vec::new();
-    let mut positions: HashMap<(String, String, String), usize> = HashMap::new();
-
+    let mut kept: Vec<NewsItem> = Vec::new();
+    let mut positions: HashMap<(String, String), Vec<usize>> = HashMap::new();
     for item in items {
-        let source = clean_text(&item.source);
-        let Some(group) = affiliated_group(&source) else {
+        let Some(url) = normalize_url(&item.link) else {
             kept.push(item);
             continue;
         };
@@ -153,19 +156,40 @@ pub fn dedupe_affiliated(items: impl IntoIterator<Item = NewsItem>) -> Vec<NewsI
             kept.push(item);
             continue;
         }
-        let key = (group.to_owned(), date, normalize_title(&item.title));
-        if let Some(position) = positions.get(&key).copied() {
-            if preferred_score(&item) < preferred_score(&affiliated[position]) {
-                affiliated[position] = item;
+        // An identical official article URL proves a copy. A matching headline alone
+        // cannot prove that two agencies published the same article.
+        let key = (url, date);
+        let matches = positions.entry(key).or_default();
+        let related = matches.iter().copied().find(|position| {
+            is_ancestor(&item.source, &kept[*position].source)
+                || is_ancestor(&kept[*position].source, &item.source)
+        });
+        if let Some(position) = related {
+            if preferred_score(&item) < preferred_score(&kept[position]) {
+                kept[position] = item;
             }
         } else {
-            positions.insert(key, affiliated.len());
-            affiliated.push(item);
+            matches.push(kept.len());
+            kept.push(item);
         }
     }
-
-    kept.extend(affiliated);
     kept
+}
+
+fn is_ancestor(parent: &str, child: &str) -> bool {
+    let canonical = |name: &str| {
+        super::catalog::find_source(name)
+            .map_or_else(|| name.to_owned(), |source| source.name.clone())
+    };
+    let parent = canonical(parent);
+    let child = canonical(child);
+    if parent == child {
+        return false;
+    }
+    let path = affiliated_path(&child);
+    path.iter()
+        .take(path.len().saturating_sub(1))
+        .any(|name| canonical(name) == parent)
 }
 
 fn clean_text(value: &str) -> String {
@@ -181,34 +205,12 @@ fn normalize_title(value: &str) -> String {
         .collect()
 }
 
-fn affiliated_group(source: &str) -> Option<&'static str> {
-    let path = affiliated_path(source);
-    if let Some(parent) = path.first() {
-        return Some(parent);
-    }
-    match source {
-        "內政部" => Some("內政部"),
-        "國防部" => Some("國防部"),
-        "教育部" => Some("教育部"),
-        "法務部" => Some("法務部"),
-        "交通部" => Some("交通部"),
-        "農業部" => Some("農業部"),
-        "衛生福利部" => Some("衛生福利部"),
-        "勞動部" => Some("勞動部"),
-        "數位發展部" => Some("數位發展部"),
-        "國科會" => Some("國科會"),
-        "海委會" => Some("海委會"),
-        "退輔會" => Some("退輔會"),
-        _ => None,
-    }
-}
-
 fn preferred_score(item: &NewsItem) -> (u8, u8, u8, std::cmp::Reverse<usize>) {
     let source = clean_text(&item.source);
     let priority = if affiliated_path(&source).is_empty() {
-        1
+        u8::MAX
     } else {
-        0
+        u8::MAX.saturating_sub(affiliated_path(&source).len().min(254) as u8)
     };
     let department = clean_text(&item.department);
     (
@@ -220,6 +222,50 @@ fn preferred_score(item: &NewsItem) -> (u8, u8, u8, std::cmp::Reverse<usize>) {
 }
 
 pub fn affiliated_path(source: &str) -> &'static [&'static str] {
+    use std::sync::OnceLock;
+    static PATHS: OnceLock<HashMap<String, &'static [&'static str]>> = OnceLock::new();
+    let paths = PATHS.get_or_init(|| {
+        let mut paths = HashMap::new();
+        for definition in super::catalog::all_sources() {
+            let Some(ministry) = definition.parent_ministry.as_deref() else {
+                continue;
+            };
+            let mut chain = vec![definition.name.clone()];
+            let mut parent = definition.parent_source.as_deref().unwrap_or(ministry);
+            let mut seen = HashSet::from([definition.name.clone()]);
+            while seen.insert(parent.to_owned()) {
+                chain.push(parent.to_owned());
+                if parent == ministry {
+                    break;
+                }
+                parent = super::catalog::find_source(parent)
+                    .and_then(|source| source.parent_source.as_deref())
+                    .unwrap_or(ministry);
+            }
+            chain.reverse();
+            let values: Vec<&'static str> = chain
+                .into_iter()
+                .map(|name| &*Box::leak(name.into_boxed_str()))
+                .collect();
+            let path: &'static [&'static str] = Box::leak(values.into_boxed_slice());
+            paths.insert(definition.name.clone(), path);
+            for alias in definition
+                .aliases
+                .iter()
+                .chain(definition.official_name.iter())
+            {
+                paths.insert(alias.clone(), path);
+            }
+        }
+        paths
+    });
+    paths
+        .get(source)
+        .copied()
+        .unwrap_or_else(|| legacy_affiliated_path(source))
+}
+
+fn legacy_affiliated_path(source: &str) -> &'static [&'static str] {
     match source {
         "國土管理署" => &["內政部", "國土管理署"],
         "國家公園署" => &["內政部", "國家公園署"],
@@ -320,12 +366,24 @@ mod tests {
         let mut child = item("同一則 (新聞)");
         child.source = "消防署".into();
         child.department = "消防署".into();
-        child.link = "https://example.test/child".into();
+        child.link = "https://example.test/parent?utm_source=child".into();
 
         let result = dedupe_affiliated([parent, child]);
 
         assert_eq!(result.len(), 1);
         assert_eq!(result[0].source, "消防署");
+    }
+
+    #[test]
+    fn affiliated_dedupe_preserves_siblings_and_unproven_parent_copies() {
+        let mut parent = item("同日同標題");
+        parent.source = "內政部".into();
+        parent.link = "https://example.test/parent".into();
+        let mut first = item("同日同標題");
+        first.source = "消防署".into();
+        let mut second = first.clone();
+        second.source = "警政署".into();
+        assert_eq!(dedupe_affiliated([parent, first, second]).len(), 3);
     }
 
     #[test]
@@ -352,6 +410,24 @@ mod tests {
         assert_eq!(result.items.len(), 1);
         assert_eq!(result.duplicate_count, 1);
         assert_eq!(result.items[0].link, "https://example.test/news?id=1");
+    }
+
+    #[test]
+    fn quality_preserves_distinct_hash_router_articles() {
+        let mut first = item("第一則新聞");
+        first.link = "https://example.test/#/newscontent?id=341".into();
+        let mut second = item("第二則新聞");
+        second.link = "https://example.test/#/newscontent?id=342".into();
+        let result = process(vec![first, second]);
+        assert_eq!(result.items.len(), 2);
+        assert_eq!(
+            result.items[0].link,
+            "https://example.test/#/newscontent?id=341"
+        );
+        assert_eq!(
+            result.items[1].link,
+            "https://example.test/#/newscontent?id=342"
+        );
     }
 
     #[test]

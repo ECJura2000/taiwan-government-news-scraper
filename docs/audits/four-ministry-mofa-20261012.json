@@ -1,0 +1,539 @@
+{
+  "ministry": "外交部",
+  "checked_at": "2026-10-12",
+  "entries": [
+    {
+      "name": "外交部",
+      "official_name": "外交部",
+      "parent_ministry": "外交部",
+      "parent_source": "外交部",
+      "relationship": "ministry",
+      "evidence_urls": [
+        "https://www.mofa.gov.tw/Organization.aspx?n=60"
+      ],
+      "homepage": "https://www.mofa.gov.tw/",
+      "news_urls": [
+        "https://www.mofa.gov.tw/News.aspx?n=95&sms=73"
+      ],
+      "rss_urls": [
+        "https://www.mofa.gov.tw/OpenData.aspx?SN=8ABA444B9AC1360F"
+      ],
+      "status": "existing",
+      "reason": "既有來源保留，不重複新增。"
+    },
+    {
+      "name": "外交部領事事務局",
+      "official_name": "外交部領事事務局",
+      "parent_ministry": "外交部",
+      "parent_source": "外交部",
+      "relationship": "subordinate_agency",
+      "evidence_urls": [
+        "https://www.mofa.gov.tw/Organization.aspx?n=60",
+        "https://law.mofa.gov.tw/LawContent.aspx?id=FL005107&media=print"
+      ],
+      "homepage": "https://www.boca.gov.tw/",
+      "news_urls": [
+        "https://www.boca.gov.tw/lp-56-1.html"
+      ],
+      "rss_urls": [
+        "https://www.boca.gov.tw/rss-56-1.xml"
+      ],
+      "status": "active",
+      "reason": "官方 RSS GET 200 text/xml、20項，HTML GET 200、20項。新聞流含徵才，必使用共通內容篩選；機關活動另有 lp-57-1.html，多為舊活動及照片連結，尚未納入獨立路由。",
+      "source_definition": {
+        "name": "外交部領事事務局",
+        "parent_ministry": "外交部",
+        "urls": [
+          "https://www.boca.gov.tw/rss-56-1.xml",
+          "https://www.boca.gov.tw/lp-56-1.html"
+        ],
+        "routes": [
+          {
+            "id": "official-news-rss",
+            "url": "https://www.boca.gov.tw/rss-56-1.xml",
+            "kind": "rss",
+            "parser": "standard-rss",
+            "priority": 1
+          },
+          {
+            "id": "official-news-html",
+            "url": "https://www.boca.gov.tw/lp-56-1.html",
+            "kind": "html",
+            "parser": "standard",
+            "priority": 2,
+            "selectors": {
+              "item": ".list > ul > li",
+              "link": "a[href*='cp-56-']",
+              "title": "a[href*='cp-56-']",
+              "date": "time",
+              "category_label": "最新消息",
+              "title_attribute": "title"
+            }
+          }
+        ]
+      },
+      "fixtures": [
+        {
+          "route_id": "official-news-rss",
+          "path": "src-tauri/tests/fixtures/four-ministry-mofa/boca-rss.xml"
+        },
+        {
+          "route_id": "official-news-html",
+          "path": "src-tauri/tests/fixtures/four-ministry-mofa/boca-news.html"
+        }
+      ]
+    },
+    {
+      "name": "外交部外交及國際事務學院",
+      "official_name": "外交部外交及國際事務學院",
+      "parent_ministry": "外交部",
+      "parent_source": "外交部",
+      "relationship": "subordinate_agency",
+      "evidence_urls": [
+        "https://www.mofa.gov.tw/Organization.aspx?n=60",
+        "https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=E0000016"
+      ],
+      "homepage": "https://subsite.mofa.gov.tw/idia/",
+      "news_urls": [
+        "https://subsite.mofa.gov.tw/idia/News.aspx?n=6073&sms=1689",
+        "https://subsite.mofa.gov.tw/idia/News.aspx?n=6074&sms=1691"
+      ],
+      "rss_urls": [],
+      "status": "active",
+      "reason": "官方最新消息及重要活動兩個列表GET200；真實表格含发布時間、主題、原文連結，aggregate保留兩分類。無已確認RSS，不猜測。",
+      "source_definition": {
+        "name": "外交部外交及國際事務學院",
+        "parent_ministry": "外交部",
+        "urls": [
+          "https://subsite.mofa.gov.tw/idia/News.aspx?n=6073&sms=1689",
+          "https://subsite.mofa.gov.tw/idia/News.aspx?n=6074&sms=1691"
+        ],
+        "routes": [
+          {
+            "id": "official-news-html",
+            "url": "https://subsite.mofa.gov.tw/idia/News.aspx?n=6073&sms=1689",
+            "kind": "html",
+            "parser": "standard",
+            "priority": 1,
+            "selectors": {
+              "item": "tr",
+              "link": "a[href*='News_Content.aspx']",
+              "title": "a[href*='News_Content.aspx']",
+              "date": "td[data-title='發布時間'] span",
+              "category_label": "新聞及活動"
+            }
+          },
+          {
+            "id": "official-events-html",
+            "url": "https://subsite.mofa.gov.tw/idia/News.aspx?n=6074&sms=1691",
+            "kind": "html",
+            "parser": "standard",
+            "priority": 2,
+            "selectors": {
+              "item": "tr",
+              "link": "a[href*='News_Content.aspx']",
+              "title": "a[href*='News_Content.aspx']",
+              "date": "td[data-title='發布時間'] span",
+              "category_label": "重要活動"
+            }
+          }
+        ],
+        "aggregate_routes": true
+      },
+      "fixtures": [
+        {
+          "route_id": "official-news-html",
+          "path": "src-tauri/tests/fixtures/four-ministry-mofa/idia-news.html"
+        },
+        {
+          "route_id": "official-events-html",
+          "path": "src-tauri/tests/fixtures/four-ministry-mofa/idia-events.html"
+        }
+      ]
+    },
+    {
+      "name": "臺灣日本關係協會",
+      "official_name": "臺灣日本關係協會",
+      "parent_ministry": "外交部",
+      "parent_source": "外交部",
+      "relationship": "official_delegated_association",
+      "evidence_urls": [
+        "https://www.mofa.gov.tw/Organization.aspx?n=60",
+        "https://subsite.mofa.gov.tw/aear/cp.aspx?n=5830"
+      ],
+      "homepage": "https://subsite.mofa.gov.tw/aear/",
+      "news_urls": [
+        "https://subsite.mofa.gov.tw/aear/News.aspx?n=5827&sms=1556"
+      ],
+      "rss_urls": [],
+      "status": "active",
+      "reason": "官方組織頁與協會簡介說明為外交部、經濟部派員之行政委託團體；不是法定次級機關。新聞列表 GET 200、發布時間及原文連結已核對，未發現已確認RSS。",
+      "source_definition": {
+        "name": "臺灣日本關係協會",
+        "parent_ministry": "外交部",
+        "urls": [
+          "https://subsite.mofa.gov.tw/aear/News.aspx?n=5827&sms=1556"
+        ],
+        "routes": [
+          {
+            "id": "official-news-html",
+            "url": "https://subsite.mofa.gov.tw/aear/News.aspx?n=5827&sms=1556",
+            "kind": "html",
+            "parser": "standard",
+            "priority": 1,
+            "selectors": {
+              "item": "tr",
+              "link": "a[href*='News_Content.aspx']",
+              "title": "a[href*='News_Content.aspx']",
+              "date": "td[data-title='發布時間'] span",
+              "category_label": "最新消息"
+            }
+          }
+        ]
+      },
+      "fixtures": [
+        {
+          "route_id": "official-news-html",
+          "path": "src-tauri/tests/fixtures/four-ministry-mofa/aear-news.html"
+        }
+      ]
+    },
+    {
+      "name": "台灣美國事務委員會",
+      "official_name": "台灣美國事務委員會",
+      "parent_ministry": "外交部",
+      "parent_source": "外交部",
+      "relationship": "official_special_committee",
+      "evidence_urls": [
+        "https://www.mofa.gov.tw/Organization.aspx?n=60",
+        "https://law.mofa.gov.tw/LawContent.aspx?id=GL000088"
+      ],
+      "homepage": "https://www.mofa.gov.tw/Organization.aspx?n=60",
+      "news_urls": [],
+      "rss_urls": [],
+      "status": "pending",
+      "reason": "組織關係及辦事細則確認。尚未驗證獨立新聞列表；相關新聞現由外交部既有新聞流刊登。不得重複使用母機關全RSS冒充獨立委員會來源。"
+    },
+    {
+      "name": "外交部中部辦事處",
+      "official_name": "外交部中部辦事處",
+      "parent_ministry": "外交部",
+      "parent_source": "外交部領事事務局",
+      "relationship": "domestic_branch_office",
+      "evidence_urls": [
+        "https://www.mofa.gov.tw/Organization.aspx?n=60",
+        "https://www.boca.gov.tw/cp-105-203-40dfe-1.html"
+      ],
+      "homepage": "https://www.boca.gov.tw/cp-105-203-40dfe-1.html",
+      "news_urls": [],
+      "rss_urls": [],
+      "status": "pending",
+      "reason": "外交部組織頁及領事局官方聯絡頁確認。尚未確認獨立新聞列表；新聞與領務活動分散在外交部及領事局已有新聞流，禁止複製全站RSS而錯誤歸屬。"
+    },
+    {
+      "name": "外交部雲嘉南辦事處",
+      "official_name": "外交部雲嘉南辦事處",
+      "parent_ministry": "外交部",
+      "parent_source": "外交部領事事務局",
+      "relationship": "domestic_branch_office",
+      "evidence_urls": [
+        "https://www.mofa.gov.tw/Organization.aspx?n=60",
+        "https://www.boca.gov.tw/cp-105-204-8876c-1.html"
+      ],
+      "homepage": "https://www.boca.gov.tw/cp-105-204-8876c-1.html",
+      "news_urls": [],
+      "rss_urls": [],
+      "status": "pending",
+      "reason": "外交部組織頁及領事局官方聯絡頁確認。尚未確認獨立新聞列表；新聞與領務活動分散在外交部及領事局已有新聞流，禁止複製全站RSS而錯誤歸屬。"
+    },
+    {
+      "name": "外交部南部辦事處",
+      "official_name": "外交部南部辦事處",
+      "parent_ministry": "外交部",
+      "parent_source": "外交部領事事務局",
+      "relationship": "domestic_branch_office",
+      "evidence_urls": [
+        "https://www.mofa.gov.tw/Organization.aspx?n=60",
+        "https://www.boca.gov.tw/cp-105-205-871ad-1.html"
+      ],
+      "homepage": "https://www.boca.gov.tw/cp-105-205-871ad-1.html",
+      "news_urls": [],
+      "rss_urls": [],
+      "status": "pending",
+      "reason": "外交部組織頁及領事局官方聯絡頁確認。尚未確認獨立新聞列表；新聞與領務活動分散在外交部及領事局已有新聞流，禁止複製全站RSS而錯誤歸屬。"
+    },
+    {
+      "name": "外交部東部辦事處",
+      "official_name": "外交部東部辦事處",
+      "parent_ministry": "外交部",
+      "parent_source": "外交部領事事務局",
+      "relationship": "domestic_branch_office",
+      "evidence_urls": [
+        "https://www.mofa.gov.tw/Organization.aspx?n=60",
+        "https://www.boca.gov.tw/cp-105-206-1cb9f-1.html"
+      ],
+      "homepage": "https://www.boca.gov.tw/cp-105-206-1cb9f-1.html",
+      "news_urls": [],
+      "rss_urls": [],
+      "status": "pending",
+      "reason": "外交部組織頁及領事局官方聯絡頁確認。尚未確認獨立新聞列表；新聞與領務活動分散在外交部及領事局已有新聞流，禁止複製全站RSS而錯誤歸屬。"
+    },
+    {
+      "name": "國際合作發展基金會",
+      "official_name": "財團法人國際合作發展基金會",
+      "parent_ministry": "外交部",
+      "parent_source": "外交部",
+      "relationship": "government_funded_foundation",
+      "evidence_urls": [
+        "https://www.mofa.gov.tw/cl.aspx?n=685",
+        "https://www.mofa.gov.tw/News.aspx?n=688&sms=206",
+        "https://law.mofa.gov.tw/LawContent.aspx?id=FL005118",
+        "https://www.icdf.org.tw/wSite/ct?ctNode=31275&mp=1&xItem=4469"
+      ],
+      "homepage": "https://www.icdf.org.tw/",
+      "news_urls": [
+        "https://www.icdf.org.tw/wSite/lp?BaseDSD=7&CtUnit=117&ctNode=31381&mp=1"
+      ],
+      "rss_urls": [
+        "https://www.icdf.org.tw/wSite/service/Rss/getRss?mp=1"
+      ],
+      "status": "active",
+      "reason": "官方RSS說明頁連出RSS，GET 200 application/xml只有2項，HTML列表GET 200有15項；RSS必coverage_reduced並補足HTML。列表及RSS同一xItem之ctNode不同（31381/37214），不可以ctNode不同判為非新聞；原文ID相同應去重。含志工招募，與HTML共用排除規則。",
+      "source_definition": {
+        "name": "國際合作發展基金會",
+        "parent_ministry": "外交部",
+        "urls": [
+          "https://www.icdf.org.tw/wSite/service/Rss/getRss?mp=1",
+          "https://www.icdf.org.tw/wSite/lp?BaseDSD=7&CtUnit=117&ctNode=31381&mp=1"
+        ],
+        "routes": [
+          {
+            "id": "official-news-rss",
+            "url": "https://www.icdf.org.tw/wSite/service/Rss/getRss?mp=1",
+            "kind": "rss",
+            "parser": "standard-rss",
+            "priority": 1,
+            "coverage_reduced": true
+          },
+          {
+            "id": "official-news-html",
+            "url": "https://www.icdf.org.tw/wSite/lp?BaseDSD=7&CtUnit=117&ctNode=31381&mp=1",
+            "kind": "html",
+            "parser": "standard",
+            "priority": 2,
+            "selectors": {
+              "item": "tr",
+              "link": "a[href*='ct?xItem=']",
+              "title": "a[href*='ct?xItem=']",
+              "date": "td.date",
+              "category_label": "新聞訊息"
+            }
+          }
+        ],
+        "filters": {
+          "exclude_title_patterns": [
+            "專案志工招募"
+          ]
+        }
+      },
+      "fixtures": [
+        {
+          "route_id": "official-news-rss",
+          "path": "src-tauri/tests/fixtures/four-ministry-mofa/icdf-rss.xml"
+        },
+        {
+          "route_id": "official-news-html",
+          "path": "src-tauri/tests/fixtures/four-ministry-mofa/icdf-news.html"
+        }
+      ]
+    },
+    {
+      "name": "臺灣民主基金會",
+      "official_name": "財團法人臺灣民主基金會",
+      "parent_ministry": "外交部",
+      "parent_source": "外交部",
+      "relationship": "government_funded_foundation",
+      "evidence_urls": [
+        "https://www.mofa.gov.tw/cl.aspx?n=685",
+        "https://www.mofa.gov.tw/News.aspx?n=686&sms=204",
+        "https://ws.mofa.gov.tw/Download.ashx?icon=.pdf&n=5aSW5Lqk6YOoMTE05bm05Li7566h5rG6566XKOiHque3qOeJiCkucGRm&u=LzAwMS9VcGxvYWQvNDAyL3JlbGZpbGUvMTE5LzEyMTg4OS9iNzYwYTg5Ni02NzBlLTRmNjctYjg5Mi1lYTQxZjg1YTE4NDgucGRm"
+      ],
+      "homepage": "https://www.tfd.org.tw/",
+      "news_urls": [
+        "https://www.tfd.org.tw/tw/news/Focus_News",
+        "https://www.tfd.org.tw/tw/news/events"
+      ],
+      "rss_urls": [],
+      "status": "active",
+      "reason": "官方Vue新聞頁靜態GET是JS shell；system Chrome正常官方前端成功渲染焦點快訊9项、本會活動10项，日期、中文標題及原文連結驗證。general分類是補助公告，不以它代替新聞。未確認RSS。2個browser路由aggregate；browser須等li.news-item出現避免過早返回shell。",
+      "source_definition": {
+        "name": "臺灣民主基金會",
+        "parent_ministry": "外交部",
+        "urls": [
+          "https://www.tfd.org.tw/tw/news/Focus_News",
+          "https://www.tfd.org.tw/tw/news/events"
+        ],
+        "aggregate_routes": true,
+        "routes": [
+          {
+            "id": "official-focus-browser",
+            "url": "https://www.tfd.org.tw/tw/news/Focus_News",
+            "kind": "browser",
+            "parser": "standard",
+            "priority": 1,
+            "selectors": {
+              "item": "li.news-item",
+              "link": "a[href]",
+              "title": "p",
+              "date": "span.date",
+              "category_label": "焦點快訊"
+            },
+            "wait_for_selector": "li.news-item"
+          },
+          {
+            "id": "official-events-browser",
+            "url": "https://www.tfd.org.tw/tw/news/events",
+            "kind": "browser",
+            "parser": "standard",
+            "priority": 2,
+            "selectors": {
+              "item": "li.news-item",
+              "link": "a[href]",
+              "title": "p",
+              "date": "span.date",
+              "category_label": "本會活動"
+            },
+            "wait_for_selector": "li.news-item"
+          }
+        ]
+      },
+      "fixtures": [
+        {
+          "route_id": "official-focus-browser",
+          "path": "src-tauri/tests/fixtures/four-ministry-mofa/tfd-focus.html"
+        },
+        {
+          "route_id": "official-events-browser",
+          "path": "src-tauri/tests/fixtures/four-ministry-mofa/tfd-events.html"
+        }
+      ]
+    },
+    {
+      "name": "太平洋經濟合作理事會中華民國委員會",
+      "official_name": "財團法人太平洋經濟合作理事會中華民國委員會",
+      "parent_ministry": "外交部",
+      "parent_source": "外交部",
+      "relationship": "government_funded_foundation",
+      "evidence_urls": [
+        "https://www.mofa.gov.tw/cl.aspx?n=685",
+        "https://www.mofa.gov.tw/News.aspx?n=687&sms=205",
+        "https://ws.mofa.gov.tw/Download.ashx?icon=.pdf&n=5aSW5Lqk6YOoMTE05bm05Li7566h5rG6566XKOiHque3qOeJiCkucGRm&u=LzAwMS9VcGxvYWQvNDAyL3JlbGZpbGUvMTE5LzEyMTg4OS9iNzYwYTg5Ni02NzBlLTRmNjctYjg5Mi1lYTQxZjg1YTE4NDgucGRm"
+      ],
+      "homepage": "https://www.ctpecc.org.tw/",
+      "news_urls": [],
+      "rss_urls": [],
+      "status": "pending",
+      "reason": "114主管決算捐助及效益表列政府基金比率66.67%。官網HTTPS於本次GET連線逾時，HTTP與無www亦逾時；新聞入口及RSS未確認。保留待核對，不以其他機構APEC媒體每日報導代替。"
+    },
+    {
+      "name": "臺灣亞洲交流基金會",
+      "official_name": "財團法人臺灣亞洲交流基金會",
+      "parent_ministry": "外交部",
+      "parent_source": "外交部",
+      "relationship": "annual_operating_support",
+      "evidence_urls": [
+        "https://www.mofa.gov.tw/cl.aspx?n=685",
+        "https://ws.mofa.gov.tw/Download.ashx?icon=.pdf&n=5aSW5Lqk6YOoMTE05bm05Li7566h5rG6566XKOiHque3qOeJiCkucGRm&u=LzAwMS9VcGxvYWQvNDAyL3JlbGZpbGUvMTE5LzEyMTg4OS9iNzYwYTg5Ni02NzBlLTRmNjctYjg5Mi1lYTQxZjg1YTE4NDgucGRm",
+        "https://www.taef.org/doc/f9dc55-%E5%8F%B0%E4%BA%9E%E5%9F%BA%E9%87%91%E6%9C%83_%E6%8D%90%E5%8A%A9%E6%9A%A8%E7%B5%84%E7%B9%94%E7%AB%A0%E7%A8%8B12%E6%9C%8814%E6%97%A5%E9%80%9A%E9%81%8E%28%E7%8F%BE%E8%A1%8C%29.pdf"
+      ],
+      "homepage": "https://www.taef.org/",
+      "news_urls": [
+        "https://www.taef.org/",
+        "https://www.taef.org/event"
+      ],
+      "rss_urls": [],
+      "status": "active",
+      "reason": "外交部主管及年度營運補助；114決算基金捐助為0，年度捐助29,561千元，不能標成法定government_funded_foundation。官方首頁News連出/event；GET 200英文活動卡含time、title、原文link。中文版入口未確認，保留官方原語言；需支援29th Jun, 2026等英語日期，不能猜出版日期。未確認RSS。 另首頁GET200含/doc/1553、/doc/1552兩篇2026-08-06活動新聞，晚於/event列表最新2026-06-29，故aggregate同收首頁最新與活動列表，不以列表已覆蓋當作完整新聞。",
+      "source_definition": {
+        "name": "臺灣亞洲交流基金會",
+        "parent_ministry": "外交部",
+        "urls": [
+          "https://www.taef.org/",
+          "https://www.taef.org/event"
+        ],
+        "routes": [
+          {
+            "id": "official-latest-html",
+            "url": "https://www.taef.org/",
+            "kind": "html",
+            "parser": "standard",
+            "priority": 1,
+            "selectors": {
+              "item": "#content .grid-item",
+              "link": "a.link[href^='/doc/'], a.link[href^='/event/']",
+              "title": "h2.grid-title",
+              "date": "time",
+              "category_label": "新聞及活動"
+            }
+          },
+          {
+            "id": "official-events-html",
+            "url": "https://www.taef.org/event",
+            "kind": "html",
+            "parser": "standard",
+            "priority": 2,
+            "selectors": {
+              "item": ".grid-item-event",
+              "link": "a.link[href]",
+              "title": "h2.grid-title",
+              "date": "time",
+              "category_label": "活動"
+            }
+          }
+        ],
+        "aggregate_routes": true
+      },
+      "fixtures": [
+        {
+          "route_id": "official-latest-html",
+          "path": "src-tauri/tests/fixtures/four-ministry-mofa/taef-home.html"
+        },
+        {
+          "route_id": "official-events-html",
+          "path": "src-tauri/tests/fixtures/four-ministry-mofa/taef-events.html"
+        }
+      ]
+    },
+    {
+      "name": "松鶴國際企業公司",
+      "official_name": "松鶴國際企業公司",
+      "parent_ministry": "外交部",
+      "parent_source": "外交部",
+      "relationship": "government_shareholding",
+      "evidence_urls": [
+        "https://ws.mofa.gov.tw/Download.ashx?icon=.pdf&n=5aSW5Lqk6YOoMTE05bm05Li7566h5rG6566XKOiHque3qOeJiCkucGRm&u=LzAwMS9VcGxvYWQvNDAyL3JlbGZpbGUvMTE5LzEyMTg4OS9iNzYwYTg5Ni02NzBlLTRmNjctYjg5Mi1lYTQxZjg1YTE4NDgucGRm",
+        "https://www.mofa.gov.tw/News_Content.aspx?n=96&s=72112"
+      ],
+      "homepage": null,
+      "news_urls": [],
+      "rss_urls": [],
+      "status": "pending",
+      "reason": "114主管決算P105列長期投資成本378,000,000元、10,800股；境外投資企業符合持股範圍。尚未驗證独立官方新聞入口及RSS，禁止臆造route。"
+    },
+    {
+      "name": "外交部海外駐外館處",
+      "official_name": "外交部海外駐外館處",
+      "parent_ministry": "外交部",
+      "parent_source": "外交部",
+      "relationship": "overseas_diplomatic_missions",
+      "evidence_urls": [
+        "https://law.mofa.gov.tw/LawContent.aspx?id=GL000017"
+      ],
+      "homepage": "https://www.roc-taiwan.org/",
+      "news_urls": [],
+      "rss_urls": [],
+      "status": "excluded",
+      "reason": "本次用戶指定排除海外駐外館處；按駐外機構組織通則另為機構群，不與國內所屬機關混計。"
+    }
+  ]
+}

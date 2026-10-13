@@ -33,6 +33,11 @@ jobs:
     runs-on: ${{ matrix.os }}
     timeout-minutes: 90
     steps:
+      - name: Check out the release's approved source catalog
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.tag }}
+          persist-credentials: false
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 22
@@ -141,7 +146,8 @@ jobs:
           RELEASE_TAG: ${{ inputs.tag }}
         run: |
           test "$("$CLI_PATH" --version)" = "news-scraper ${RELEASE_TAG#v}"
-          test "$("$CLI_PATH" list-sources | wc -l | tr -d ' ')" = 88
+          "$CLI_PATH" list-sources > approved-source-list.txt
+          node scripts/check-source-catalog.mjs approved-source-list.txt
           mkdir -p live-output live-reports
           "$CLI_PATH" collect --sources 財政部 --output-dir live-output --report-dir live-reports --fail-on-source-error | tee live-summary.jsonl
           report="$(find live-reports -name 'news_scraper_run_*.json' -type f | sort | tail -n 1)"

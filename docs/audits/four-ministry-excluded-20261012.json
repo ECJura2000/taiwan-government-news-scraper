@@ -1,0 +1,80 @@
+{
+  "checked_at": "2026-10-12",
+  "baseline_count": 88,
+  "approved_count": 192,
+  "entries": [
+    {
+      "id": "old-tfai",
+      "name": "財團法人國家電影中心",
+      "official_name": "財團法人國家電影中心",
+      "parent_ministry": "文化部",
+      "parent_source": "文化部",
+      "relationship": "historical_or_supervised",
+      "evidence_urls": [
+        "https://file.moc.gov.tw/001/Upload/470/relfile/16391/253690/35667c42-b4da-4e6f-8cf9-3f3161eead2f.csv"
+      ],
+      "homepage": null,
+      "news_urls": [],
+      "rss_urls": [],
+      "status": "excluded",
+      "reason": "已於2020改制行政法人國家電影及視聽文化中心，不重複新增舊法人。",
+      "checked_at": "2026-10-12",
+      "audit_file": "docs/audits/four-ministry-culture-mac-20261012.json"
+    },
+    {
+      "id": "caring",
+      "name": "財團法人中華民國關懷演藝人員基金會",
+      "official_name": "財團法人中華民國關懷演藝人員基金會",
+      "parent_ministry": "文化部",
+      "parent_source": "文化部",
+      "relationship": "historical_or_supervised",
+      "evidence_urls": [
+        "https://file.moc.gov.tw/001/Upload/470/relfile/16391/253690/35667c42-b4da-4e6f-8cf9-3f3161eead2f.csv"
+      ],
+      "homepage": null,
+      "news_urls": [],
+      "rss_urls": [],
+      "status": "excluded",
+      "reason": "清冊政府原始與累計捐助兩欄皆否，未證實政府捐助；純主管不新增。",
+      "checked_at": "2026-10-12",
+      "audit_file": "docs/audits/four-ministry-culture-mac-20261012.json"
+    },
+    {
+      "name": "外交部海外駐外館處",
+      "official_name": "外交部海外駐外館處",
+      "parent_ministry": "外交部",
+      "parent_source": "外交部",
+      "relationship": "overseas_diplomatic_missions",
+      "evidence_urls": [
+        "https://law.mofa.gov.tw/LawContent.aspx?id=GL000017"
+      ],
+      "homepage": "https://www.roc-taiwan.org/",
+      "news_urls": [],
+      "rss_urls": [],
+      "status": "excluded",
+      "reason": "本次用戶指定排除海外駐外館處；按駐外機構組織通則另為機構群，不與國內所屬機關混計。",
+      "checked_at": "2026-10-12",
+      "audit_file": "docs/audits/four-ministry-mofa-20261012.json"
+    },
+    {
+      "name": "台灣糖業股份有限公司",
+      "official_name": "台灣糖業股份有限公司",
+      "parent_ministry": "經濟部",
+      "parent_source": "經濟部",
+      "relationship": "state_owned_enterprise",
+      "evidence_urls": [
+        "https://www.moea.gov.tw/Mns/cnc/content/ContentMenu.aspx?menu_id=10498",
+        "https://www.moa.gov.tw/ws.php?id=2514347"
+      ],
+      "homepage": "https://www.taisugar.com.tw/",
+      "news_urls": [],
+      "rss_urls": [],
+      "status": "excluded",
+      "reason": "經濟部所屬國營企業，不屬本次四部會擴充範圍。",
+      "attempts": [],
+      "attempted_urls": [],
+      "checked_at": "2026-10-12",
+      "audit_file": "docs/audits/four-ministry-agriculture-20261012.json"
+    }
+  ]
+}
