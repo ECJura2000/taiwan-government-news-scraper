@@ -24,6 +24,7 @@ pub struct DetailPolicy {
 #[derive(Debug, Clone, Default, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct PolicyOverrides {
+    pub tls_intermediate: Option<TlsIntermediatePolicy>,
     pub timeout_seconds: Option<u64>,
     pub retry_attempts: Option<usize>,
     pub host_concurrency: Option<usize>,
@@ -36,8 +37,23 @@ pub struct PolicyOverrides {
     pub browser_entry_url: Option<String>,
 }
 
+/// A verified intermediate chain helper, never an invalid-certificate exception.
+#[derive(Debug, Clone, Deserialize, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
+pub struct TlsIntermediatePolicy {
+    pub host: String,
+    pub certificate: TlsIntermediateCertificate,
+}
+
+#[derive(Debug, Clone, Copy, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "kebab-case")]
+pub enum TlsIntermediateCertificate {
+    TwcaSecure2023,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TransportPolicy {
+    pub tls_intermediate: Option<TlsIntermediatePolicy>,
     pub timeout: Duration,
     pub retry_attempts: usize,
     pub host_concurrency: usize,
@@ -53,6 +69,7 @@ pub struct TransportPolicy {
 impl TransportPolicy {
     pub fn list_default() -> Self {
         Self {
+            tls_intermediate: None,
             timeout: Duration::from_secs(60),
             retry_attempts: 3,
             host_concurrency: 2,
@@ -74,6 +91,9 @@ impl TransportPolicy {
     }
 
     fn overlay(mut self, settings: &PolicyOverrides) -> Self {
+        if let Some(value) = &settings.tls_intermediate {
+            self.tls_intermediate = Some(value.clone());
+        }
         if let Some(value) = settings.timeout_seconds {
             self.timeout = Duration::from_secs(value);
         }
@@ -153,6 +173,16 @@ impl TransportPolicy {
         url::Url::parse(url)
             .ok()
             .is_some_and(|parsed| parsed.scheme() == "https" && parsed.host_str() == Some(allowed))
+    }
+
+    pub fn intermediate_certificate_for(&self, url: &str) -> Option<TlsIntermediateCertificate> {
+        let declared = self.tls_intermediate.as_ref()?;
+        let parsed = url::Url::parse(url).ok()?;
+        (parsed.scheme() == "https"
+            && parsed.host_str() == Some(declared.host.as_str())
+            && parsed.username().is_empty()
+            && parsed.password().is_none())
+        .then_some(declared.certificate)
     }
 }
 

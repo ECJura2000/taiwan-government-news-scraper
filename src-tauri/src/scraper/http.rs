@@ -472,7 +472,7 @@ fn parse_retry_after(value: &HeaderValue) -> Option<Duration> {
 }
 
 fn classify_request_error(error: reqwest::Error) -> ScraperError {
-    let message = error.to_string();
+    let message = request_error_chain(&error);
     if message.to_ascii_lowercase().contains("certificate") {
         ScraperError::TlsCertificate(message)
     } else if error.is_timeout() || error.is_connect() {
@@ -482,6 +482,23 @@ fn classify_request_error(error: reqwest::Error) -> ScraperError {
     } else {
         ScraperError::Unknown(message)
     }
+}
+
+fn request_error_chain(error: &(dyn std::error::Error + 'static)) -> String {
+    let mut message = error.to_string();
+    let mut cause = error.source();
+    // Keep DNS/TCP/TLS evidence that reqwest's outer Display omits. Bound the
+    // chain in case a third-party error implementation accidentally cycles.
+    for _ in 0..12 {
+        let Some(inner) = cause else { break };
+        let text = inner.to_string();
+        if !text.is_empty() && !message.ends_with(&text) {
+            message.push_str(": ");
+            message.push_str(&text);
+        }
+        cause = inner.source();
+    }
+    message
 }
 
 fn validate_status(status: StatusCode) -> Result<(), ScraperError> {
@@ -500,6 +517,30 @@ fn validate_status(status: StatusCode) -> Result<(), ScraperError> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[tokio::test]
+    async fn connection_failure_keeps_underlying_tcp_evidence() {
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let address = listener.local_addr().unwrap();
+        drop(listener);
+        let error = Client::builder()
+            .no_proxy()
+            .build()
+            .unwrap()
+            .get(format!("http://{address}/"))
+            .send()
+            .await
+            .unwrap_err();
+        let message = request_error_chain(&error);
+        assert!(
+            message.to_ascii_lowercase().contains("refused"),
+            "{message}"
+        );
+        assert!(matches!(
+            classify_request_error(error),
+            ScraperError::RunnerNetwork(_)
+        ));
+    }
 
     #[test]
     fn client_can_be_constructed() {

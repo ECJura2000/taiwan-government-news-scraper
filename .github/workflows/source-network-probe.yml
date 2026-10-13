@@ -1,0 +1,31 @@
+name: Source network diagnostics
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'src-tauri/src/browser.rs'
+      - 'src-tauri/src/scraper/http.rs'
+      - 'src-tauri/src/scraper/transport.rs'
+      - 'src-tauri/resources/sources.json'
+      - 'src-tauri/tests/tls_intermediate.rs'
+      - 'scripts/source-network-probe.mjs'
+      - '.github/workflows/source-network-probe.yml'
+permissions:
+  contents: read
+jobs:
+  networking:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+      - run: node scripts/source-smoke-environment.mjs network-diagnostics/environment.json
+      - run: node scripts/source-network-probe.mjs network-diagnostics/probes.json
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: source-network-diagnostics
+          path: network-diagnostics/
+          retention-days: 7

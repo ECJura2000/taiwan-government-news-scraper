@@ -549,6 +549,12 @@ pub(super) fn browser_page_script(parser: &str) -> Option<&'static str> {
 fn classify_browser_error(error: String) -> ScraperError {
     if error.starts_with("access_blocked:") || error.contains("Incapsula 驗證超過") {
         ScraperError::AccessBlocked(error)
+    } else if error.starts_with("browser_navigation_tls:") {
+        ScraperError::TlsCertificate(error)
+    } else if error.starts_with("browser_navigation_network:") {
+        ScraperError::RunnerNetwork(error)
+    } else if error.starts_with("browser_navigation_outage:") {
+        ScraperError::SourceOutage(error)
     } else {
         ScraperError::BrowserRuntime(error)
     }
@@ -1546,6 +1552,32 @@ mod tests {
             classify_browser_error("CDP websocket disconnected".into()),
             ScraperError::BrowserRuntime(_)
         ));
+    }
+
+    #[test]
+    fn browser_navigation_failures_preserve_their_transport_class() {
+        for (message, class) in [
+            (
+                "browser_navigation_tls: net::ERR_CERT_AUTHORITY_INVALID",
+                "tls_certificate",
+            ),
+            (
+                "browser_navigation_network: net::ERR_NAME_NOT_RESOLVED",
+                "runner_network",
+            ),
+            (
+                "browser_navigation_outage: net::ERR_CONNECTION_TIMED_OUT",
+                "source_outage",
+            ),
+            ("CDP command 5 等待逾時", "browser_runtime"),
+        ] {
+            assert_eq!(
+                classify_browser_error(message.into())
+                    .failure_class()
+                    .as_str(),
+                class
+            );
+        }
     }
     use crate::scraper::transport::PolicyOverrides;
 
