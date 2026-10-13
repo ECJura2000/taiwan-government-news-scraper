@@ -53,7 +53,7 @@ export function renderSmokeSummary(summary) {
     'OS、Chrome／Chromium、OpenSSL 與 curl 版本另存 environment-versions.json，供比對實際環境，不含憑證或環境變數內容。'];
   if (summary.not_collected_in_cloud?.length) {
     lines.push('', `本次雲端範圍未收集 ${summary.not_collected_in_cloud.length} 個來源，全部仍保留於核准目錄；須由 Mac 完整驗證，不列為本次成功：`, '',
-      '| 須由 Mac 驗證 | 實際證據 | |', '| --- | --- | --- |');
+      '| 須由 Mac 驗證 | 實際原因 | 證據 |', '| --- | --- | --- |');
     for (const row of summary.not_collected_in_cloud) lines.push(`| ${cell(row.source)} | ${row.reason === 'official_verification_page' ? '官方驗證頁阻擋' : 'GitHub TCP／DNS 連線逾時，Mac 成功'} | [雲端證據](${row.network_probe_run}) |`);
   }
   if (summary.unresolved_failures.length) {

@@ -4,12 +4,13 @@ import {loadApprovedSources, validateSourceNames} from './check-source-catalog.m
 
 export function resolveSmokeProfile(profile, {
   approved = loadApprovedSources(),
-  evidence = JSON.parse(fs.readFileSync('src-tauri/resources/source_verification_profiles.json', 'utf8')),
+  evidence = undefined,
   today = new Date().toISOString().slice(0,10),
 } = {}) {
   validateSourceNames(approved, 'approved sources');
   if (profile === 'full') return {name:'full', expected_sources:approved, unverified_sources:[], approved_source_count:approved.length};
   if (profile !== 'cloud') throw Error(`Unknown smoke profile: ${profile}`);
+  evidence ??= JSON.parse(fs.readFileSync('src-tauri/resources/source_verification_profiles.json', 'utf8'));
   if (evidence.version !== 1 || !/^\d{4}-\d{2}-\d{2}$/.test(evidence.review_after ?? '') ||
       evidence.review_after <= today || !Array.isArray(evidence.manual_mac_sources)) throw Error('Cloud profile evidence requires review');
   const manual = evidence.manual_mac_sources;

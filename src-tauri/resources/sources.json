@@ -275,7 +275,32 @@
     "name": "國防院",
     "urls": [
       "https://indsr.org.tw/informationlist?uid=7"
-    ]
+    ],
+    "routes": [
+      {
+        "id": "primary",
+        "url": "https://indsr.org.tw/informationlist?uid=7",
+        "kind": "html",
+        "parser": "standard",
+        "priority": 1
+      },
+      {
+        "id": "official-browser",
+        "url": "https://indsr.org.tw/informationlist?uid=7",
+        "kind": "browser",
+        "parser": "standard",
+        "priority": 2,
+        "wait_for_selector": "div.col-lg-6.card p.time1"
+      }
+    ],
+    "transport": {
+      "detail": [
+        {
+          "host": "indsr.org.tw",
+          "browser_fallback": true
+        }
+      ]
+    }
   },
   {
     "name": "財政部",
@@ -1103,7 +1128,32 @@
     "name": "故宮",
     "urls": [
       "https://www.npm.gov.tw/News-List.aspx?sno=01000001&l=1&q=&s_date=&e_date=&type=03000096"
-    ]
+    ],
+    "routes": [
+      {
+        "id": "primary",
+        "url": "https://www.npm.gov.tw/News-List.aspx?sno=01000001&l=1&q=&s_date=&e_date=&type=03000096",
+        "kind": "html",
+        "parser": "standard",
+        "priority": 1
+      },
+      {
+        "id": "official-browser",
+        "url": "https://www.npm.gov.tw/News-List.aspx?sno=01000001&l=1&q=&s_date=&e_date=&type=03000096",
+        "kind": "browser",
+        "parser": "standard",
+        "priority": 2,
+        "wait_for_selector": "ul.mt-12.news-list > li span.mr-5"
+      }
+    ],
+    "transport": {
+      "detail": [
+        {
+          "host": "www.npm.gov.tw",
+          "browser_fallback": true
+        }
+      ]
+    }
   },
   {
     "name": "數位發展部",
