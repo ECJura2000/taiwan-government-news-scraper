@@ -4188,7 +4188,8 @@
     "transport": {
       "list": {
         "timeout_seconds": 20,
-        "retry_attempts": 1
+        "retry_attempts": 1,
+        "browser_native_user_agent": true
       },
       "detail": [
         {

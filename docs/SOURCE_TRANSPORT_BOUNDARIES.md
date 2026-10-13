@@ -18,7 +18,9 @@
 
 ## 來源政策契約
 
-來源的 `transport.list` 設定列表預設值；`routes[].transport` 可覆寫單一路由。`transport.detail[]` 依詳細內文網址的完整主機名稱選用政策。可設定 `timeout_seconds`、`retry_attempts`、`host_concurrency`、`cache`、`max_response_bytes`；route 可另外宣告 `tls_fallback_host`。通用列表預設為 60 秒、3 次、同主機 2 筆、使用條件式快取、64 MiB；詳細內文相同但不快取。
+來源的 `transport.list` 設定列表預設值；`routes[].transport` 可覆寫單一路由。`transport.detail[]` 依詳細內文網址的完整主機名稱選用政策。可設定 `timeout_seconds`、`retry_attempts`、`host_concurrency`、`cache`、`max_response_bytes`；route 可另外宣告 `tls_fallback_host`。瀏覽器可另宣告 `browser_native_user_agent`，由已解析的政策傳入 Chrome；預設保留既有相容識別資訊。目前只有逐站實測確認的種苗場列表啟用原生版本與平台資訊，不套用至其他來源或未宣告的詳細頁主機。
+
+通用列表預設為 60 秒、3 次、同主機 2 筆、使用條件式快取、64 MiB；詳細內文相同但不快取。
 
 目錄首次載入即檢查設定，不再把零值偷偷改成 1。逾時允許 1–3600 秒、嘗試次數 1–10、同主機並行 1–64、回應大小 1 byte–128 MiB；未知欄位、重複來源／route、未支援 kind／parser、無效 CSS selector 與非 HTTP(S)／含帳密 URL 都拒絕。詳細頁主機必須為不重複的完整小寫主機名稱。TLS 例外只接受國防部已宣告兩個 route 的 HTTPS `www.mnd.gov.tw`，不得放在來源預設或詳細頁政策。錯誤包含來源、route／主機及欄位，讓目錄修改能在 CI 與啟動時立即被發現。
 

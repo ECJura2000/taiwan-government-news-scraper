@@ -32,6 +32,7 @@ pub struct PolicyOverrides {
     pub tls_fallback_host: Option<String>,
     pub browser_fallback: Option<bool>,
     pub browser_wait_for_selector: Option<String>,
+    pub browser_native_user_agent: Option<bool>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -44,6 +45,7 @@ pub struct TransportPolicy {
     pub tls_fallback_host: Option<String>,
     pub browser_fallback: bool,
     pub browser_wait_for_selector: Option<String>,
+    pub browser_native_user_agent: bool,
 }
 
 impl TransportPolicy {
@@ -57,6 +59,7 @@ impl TransportPolicy {
             tls_fallback_host: None,
             browser_fallback: false,
             browser_wait_for_selector: None,
+            browser_native_user_agent: false,
         }
     }
 
@@ -91,6 +94,9 @@ impl TransportPolicy {
         }
         if let Some(value) = &settings.browser_wait_for_selector {
             self.browser_wait_for_selector = Some(value.clone());
+        }
+        if let Some(value) = settings.browser_native_user_agent {
+            self.browser_native_user_agent = value;
         }
         self
     }
@@ -148,6 +154,24 @@ impl TransportPolicy {
 mod tests {
     use super::*;
     use crate::scraper::catalog::{find_source, routes_for};
+
+    #[test]
+    fn native_browser_identification_is_declared_and_scoped() {
+        let source = find_source("農業部種苗改良繁殖場").unwrap();
+        let route = routes_for(source)
+            .into_iter()
+            .find(|r| r.kind == "browser")
+            .unwrap();
+        assert!(TransportPolicy::for_route(source, &route).browser_native_user_agent);
+        assert!(
+            !TransportPolicy::for_detail(source, "https://www.tss.gov.tw/article")
+                .browser_native_user_agent
+        );
+        let legacy = find_source("經濟部").unwrap();
+        for route in routes_for(legacy) {
+            assert!(!TransportPolicy::for_route(legacy, &route).browser_native_user_agent);
+        }
+    }
 
     #[test]
     fn detail_selector_wait_is_host_scoped_and_keeps_certificate_checks() {

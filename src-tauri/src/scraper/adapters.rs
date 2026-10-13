@@ -4,9 +4,28 @@ use super::{rss, special, NewsItem, ScraperError};
 use scraper::{Html, Selector};
 
 pub(crate) fn is_access_blocked_document(body: &str) -> bool {
+    if rss::is_feed_document(body) {
+        return false;
+    }
     let lower = body.to_ascii_lowercase();
     lower.contains("incapsula incident id")
         || (lower.contains("request unsuccessful") && lower.contains("_incapsula_resource"))
+        || (lower.contains("the url you requested has been blocked")
+            && lower.contains("web page blocked!")
+            && {
+                let document = Html::parse_document(body);
+                let title = Selector::parse("title").expect("valid title selector");
+                let heading = Selector::parse("h3").expect("valid heading selector");
+                document.select(&title).any(|node| {
+                    html::clean_text(node)
+                        .trim()
+                        .eq_ignore_ascii_case("The URL you requested has been blocked")
+                }) && document.select(&heading).any(|node| {
+                    html::clean_text(node)
+                        .trim()
+                        .eq_ignore_ascii_case("Web Page Blocked!")
+                })
+            })
 }
 
 pub(crate) fn is_access_challenge_document(body: &str) -> bool {
@@ -299,11 +318,12 @@ pub fn parse_route_records(
     body: &str,
 ) -> Result<Vec<rss::FeedRecord>, ScraperError> {
     let items = parse_route_raw(source, route, body)?;
-    let metadata = if route.kind == "rss" || rss::is_feed_document(body) {
-        Some(rss::parse_feed_records(source, body)?)
-    } else {
-        None
-    };
+    let metadata =
+        if route.kind == "rss" || route.parser.contains("rss") || rss::is_feed_document(body) {
+            Some(rss::parse_feed_records(source, body)?)
+        } else {
+            None
+        };
     let base = url::Url::parse(&route.url).ok();
     let mut html_publishers = std::collections::HashMap::new();
     let mut html_categories = std::collections::HashMap::new();
@@ -459,7 +479,7 @@ fn parse_route_raw(
             "official endpoint returned a verification interstitial".into(),
         ));
     }
-    if route.kind == "rss" || rss::is_feed_document(body) {
+    if route.kind == "rss" || route.parser.contains("rss") || rss::is_feed_document(body) {
         let mut items = rss::parse_feed(source, body)?;
         if source == "農業部" {
             for item in &mut items {
@@ -702,6 +722,30 @@ fn clean_article_text(container: scraper::ElementRef<'_>) -> String {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn firewall_block_page_is_access_failure_for_browser_rss_and_not_empty_week() {
+        let blocked = "<html><head><title>The URL you requested has been blocked</title></head><body><h3>Web Page Blocked!</h3></body></html>";
+        assert!(super::is_access_blocked_document(blocked));
+        let route: crate::scraper::catalog::SourceRoute = serde_json::from_value(serde_json::json!({
+            "id":"browser-feed", "url":"https://official.test/feed", "kind":"browser", "parser":"standard-rss"
+        })).unwrap();
+        assert!(matches!(
+            super::parse_route_records("主計總處", &route, blocked),
+            Err(crate::scraper::ScraperError::AccessBlocked(_))
+        ));
+        let feed = format!("<rss><channel><item><title>防火牆說明</title><link>https://official.test/article</link><description><![CDATA[{blocked}]]></description></item></channel></rss>");
+        assert!(!super::is_access_blocked_document(&feed));
+        assert_eq!(
+            super::parse_route_records("主計總處", &route, &feed)
+                .unwrap()
+                .len(),
+            1
+        );
+        assert!(
+            super::parse_route_records("主計總處", &route, "<html>Unavailable</html>").is_err()
+        );
+    }
+
     #[test]
     fn managed_challenge_is_not_a_feed_or_article_and_resources_alone_are_not_blocked() {
         let challenge = r#"<html><head><title>Just a moment...</title><script>window._cf_chl_opt = {};</script></head><body><script src="/cdn-cgi/challenge-platform/h/g/orchestrate/chl_page/v1"></script></body></html>"#;

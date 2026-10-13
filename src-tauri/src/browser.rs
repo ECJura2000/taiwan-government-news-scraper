@@ -47,7 +47,7 @@ pub async fn fetch_rendered_html_after(
     url: &str,
     page_script: Option<&str>,
 ) -> Result<String, String> {
-    fetch_rendered_html_after_with_certificate_policy(url, page_script, false, None).await
+    fetch_rendered_html_after_with_certificate_policy(url, page_script, false, None, false).await
 }
 
 pub async fn fetch_rendered_html_after_with_timeout(
@@ -55,7 +55,8 @@ pub async fn fetch_rendered_html_after_with_timeout(
     page_script: Option<&str>,
     timeout: Duration,
 ) -> Result<String, String> {
-    fetch_rendered_html_after_with_certificate_policy(url, page_script, false, Some(timeout)).await
+    fetch_rendered_html_after_with_certificate_policy(url, page_script, false, Some(timeout), false)
+        .await
 }
 
 /// Fetch a rendered page while accepting an invalid certificate for the single
@@ -64,7 +65,23 @@ pub async fn fetch_rendered_html_after_allow_invalid_certificates(
     url: &str,
     page_script: Option<&str>,
 ) -> Result<String, String> {
-    fetch_rendered_html_after_with_certificate_policy(url, page_script, true, None).await
+    fetch_rendered_html_after_with_certificate_policy(url, page_script, true, None, false).await
+}
+
+pub async fn fetch_rendered_html_after_with_transport(
+    url: &str,
+    page_script: Option<&str>,
+    timeout: Option<Duration>,
+    native_user_agent: bool,
+) -> Result<String, String> {
+    fetch_rendered_html_after_with_certificate_policy(
+        url,
+        page_script,
+        false,
+        timeout,
+        native_user_agent,
+    )
+    .await
 }
 
 async fn fetch_rendered_html_after_with_certificate_policy(
@@ -72,6 +89,7 @@ async fn fetch_rendered_html_after_with_certificate_policy(
     page_script: Option<&str>,
     allow_invalid_certificates: bool,
     timeout: Option<Duration>,
+    native_user_agent: bool,
 ) -> Result<String, String> {
     // Keep browser work bounded: two independent profiles let a slow fallback
     // run alongside another dynamic source without starting an unbounded number
@@ -90,7 +108,8 @@ async fn fetch_rendered_html_after_with_certificate_policy(
     } else {
         None
     };
-    let (mut child, profile_dir, endpoint) = launch_browser(allow_invalid_certificates).await?;
+    let (mut child, profile_dir, endpoint) =
+        launch_browser(allow_invalid_certificates, native_user_agent).await?;
     // Scope the deadline inside the owner so timeout still kills Chrome and
     // removes its profile. Semaphore queueing and browser startup are separate.
     let fetch = fetch_from_target(&endpoint, url, page_script, expected_host.as_deref());
@@ -108,6 +127,7 @@ async fn fetch_rendered_html_after_with_certificate_policy(
 
 async fn launch_browser(
     allow_invalid_certificates: bool,
+    native_user_agent: bool,
 ) -> Result<(Child, PathBuf, String), String> {
     let program = find_browser().ok_or_else(|| {
         "找不到系統 Chrome/Chromium/Edge；browser route 需要可執行的 Chromium 瀏覽器".to_owned()
@@ -148,6 +168,9 @@ async fn launch_browser(
         "--use-mock-keychain",
         "--window-size=1920,1080",
     ]);
+    if !native_user_agent {
+        command.arg("--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36");
+    }
     if allow_invalid_certificates {
         command.arg("--ignore-certificate-errors");
     }

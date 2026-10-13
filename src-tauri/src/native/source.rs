@@ -115,9 +115,14 @@ async fn fetch_source_definition(
                         ))
                     }
                 } else {
-                    crate::browser::fetch_rendered_html_after(url, page_script.as_deref())
-                        .await
-                        .map_err(classify_browser_error)
+                    crate::browser::fetch_rendered_html_after_with_transport(
+                        url,
+                        page_script.as_deref(),
+                        None,
+                        policy.browser_native_user_agent,
+                    )
+                    .await
+                    .map_err(classify_browser_error)
                 }
             } else {
                 if uses_recent_nps_prefix {
@@ -228,9 +233,11 @@ async fn fetch_source_definition(
                             .append_pair(&pagination.parameter, &page.to_string());
                         let started_page = Instant::now();
                         let next = if route.kind == "browser" {
-                            crate::browser::fetch_rendered_html_after(
+                            crate::browser::fetch_rendered_html_after_with_transport(
                                 page_url.as_str(),
                                 page_script.as_deref(),
+                                None,
+                                policy.browser_native_user_agent,
                             )
                             .await
                             .map_err(classify_browser_error)
@@ -699,7 +706,7 @@ pub(super) async fn enrich_detail_full_text(
                         let initial_reason = fetched.as_ref().err().map_or("empty_detail_text", |error| error.failure_class().as_str());
                         let browser_started = Instant::now();
                         let wait_script = policy.browser_wait_script();
-                        let rendered = crate::browser::fetch_rendered_html_after_with_timeout(&item.link, wait_script.as_deref(), policy.timeout)
+                        let rendered = crate::browser::fetch_rendered_html_after_with_transport(&item.link, wait_script.as_deref(), Some(policy.timeout), policy.browser_native_user_agent)
                             .await.map_err(classify_browser_error);
                         browser_seconds = browser_started.elapsed().as_secs_f64();
                         fallback = Some(json!({"source":item.source,"url":item.link,"http_reason":initial_reason,

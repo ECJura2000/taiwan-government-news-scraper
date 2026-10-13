@@ -232,6 +232,7 @@ pub fn parse_catalog(json: &str) -> Result<Vec<SourceDefinition>, String> {
                                     | "tls_fallback_host"
                                     | "browser_fallback"
                                     | "browser_wait_for_selector"
+                                    | "browser_native_user_agent"
                             ) {
                                 return Err(format!(
                                     "來源 {name} transport.detail：未知欄位 {field}"

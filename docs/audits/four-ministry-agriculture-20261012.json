@@ -2521,7 +2521,21 @@
             },
             "wait_for_selector": "tr.trs:has(a[title]) td.tds"
           }
-        ]
+        ],
+        "transport": {
+          "list": {
+            "timeout_seconds": 20,
+            "retry_attempts": 1,
+            "browser_native_user_agent": true
+          },
+          "detail": [
+            {
+              "host": "www.tss.gov.tw",
+              "timeout_seconds": 12,
+              "retry_attempts": 1
+            }
+          ]
+        }
       },
       "fixtures": [
         {
