@@ -505,7 +505,7 @@ fn merge_discovered_record(
 
 fn route_page_script(route: &SourceRoute) -> Option<String> {
     route.wait_for_selector.as_ref().map(|selector|format!(
-        "(async()=>{{for(let i=0;i<30;i++){{if(document.querySelector({}))return;await new Promise(r=>setTimeout(r,1000));}}throw new Error('official news selector not ready');}})()",
+        "(async()=>{{for(let i=0;i<20;i++){{if(document.querySelector({}))return;await new Promise(r=>setTimeout(r,1000));}}throw new Error('official news selector not ready');}})()",
         serde_json::to_string(selector).expect("selector JSON")))
         .or_else(||browser_page_script(route.parser.as_str()).map(str::to_owned))
 }

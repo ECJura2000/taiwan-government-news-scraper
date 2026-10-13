@@ -121,35 +121,33 @@ async fn launch_browser(
         .await
         .map_err(|error| format!("CDP profile 建立失敗：{error}"))?;
     let mut command = Command::new(program);
-    command
-        .args([
-            "--allow-pre-commit-input",
-            "--headless=new",
-            "--disable-background-networking",
-            "--disable-background-timer-throttling",
-            "--disable-backgrounding-occluded-windows",
-            "--disable-client-side-phishing-detection",
-            "--disable-default-apps",
-            "--no-sandbox",
-            "--disable-dev-shm-usage",
-            "--disable-blink-features=AutomationControlled",
-            "--disable-features=IgnoreDuplicateNavs,Prewarm",
-            "--disable-hang-monitor",
-            "--disable-popup-blocking",
-            "--disable-prompt-on-repost",
-            "--disable-sync",
-            "--enable-automation",
-            "--enable-logging=stderr",
-            "--log-level=0",
-            "--no-first-run",
-            "--no-service-autorun",
-            "--password-store=basic",
-            "--remote-allow-origins=*",
-            "--test-type=webdriver",
-            "--use-mock-keychain",
-            "--window-size=1920,1080",
-            "--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36",
-        ]);
+    command.args([
+        "--allow-pre-commit-input",
+        "--headless=new",
+        "--disable-background-networking",
+        "--disable-background-timer-throttling",
+        "--disable-backgrounding-occluded-windows",
+        "--disable-client-side-phishing-detection",
+        "--disable-default-apps",
+        "--no-sandbox",
+        "--disable-dev-shm-usage",
+        "--disable-blink-features=AutomationControlled",
+        "--disable-features=IgnoreDuplicateNavs,Prewarm",
+        "--disable-hang-monitor",
+        "--disable-popup-blocking",
+        "--disable-prompt-on-repost",
+        "--disable-sync",
+        "--enable-automation",
+        "--enable-logging=stderr",
+        "--log-level=0",
+        "--no-first-run",
+        "--no-service-autorun",
+        "--password-store=basic",
+        "--remote-allow-origins=*",
+        "--test-type=webdriver",
+        "--use-mock-keychain",
+        "--window-size=1920,1080",
+    ]);
     if allow_invalid_certificates {
         command.arg("--ignore-certificate-errors");
     }
@@ -228,22 +226,9 @@ async fn fetch_from_target(
     wait_for_response(&mut socket, 5).await?;
     let _ = wait_for_event(&mut socket, "Page.loadEventFired").await;
     tokio::time::sleep(Duration::from_millis(1_500)).await;
-    let first_capture_id = if let Some(script) = page_script {
-        send_command(
-            &mut socket,
-            6,
-            "Runtime.evaluate",
-            json!({"expression":script, "returnByValue":true, "awaitPromise":true}),
-        )
-        .await?;
-        wait_for_response(&mut socket, 6).await?;
-        tokio::time::sleep(Duration::from_secs(3)).await;
-        7
-    } else {
-        6
-    };
+    let mut pending_script = page_script;
     for attempt in 0..30_u64 {
-        let id = first_capture_id + attempt;
+        let id = 6 + attempt;
         send_command(
             &mut socket,
             id,
@@ -286,6 +271,23 @@ async fn fetch_from_target(
                 if actual_host != expected_host {
                     return Err(format!("TLS fallback 跳轉至未授權主機：{actual_host}"));
                 }
+            }
+            // Wait for the official document before waiting for its news DOM.
+            // A verification page cannot satisfy a source-specific selector.
+            if let Some(script) = pending_script.take() {
+                send_command(
+                    &mut socket,
+                    id + 100,
+                    "Runtime.evaluate",
+                    json!({"expression":script, "returnByValue":true, "awaitPromise":true}),
+                )
+                .await?;
+                let response = wait_for_response(&mut socket, id + 100).await?;
+                if let Some(exception) = response.pointer("/result/exceptionDetails") {
+                    return Err(format!("official page script failed: {exception}"));
+                }
+                tokio::time::sleep(Duration::from_secs(3)).await;
+                continue;
             }
             let _ = socket.close(None).await;
             return Ok(html.to_owned());
@@ -339,7 +341,7 @@ async fn wait_for_response(
     };
     tokio::time::timeout(Duration::from_secs(30), receive)
         .await
-        .map_err(|_| "CDP command 等待逾時".to_owned())?
+        .map_err(|_| format!("CDP command {id} 等待逾時"))?
 }
 
 async fn wait_for_event(
@@ -516,6 +518,38 @@ mod tests {
         );
         assert!(records[0].item.full_text.starts_with("內政部次長董建宏"));
         assert_eq!(records[1].item.date, "2026-10-07");
+    }
+
+    #[tokio::test]
+    #[ignore = "requires a system Chrome or Chromium executable"]
+    async fn waits_for_challenge_before_running_official_page_script() {
+        use tokio::io::{AsyncReadExt, AsyncWriteExt};
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let address = listener.local_addr().unwrap();
+        let body = r#"<!doctype html><html><head><title>Just a moment...</title></head><body>
+        <script>window._cf_chl_opt = {}; /* /cdn-cgi/challenge-platform/ */
+        setTimeout(() => { document.title = 'Official news'; document.body.innerHTML = '<main id="official-news">News</main>'; }, 4000);
+        </script></body></html>"#;
+        let server = tokio::spawn(async move {
+            let (mut stream, _) = listener.accept().await.unwrap();
+            let mut request = [0_u8; 4096];
+            let received = stream.read(&mut request).await.unwrap();
+            assert!(received > 0);
+            let response = format!("HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}", body.len());
+            stream.write_all(response.as_bytes()).await.unwrap();
+            stream.shutdown().await.unwrap();
+        });
+        let script = "(() => { const news = document.querySelector('#official-news'); if (!news) throw new Error('script ran before official document'); news.dataset.checked = 'yes'; })()";
+        let captured = fetch_rendered_html_after_with_timeout(
+            &format!("http://{address}/news"),
+            Some(script),
+            Duration::from_secs(30),
+        )
+        .await
+        .unwrap();
+        server.await.unwrap();
+        assert!(captured.contains("data-checked=\"yes\""));
+        assert!(!captured.contains("Just a moment..."));
     }
 
     #[tokio::test]
