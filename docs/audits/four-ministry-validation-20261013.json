@@ -1,0 +1,5519 @@
+{
+  "checked_at": "2026-10-13",
+  "version": "2.1.32",
+  "week_start": "2026-10-05",
+  "week_end": "2026-10-11",
+  "run_id": "20261013_095800_032312",
+  "status": "partial_failure",
+  "selected_source_count": 192,
+  "news_count": 488,
+  "original_source_count": 88,
+  "original_sources_all_retained": true,
+  "failed_sources": [
+    "國防院",
+    "公路局"
+  ],
+  "anomalies": [],
+  "error_counts": {
+    "connection": 5,
+    "http": 3
+  },
+  "quality_alert_reasons": [],
+  "source_health": {
+    "coverage_reduced_count": 8,
+    "failed_count": 2,
+    "fallback_source_count": 22,
+    "healthy_count": 188,
+    "ssl_fallback_host_count": 0,
+    "unstable_count": 2
+  },
+  "relevance_ruleset_hash": "0677679b2db2644c0d272e124c23b3564eabb979ed120c9f8f18457023fef53c",
+  "time_sync": {
+    "address": "118.163.81.61:123",
+    "attempts": [
+      {
+        "server": "time.stdtime.gov.tw",
+        "status": "success"
+      }
+    ],
+    "offset_seconds": -0.0039588212966918945,
+    "port": 123,
+    "protocol": "NTP",
+    "round_trip_seconds": 0.008725881576538086,
+    "server": "time.stdtime.gov.tw",
+    "status": "synchronized",
+    "synchronized_at": "2026-10-13T01:56:17.432067+00:00",
+    "timezone": "Asia/Taipei"
+  },
+  "artifact_pair": {
+    "report_sha256": "832602e043f6e46e59218f4fb68c323d51d600f27f61952fc7e8129fde9ed62e",
+    "excel_sha256": "f8f83092f4ccaef8fc09837d6610c4f55360d36abc37b47fd12f655cd78c865d",
+    "checksums_verified": true,
+    "excel_columns": 17
+  },
+  "release_gate": {
+    "accepted": false,
+    "errors": [
+      "unresolved parser/access/runtime failure: 公路局"
+    ],
+    "initial_failed_sources": [
+      "國防院",
+      "公路局"
+    ],
+    "final_failed_sources": [
+      "國防院",
+      "公路局"
+    ],
+    "limits": {
+      "maxFailed": 8,
+      "maxFailureRate": 0.1,
+      "criticalSources": [
+        "數位發展部",
+        "國發會",
+        "國科會",
+        "經濟部"
+      ]
+    }
+  },
+  "limitations": "Full run and retries are separate evidence. Retry recovery does not rewrite the full-run Excel. Reduced coverage remains explicit. Empty week alone is not proof of complete coverage.",
+  "sources": [
+    {
+      "source": "國家公園署",
+      "existing": true,
+      "status": "success",
+      "item_count": 1,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "official-json",
+        "url": "https://www.nps.gov.tw/sites/www.nps.gov.tw/ch/main/parknews/list.json",
+        "url_host": "www.nps.gov.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 133,
+      "raw_date_filtered": 1,
+      "retained_items": 1,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 0,
+      "exclusion_reasons": {},
+      "requested_window_covered": [
+        {
+          "route": "official-json",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "國土管理署",
+      "existing": true,
+      "status": "success",
+      "item_count": 6,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "official-json",
+        "url": "https://www.nlma.gov.tw/sites/www.nlma.gov.tw/ch/main/news/list.json",
+        "url_host": "www.nlma.gov.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 1730,
+      "raw_date_filtered": 6,
+      "retained_items": 6,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 0,
+      "exclusion_reasons": {},
+      "requested_window_covered": [
+        {
+          "route": "official-json",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "消防署",
+      "existing": true,
+      "status": "success",
+      "item_count": 1,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "primary",
+        "url": "https://www.nfa.gov.tw/pro/index.php?code=list&ids=1470",
+        "url_host": "www.nfa.gov.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 15,
+      "raw_date_filtered": 1,
+      "retained_items": 1,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 0,
+      "exclusion_reasons": {},
+      "requested_window_covered": [
+        {
+          "route": "primary",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "監察院",
+      "existing": true,
+      "status": "success",
+      "item_count": 0,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": true,
+        "route_id": "primary",
+        "url": "https://www.cy.gov.tw/OpenData.aspx?SN=ADE5198E06414AF5",
+        "url_host": "www.cy.gov.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 50,
+      "raw_date_filtered": 0,
+      "retained_items": 0,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 0,
+      "exclusion_reasons": {},
+      "requested_window_covered": [
+        {
+          "route": "primary",
+          "covered": false
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "外交部",
+      "existing": true,
+      "status": "success",
+      "item_count": 20,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "official-news-rss",
+        "url": "https://www.mofa.gov.tw/OpenData.aspx?SN=8ABA444B9AC1360F",
+        "url_host": "www.mofa.gov.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 1000,
+      "raw_date_filtered": 20,
+      "retained_items": 20,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 0,
+      "exclusion_reasons": {},
+      "requested_window_covered": [
+        {
+          "route": "official-news-rss",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "僑委會",
+      "existing": true,
+      "status": "success",
+      "item_count": 0,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "primary",
+        "url": "https://www.ocac.gov.tw/OCAC/Pages/List.aspx?nodeid=3018",
+        "url_host": "www.ocac.gov.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 10,
+      "raw_date_filtered": 0,
+      "retained_items": 0,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 0,
+      "exclusion_reasons": {},
+      "requested_window_covered": [
+        {
+          "route": "primary",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "內政部",
+      "existing": true,
+      "status": "success",
+      "item_count": 13,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "official-news-rss",
+        "url": "https://www.moi.gov.tw/OpenData.aspx?SN=76F358C679FAD4CF",
+        "url_host": "www.moi.gov.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 20,
+      "raw_date_filtered": 13,
+      "retained_items": 13,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 0,
+      "exclusion_reasons": {},
+      "requested_window_covered": [
+        {
+          "route": "official-news-rss",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "國土測繪中心",
+      "existing": true,
+      "status": "success",
+      "item_count": 3,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "primary",
+        "url": "https://www.nlsc.gov.tw/OpenData.aspx?SN=6880137375636088",
+        "url_host": "www.nlsc.gov.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 50,
+      "raw_date_filtered": 3,
+      "retained_items": 3,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 0,
+      "exclusion_reasons": {},
+      "requested_window_covered": [
+        {
+          "route": "primary",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "中科院",
+      "existing": true,
+      "status": "success",
+      "item_count": 0,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "primary",
+        "url": "https://www.ncsist.org.tw/csistdup/news/NewsPublish.aspx",
+        "url_host": "www.ncsist.org.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 154,
+      "raw_date_filtered": 0,
+      "retained_items": 0,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 0,
+      "exclusion_reasons": {},
+      "requested_window_covered": [
+        {
+          "route": "primary",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "國防部",
+      "existing": true,
+      "status": "success",
+      "item_count": 3,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "official-html",
+        "url": "https://www.mnd.gov.tw/news/pressreleaselist",
+        "url_host": "www.mnd.gov.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 9,
+      "raw_date_filtered": 3,
+      "retained_items": 3,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 0,
+      "exclusion_reasons": {},
+      "requested_window_covered": [
+        {
+          "route": "official-html",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "國防院",
+      "existing": true,
+      "status": "failed",
+      "item_count": 0,
+      "failure_class": "source_outage",
+      "final_route": {},
+      "raw_list_items": 0,
+      "raw_date_filtered": 0,
+      "retained_items": 0,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 0,
+      "exclusion_reasons": {},
+      "requested_window_covered": [],
+      "retry": {
+        "run_id": "20261013_095856_680268",
+        "status": "partial_failure",
+        "item_count": 0,
+        "failed_sources": [
+          "國防院"
+        ],
+        "failure_class_counts": {
+          "source_outage": 1
+        },
+        "quality_alert_reasons": [],
+        "requested_window_covered": [],
+        "normal_overlap_count": 0
+      }
+    },
+    {
+      "source": "警政署",
+      "existing": true,
+      "status": "success",
+      "item_count": 0,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "primary",
+        "url": "https://www.npa.gov.tw/ch/app/news/list?module=news&id=2139",
+        "url_host": "www.npa.gov.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 310,
+      "raw_date_filtered": 0,
+      "retained_items": 0,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 0,
+      "exclusion_reasons": {},
+      "requested_window_covered": [
+        {
+          "route": "primary",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "司法院",
+      "existing": true,
+      "status": "success",
+      "item_count": 19,
+      "failure_class": "",
+      "final_route": {
+        "aggregated": true,
+        "coverage_reduced": false,
+        "route_id": "alternate-4",
+        "url": "https://www.judicial.gov.tw/tw/lp-1790-1-5-40.html",
+        "url_host": "www.judicial.gov.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 200,
+      "raw_date_filtered": 19,
+      "retained_items": 19,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 0,
+      "exclusion_reasons": {},
+      "requested_window_covered": [
+        {
+          "route": "primary",
+          "covered": true
+        },
+        {
+          "route": "alternate-1",
+          "covered": true
+        },
+        {
+          "route": "alternate-2",
+          "covered": true
+        },
+        {
+          "route": "alternate-3",
+          "covered": true
+        },
+        {
+          "route": "alternate-4",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "公平會",
+      "existing": true,
+      "status": "success",
+      "item_count": 2,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "primary",
+        "url": "https://www.ftc.gov.tw/internet/main/rss/rss_1.xml",
+        "url_host": "www.ftc.gov.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 497,
+      "raw_date_filtered": 2,
+      "retained_items": 2,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 0,
+      "exclusion_reasons": {},
+      "requested_window_covered": [
+        {
+          "route": "primary",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "陸委會",
+      "existing": true,
+      "status": "success",
+      "item_count": 4,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "primary",
+        "url": "https://www.mac.gov.tw/OpenData.aspx?SN=D33B55D537402BAA",
+        "url_host": "www.mac.gov.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 50,
+      "raw_date_filtered": 4,
+      "retained_items": 4,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 0,
+      "exclusion_reasons": {},
+      "requested_window_covered": [
+        {
+          "route": "primary",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "行政院",
+      "existing": true,
+      "status": "success",
+      "item_count": 11,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "official-html",
+        "url": "https://www.ey.gov.tw/Page/6485009ABEC1CB9C?PS=50&page=1",
+        "url_host": "www.ey.gov.tw",
+        "used_fallback": true
+      },
+      "raw_list_items": 100,
+      "raw_date_filtered": 11,
+      "retained_items": 11,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 0,
+      "exclusion_reasons": {},
+      "requested_window_covered": [
+        {
+          "route": "official-rss",
+          "covered": false
+        },
+        {
+          "route": "official-html",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "人事總處",
+      "existing": true,
+      "status": "success",
+      "item_count": 0,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": true,
+        "route_id": "primary",
+        "url": "https://www.dgpa.gov.tw/rsscon?uid=82",
+        "url_host": "www.dgpa.gov.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 24,
+      "raw_date_filtered": 0,
+      "retained_items": 0,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 0,
+      "exclusion_reasons": {},
+      "requested_window_covered": [
+        {
+          "route": "primary",
+          "covered": false
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "金管會",
+      "existing": true,
+      "status": "success",
+      "item_count": 12,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "primary",
+        "url": "https://www.fsc.gov.tw/RSS/Messages?serno=201202290009&language=chinese",
+        "url_host": "www.fsc.gov.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 613,
+      "raw_date_filtered": 12,
+      "retained_items": 12,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 0,
+      "exclusion_reasons": {},
+      "requested_window_covered": [
+        {
+          "route": "primary",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "國教院",
+      "existing": true,
+      "status": "success",
+      "item_count": 1,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "primary",
+        "url": "https://www.naer.edu.tw/PageDoc?fid=15",
+        "url_host": "www.naer.edu.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 20,
+      "raw_date_filtered": 1,
+      "retained_items": 1,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 0,
+      "exclusion_reasons": {},
+      "requested_window_covered": [
+        {
+          "route": "primary",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "中央銀行",
+      "existing": true,
+      "status": "success",
+      "item_count": 4,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "official-news-rss",
+        "url": "https://www.cbc.gov.tw/tw/rss-302-1.xml",
+        "url_host": "www.cbc.gov.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 500,
+      "raw_date_filtered": 4,
+      "retained_items": 4,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 0,
+      "exclusion_reasons": {},
+      "requested_window_covered": [
+        {
+          "route": "official-news-rss",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "文策院",
+      "existing": true,
+      "status": "success",
+      "item_count": 3,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "official-browser",
+        "url": "https://taicca.tw/latest_news/news/list",
+        "url_host": "taicca.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 12,
+      "raw_date_filtered": 3,
+      "retained_items": 3,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 0,
+      "exclusion_reasons": {},
+      "requested_window_covered": [
+        {
+          "route": "official-browser",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "矯正署",
+      "existing": true,
+      "status": "success",
+      "item_count": 0,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "primary-html",
+        "url": "https://www.mjac.moj.gov.tw/4786/4963/4965/",
+        "url_host": "www.mjac.moj.gov.tw",
+        "used_fallback": true
+      },
+      "raw_list_items": 519,
+      "raw_date_filtered": 0,
+      "retained_items": 0,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 0,
+      "exclusion_reasons": {},
+      "requested_window_covered": [
+        {
+          "route": "official-news-rss",
+          "covered": false
+        },
+        {
+          "route": "primary-html",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "最高檢察署",
+      "existing": true,
+      "status": "success",
+      "item_count": 0,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "primary",
+        "url": "https://www.tps.moj.gov.tw/16314/1140948/",
+        "url_host": "www.tps.moj.gov.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 260,
+      "raw_date_filtered": 0,
+      "retained_items": 0,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 0,
+      "exclusion_reasons": {},
+      "requested_window_covered": [
+        {
+          "route": "primary",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "運動部",
+      "existing": true,
+      "status": "success",
+      "item_count": 9,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "official-browser",
+        "url": "https://www.sports.gov.tw/News/309",
+        "url_host": "www.sports.gov.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 500,
+      "raw_date_filtered": 9,
+      "retained_items": 9,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 0,
+      "exclusion_reasons": {},
+      "requested_window_covered": [
+        {
+          "route": "official-browser",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "觀光署",
+      "existing": true,
+      "status": "success",
+      "item_count": 5,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "official-news-rss",
+        "url": "https://www.taiwan.net.tw/rss.aspx?sno=0001001",
+        "url_host": "www.taiwan.net.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 50,
+      "raw_date_filtered": 5,
+      "retained_items": 5,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 0,
+      "exclusion_reasons": {},
+      "requested_window_covered": [
+        {
+          "route": "official-news-rss",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "教育部",
+      "existing": true,
+      "status": "success",
+      "item_count": 20,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "official-news-rss",
+        "url": "https://www.edu.tw/Rss_News.aspx?n=9E7AC85F1954DDA8",
+        "url_host": "www.edu.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 50,
+      "raw_date_filtered": 20,
+      "retained_items": 20,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 0,
+      "exclusion_reasons": {},
+      "requested_window_covered": [
+        {
+          "route": "official-news-rss",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "經濟部",
+      "existing": true,
+      "status": "success",
+      "item_count": 21,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": true,
+        "route_id": "official-browser",
+        "url": "https://www.moea.gov.tw/Mns/Populace/news/News.aspx?kind=1&menu_id=40",
+        "url_host": "www.moea.gov.tw",
+        "used_fallback": true
+      },
+      "raw_list_items": 29,
+      "raw_date_filtered": 21,
+      "retained_items": 21,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 0,
+      "exclusion_reasons": {},
+      "requested_window_covered": [
+        {
+          "route": "official-rss-full-text",
+          "covered": false
+        },
+        {
+          "route": "official-browser",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "中央氣象署",
+      "existing": true,
+      "status": "success",
+      "item_count": 0,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "primary",
+        "url": "https://www.cwa.gov.tw/V8/C/S/news_data.html",
+        "url_host": "www.cwa.gov.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 6,
+      "raw_date_filtered": 0,
+      "retained_items": 0,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 0,
+      "exclusion_reasons": {},
+      "requested_window_covered": [
+        {
+          "route": "primary",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "航港局",
+      "existing": true,
+      "status": "success",
+      "item_count": 1,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "primary",
+        "url": "https://www.motcmpb.gov.tw/Information/RSS?SiteId=1&NodeId=15",
+        "url_host": "www.motcmpb.gov.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 15,
+      "raw_date_filtered": 1,
+      "retained_items": 1,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 0,
+      "exclusion_reasons": {},
+      "requested_window_covered": [
+        {
+          "route": "primary",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "農業部",
+      "existing": true,
+      "status": "success",
+      "item_count": 1,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": true,
+        "route_id": "primary",
+        "url": "https://www.moa.gov.tw/open_data.php?format=rss&func=news_agri",
+        "url_host": "www.moa.gov.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 2,
+      "raw_date_filtered": 1,
+      "retained_items": 1,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 0,
+      "exclusion_reasons": {},
+      "requested_window_covered": [
+        {
+          "route": "primary",
+          "covered": false
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "農糧署",
+      "existing": true,
+      "status": "success",
+      "item_count": 1,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "primary",
+        "url": "https://www.afa.gov.tw/cht/index.php?act=rss&ids=309",
+        "url_host": "www.afa.gov.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 30,
+      "raw_date_filtered": 1,
+      "retained_items": 1,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 0,
+      "exclusion_reasons": {},
+      "requested_window_covered": [
+        {
+          "route": "primary",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "農業金融署",
+      "existing": true,
+      "status": "success",
+      "item_count": 1,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "official-rss",
+        "url": "https://www.afna.gov.tw/wm_DATA.php?data=news",
+        "url_host": "www.afna.gov.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 1193,
+      "raw_date_filtered": 1,
+      "retained_items": 1,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 0,
+      "exclusion_reasons": {},
+      "requested_window_covered": [
+        {
+          "route": "official-rss",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "財政部",
+      "existing": true,
+      "status": "success",
+      "item_count": 47,
+      "failure_class": "",
+      "final_route": {
+        "aggregated": true,
+        "coverage_reduced": false,
+        "route_id": "alternate-1",
+        "url": "https://www.etax.nat.gov.tw/etwmain/rss/news",
+        "url_host": "www.etax.nat.gov.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 1262,
+      "raw_date_filtered": 47,
+      "retained_items": 47,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 0,
+      "exclusion_reasons": {},
+      "requested_window_covered": [
+        {
+          "route": "primary",
+          "covered": true
+        },
+        {
+          "route": "alternate-1",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "防檢署",
+      "existing": true,
+      "status": "success",
+      "item_count": 1,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "official-news-rss",
+        "url": "https://www.aphia.gov.tw/api.php?func=news&format=rss",
+        "url_host": "www.aphia.gov.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 15,
+      "raw_date_filtered": 1,
+      "retained_items": 1,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 0,
+      "exclusion_reasons": {},
+      "requested_window_covered": [
+        {
+          "route": "official-news-rss",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "公路局",
+      "existing": true,
+      "status": "failed",
+      "item_count": 0,
+      "failure_class": "access_blocked",
+      "final_route": {},
+      "raw_list_items": 0,
+      "raw_date_filtered": 0,
+      "retained_items": 0,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 0,
+      "exclusion_reasons": {},
+      "requested_window_covered": [],
+      "retry": {
+        "run_id": "20261013_095902_972312",
+        "status": "partial_failure",
+        "item_count": 49,
+        "failed_sources": [
+          "公路局"
+        ],
+        "failure_class_counts": {
+          "access_blocked": 1
+        },
+        "quality_alert_reasons": [],
+        "requested_window_covered": [
+          {
+            "route": "official-xml",
+            "covered": false
+          }
+        ],
+        "normal_overlap_count": 0
+      }
+    },
+    {
+      "source": "高速公路局",
+      "existing": true,
+      "status": "success",
+      "item_count": 23,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "primary",
+        "url": "https://www.freeway.gov.tw/Rss/freewayrss2.xml",
+        "url_host": "www.freeway.gov.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 2217,
+      "raw_date_filtered": 23,
+      "retained_items": 23,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 0,
+      "exclusion_reasons": {},
+      "requested_window_covered": [
+        {
+          "route": "primary",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "交通部",
+      "existing": true,
+      "status": "success",
+      "item_count": 15,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "primary",
+        "url": "https://www.motc.gov.tw/ch/app/news_list/query?module=news&id=14",
+        "url_host": "www.motc.gov.tw",
+        "used_fallback": true
+      },
+      "raw_list_items": 25,
+      "raw_date_filtered": 22,
+      "retained_items": 15,
+      "normal_overlap_count": 7,
+      "content_filtered_out": 0,
+      "exclusion_reasons": {},
+      "requested_window_covered": [
+        {
+          "route": "official-news-rss",
+          "covered": false
+        },
+        {
+          "route": "primary",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "食藥署",
+      "existing": true,
+      "status": "success",
+      "item_count": 1,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "primary",
+        "url": "https://www.fda.gov.tw/tc/rssNews.ashx",
+        "url_host": "www.fda.gov.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 20,
+      "raw_date_filtered": 1,
+      "retained_items": 1,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 0,
+      "exclusion_reasons": {},
+      "requested_window_covered": [
+        {
+          "route": "primary",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "衛生福利部",
+      "existing": true,
+      "status": "success",
+      "item_count": 13,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "official-news-rss",
+        "url": "https://www.mohw.gov.tw/rss-16-1.html",
+        "url_host": "www.mohw.gov.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 20,
+      "raw_date_filtered": 13,
+      "retained_items": 13,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 0,
+      "exclusion_reasons": {},
+      "requested_window_covered": [
+        {
+          "route": "official-news-rss",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "農村發展及水土保持署",
+      "existing": true,
+      "status": "success",
+      "item_count": 1,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "primary",
+        "url": "https://www.ardswc.gov.tw/Home/Content/RSS/press.xml",
+        "url_host": "www.ardswc.gov.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 50,
+      "raw_date_filtered": 1,
+      "retained_items": 1,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 0,
+      "exclusion_reasons": {},
+      "requested_window_covered": [
+        {
+          "route": "primary",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "社家署",
+      "existing": true,
+      "status": "success",
+      "item_count": 0,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "primary-html",
+        "url": "https://www.sfaa.gov.tw/sfaa/list/5cX",
+        "url_host": "www.sfaa.gov.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 136,
+      "raw_date_filtered": 0,
+      "retained_items": 0,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 1,
+      "exclusion_reasons": {
+        "administrative_title": 1
+      },
+      "requested_window_covered": [
+        {
+          "route": "primary-html",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "漁業署",
+      "existing": true,
+      "status": "success",
+      "item_count": 2,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "official-rss",
+        "url": "https://www.fa.gov.tw/wm_DATA.php?data=news",
+        "url_host": "www.fa.gov.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 91,
+      "raw_date_filtered": 2,
+      "retained_items": 2,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 0,
+      "exclusion_reasons": {},
+      "requested_window_covered": [
+        {
+          "route": "official-rss",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "主計總處",
+      "existing": true,
+      "status": "success",
+      "item_count": 1,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "official-news-rss-browser",
+        "url": "https://www.dgbas.gov.tw/OpenData.aspx?SN=C741343EFC5BCC6A&isRssFeed=1",
+        "url_host": "www.dgbas.gov.tw",
+        "used_fallback": true
+      },
+      "raw_list_items": 50,
+      "raw_date_filtered": 1,
+      "retained_items": 1,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 0,
+      "exclusion_reasons": {},
+      "requested_window_covered": [
+        {
+          "route": "official-news-rss-browser",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "疾管署",
+      "existing": true,
+      "status": "success",
+      "item_count": 5,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "official-news-rss",
+        "url": "https://www.cdc.gov.tw/RSS/RssXml/Hh094B49-DRwe2RR4eFfrQ?type=1",
+        "url_host": "www.cdc.gov.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 10,
+      "raw_date_filtered": 5,
+      "retained_items": 5,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 0,
+      "exclusion_reasons": {},
+      "requested_window_covered": [
+        {
+          "route": "official-news-rss",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "職業安全衛生署",
+      "existing": true,
+      "status": "success",
+      "item_count": 0,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": true,
+        "route_id": "primary",
+        "url": "https://www.osha.gov.tw/48110/48417/48419/RssList",
+        "url_host": "www.osha.gov.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 60,
+      "raw_date_filtered": 0,
+      "retained_items": 0,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 0,
+      "exclusion_reasons": {},
+      "requested_window_covered": [
+        {
+          "route": "primary",
+          "covered": false
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "勞動基金運用局",
+      "existing": true,
+      "status": "success",
+      "item_count": 0,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "primary",
+        "url": "https://www.blf.gov.tw/49200/49245/49247/",
+        "url_host": "www.blf.gov.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 10,
+      "raw_date_filtered": 0,
+      "retained_items": 0,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 0,
+      "exclusion_reasons": {},
+      "requested_window_covered": [
+        {
+          "route": "primary",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "國健署",
+      "existing": true,
+      "status": "success",
+      "item_count": 3,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "primary",
+        "url": "https://www.hpa.gov.tw/Pages/ashx/rsspage.ashx?nodeid=124",
+        "url_host": "www.hpa.gov.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 100,
+      "raw_date_filtered": 3,
+      "retained_items": 3,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 0,
+      "exclusion_reasons": {},
+      "requested_window_covered": [
+        {
+          "route": "primary",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "農科園區",
+      "existing": true,
+      "status": "success",
+      "item_count": 0,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": true,
+        "route_id": "primary",
+        "url": "https://www.atp.gov.tw/CHT/Rss.aspx",
+        "url_host": "www.atp.gov.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 37,
+      "raw_date_filtered": 0,
+      "retained_items": 0,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 6,
+      "exclusion_reasons": {
+        "administrative_title": 6
+      },
+      "requested_window_covered": [
+        {
+          "route": "primary",
+          "covered": false
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "數位發展部",
+      "existing": true,
+      "status": "success",
+      "item_count": 1,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "primary",
+        "url": "https://moda.gov.tw/press/press-releases/372",
+        "url_host": "moda.gov.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 15,
+      "raw_date_filtered": 1,
+      "retained_items": 1,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 0,
+      "exclusion_reasons": {},
+      "requested_window_covered": [
+        {
+          "route": "primary",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "資通安全署",
+      "existing": true,
+      "status": "success",
+      "item_count": 0,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "primary",
+        "url": "https://moda.gov.tw/ACS/press/news/press/820",
+        "url_host": "moda.gov.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 15,
+      "raw_date_filtered": 0,
+      "retained_items": 0,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 0,
+      "exclusion_reasons": {},
+      "requested_window_covered": [
+        {
+          "route": "primary",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "數位產業署",
+      "existing": true,
+      "status": "success",
+      "item_count": 2,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "primary",
+        "url": "https://moda.gov.tw/ADI/news/latest-news/766",
+        "url_host": "moda.gov.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 15,
+      "raw_date_filtered": 2,
+      "retained_items": 2,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 0,
+      "exclusion_reasons": {},
+      "requested_window_covered": [
+        {
+          "route": "primary",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "國發會",
+      "existing": true,
+      "status": "success",
+      "item_count": 2,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "primary",
+        "url": "https://www.ndc.gov.tw/Rss_News.aspx?n=114AAE178CD95D4C",
+        "url_host": "www.ndc.gov.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 20,
+      "raw_date_filtered": 2,
+      "retained_items": 2,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 0,
+      "exclusion_reasons": {},
+      "requested_window_covered": [
+        {
+          "route": "primary",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "法務部",
+      "existing": true,
+      "status": "success",
+      "item_count": 5,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "primary",
+        "url": "https://www.moj.gov.tw/2204/2795/2796/rss",
+        "url_host": "www.moj.gov.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 60,
+      "raw_date_filtered": 5,
+      "retained_items": 5,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 0,
+      "exclusion_reasons": {},
+      "requested_window_covered": [
+        {
+          "route": "primary",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "國科會",
+      "existing": true,
+      "status": "success",
+      "item_count": 1,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "official-news-rss",
+        "url": "https://www.nstc.gov.tw/nstc/rss/news",
+        "url_host": "www.nstc.gov.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 30,
+      "raw_date_filtered": 1,
+      "retained_items": 1,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 0,
+      "exclusion_reasons": {},
+      "requested_window_covered": [
+        {
+          "route": "official-news-rss",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "國家太空中心",
+      "existing": true,
+      "status": "success",
+      "item_count": 0,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "primary",
+        "url": "https://www.tasa.org.tw/zh-TW/announcements/news",
+        "url_host": "www.tasa.org.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 0,
+      "raw_date_filtered": 0,
+      "retained_items": 0,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 0,
+      "exclusion_reasons": {},
+      "requested_window_covered": [
+        {
+          "route": "primary",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "國家實驗研究院",
+      "existing": true,
+      "status": "success",
+      "item_count": 1,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "primary",
+        "url": "https://www.niar.org.tw/xmdoc?xsmsid=0I148622737263495777",
+        "url_host": "www.niar.org.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 10,
+      "raw_date_filtered": 1,
+      "retained_items": 1,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 0,
+      "exclusion_reasons": {},
+      "requested_window_covered": [
+        {
+          "route": "primary",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "文化部",
+      "existing": true,
+      "status": "success",
+      "item_count": 25,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "primary-html",
+        "url": "https://www.moc.gov.tw/OpenData.aspx?SN=C4E4E3A8E687AD91",
+        "url_host": "www.moc.gov.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 50,
+      "raw_date_filtered": 25,
+      "retained_items": 25,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 0,
+      "exclusion_reasons": {},
+      "requested_window_covered": [
+        {
+          "route": "primary-html",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "原民會",
+      "existing": true,
+      "status": "success",
+      "item_count": 1,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "primary",
+        "url": "https://www.cip.gov.tw/zh-tw/rss/35AE118732EB6BAF/news.html",
+        "url_host": "www.cip.gov.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 174,
+      "raw_date_filtered": 1,
+      "retained_items": 1,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 0,
+      "exclusion_reasons": {},
+      "requested_window_covered": [
+        {
+          "route": "primary",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "勞動部",
+      "existing": true,
+      "status": "success",
+      "item_count": 3,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "official-news-rss",
+        "url": "https://www.mol.gov.tw/1607/1632/1633/RssList",
+        "url_host": "www.mol.gov.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 60,
+      "raw_date_filtered": 3,
+      "retained_items": 3,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 0,
+      "exclusion_reasons": {},
+      "requested_window_covered": [
+        {
+          "route": "official-news-rss",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "勞動力發展署",
+      "existing": true,
+      "status": "success",
+      "item_count": 0,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": true,
+        "route_id": "primary",
+        "url": "https://www.wda.gov.tw/OpenData.aspx?SN=8C4FEB29449A1601",
+        "url_host": "www.wda.gov.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 50,
+      "raw_date_filtered": 0,
+      "retained_items": 0,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 0,
+      "exclusion_reasons": {},
+      "requested_window_covered": [
+        {
+          "route": "primary",
+          "covered": false
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "環境部",
+      "existing": true,
+      "status": "success",
+      "item_count": 11,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "primary-browser",
+        "url": "https://www.moenv.gov.tw/press/press-releases/2626.html?p=1&dc=50",
+        "url_host": "www.moenv.gov.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 15,
+      "raw_date_filtered": 11,
+      "retained_items": 11,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 0,
+      "exclusion_reasons": {},
+      "requested_window_covered": [
+        {
+          "route": "primary-browser",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "退輔會",
+      "existing": true,
+      "status": "success",
+      "item_count": 0,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "primary",
+        "url": "https://www.vac.gov.tw/lp-1788-1.html",
+        "url_host": "www.vac.gov.tw",
+        "used_fallback": true
+      },
+      "raw_list_items": 40,
+      "raw_date_filtered": 0,
+      "retained_items": 0,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 0,
+      "exclusion_reasons": {},
+      "requested_window_covered": [
+        {
+          "route": "official-news-rss",
+          "covered": false
+        },
+        {
+          "route": "primary",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "海委會",
+      "existing": true,
+      "status": "success",
+      "item_count": 4,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "primary",
+        "url": "https://www.oac.gov.tw/News?language=chinese&websitedn=ch",
+        "url_host": "www.oac.gov.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 650,
+      "raw_date_filtered": 4,
+      "retained_items": 4,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 0,
+      "exclusion_reasons": {},
+      "requested_window_covered": [
+        {
+          "route": "primary",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "國家資通安全研究院",
+      "existing": true,
+      "status": "success",
+      "item_count": 0,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "official-browser",
+        "url": "https://www.nics.nat.gov.tw/latest_news/announcements/Latest_Announcement/",
+        "url_host": "www.nics.nat.gov.tw",
+        "used_fallback": true
+      },
+      "raw_list_items": 159,
+      "raw_date_filtered": 0,
+      "retained_items": 0,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 0,
+      "exclusion_reasons": {},
+      "requested_window_covered": [
+        {
+          "route": "official-browser",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "通傳會",
+      "existing": true,
+      "status": "success",
+      "item_count": 0,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": true,
+        "route_id": "primary",
+        "url": "https://api.ncc.gov.tw/chncc/rss/News?id=50",
+        "url_host": "api.ncc.gov.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 20,
+      "raw_date_filtered": 0,
+      "retained_items": 0,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 0,
+      "exclusion_reasons": {},
+      "requested_window_covered": [
+        {
+          "route": "primary",
+          "covered": false
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "中選會",
+      "existing": true,
+      "status": "success",
+      "item_count": 0,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "primary",
+        "url": "https://web.cec.gov.tw/central",
+        "url_host": "web.cec.gov.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 5,
+      "raw_date_filtered": 0,
+      "retained_items": 0,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 0,
+      "exclusion_reasons": {},
+      "requested_window_covered": [
+        {
+          "route": "primary",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "國家文化藝術基金會",
+      "existing": true,
+      "status": "success",
+      "item_count": 1,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "official-news",
+        "url": "https://www.ncafroc.org.tw/news.html",
+        "url_host": "www.ncafroc.org.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 12,
+      "raw_date_filtered": 1,
+      "retained_items": 1,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 0,
+      "exclusion_reasons": {},
+      "requested_window_covered": [
+        {
+          "route": "official-news",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "金門酒廠胡璉文化藝術基金會",
+      "existing": true,
+      "status": "success",
+      "item_count": 0,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "official-announcements",
+        "url": "https://kkl-hulien.org.tw/新聞公告/新聞公告-公告專區/",
+        "url_host": "kkl-hulien.org.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 44,
+      "raw_date_filtered": 0,
+      "retained_items": 0,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 0,
+      "exclusion_reasons": {},
+      "requested_window_covered": [
+        {
+          "route": "official-announcements",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "故宮",
+      "existing": true,
+      "status": "success",
+      "item_count": 4,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "primary",
+        "url": "https://www.npm.gov.tw/News-List.aspx?sno=01000001&l=1&q=&s_date=&e_date=&type=03000096",
+        "url_host": "www.npm.gov.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 20,
+      "raw_date_filtered": 4,
+      "retained_items": 4,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 0,
+      "exclusion_reasons": {},
+      "requested_window_covered": [
+        {
+          "route": "primary",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "文化臺灣基金會",
+      "existing": true,
+      "status": "success",
+      "item_count": 0,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "official-news",
+        "url": "https://www.tctf.org.tw/",
+        "url_host": "www.tctf.org.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 3,
+      "raw_date_filtered": 0,
+      "retained_items": 0,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 0,
+      "exclusion_reasons": {},
+      "requested_window_covered": [
+        {
+          "route": "official-news",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "客委會",
+      "existing": true,
+      "status": "success",
+      "item_count": 12,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "official-html",
+        "url": "https://www.hakka.gov.tw/chhakka/app/data/list?id=25",
+        "url_host": "www.hakka.gov.tw",
+        "used_fallback": true
+      },
+      "raw_list_items": 286,
+      "raw_date_filtered": 12,
+      "retained_items": 12,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 0,
+      "exclusion_reasons": {},
+      "requested_window_covered": [
+        {
+          "route": "official-news-rss",
+          "covered": false
+        },
+        {
+          "route": "official-html",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "臺灣美術基金會",
+      "existing": true,
+      "status": "success",
+      "item_count": 0,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "official-news",
+        "url": "https://www.tfaf.org.tw/News.aspx?n=3460&sms=12940",
+        "url_host": "www.tfaf.org.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 20,
+      "raw_date_filtered": 0,
+      "retained_items": 0,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 8,
+      "exclusion_reasons": {
+        "excluded_title_prefix": 6,
+        "administrative_title": 2
+      },
+      "requested_window_covered": [
+        {
+          "route": "official-news",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "威權統治時期國家不法行為被害者權利回復基金會",
+      "existing": true,
+      "status": "success",
+      "item_count": 0,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "official-presses",
+        "url": "https://www.rrf.org.tw/presses",
+        "url_host": "www.rrf.org.tw",
+        "used_fallback": true
+      },
+      "raw_list_items": 57,
+      "raw_date_filtered": 0,
+      "retained_items": 0,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 0,
+      "exclusion_reasons": {},
+      "requested_window_covered": [
+        {
+          "route": "official-news-rss",
+          "covered": false
+        },
+        {
+          "route": "official-presses",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "二二八事件紀念基金會",
+      "existing": true,
+      "status": "success",
+      "item_count": 1,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "official-announcements",
+        "url": "https://www.228.org.tw/newsmain",
+        "url_host": "www.228.org.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 131,
+      "raw_date_filtered": 1,
+      "retained_items": 1,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 0,
+      "exclusion_reasons": {},
+      "requested_window_covered": [
+        {
+          "route": "official-announcements",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "榮總",
+      "existing": true,
+      "status": "success",
+      "item_count": 0,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "official-browser",
+        "url": "https://www.vghtpe.gov.tw/News.action?gcode=A05",
+        "url_host": "www.vghtpe.gov.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 20,
+      "raw_date_filtered": 0,
+      "retained_items": 0,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 0,
+      "exclusion_reasons": {},
+      "requested_window_covered": [
+        {
+          "route": "official-browser",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "台灣建築中心",
+      "existing": true,
+      "status": "success",
+      "item_count": 0,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "official-announcements",
+        "url": "https://www.tabc.org.tw/tw/modules/news/index.php?storytopic=15",
+        "url_host": "www.tabc.org.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 10,
+      "raw_date_filtered": 0,
+      "retained_items": 0,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 0,
+      "exclusion_reasons": {},
+      "requested_window_covered": [
+        {
+          "route": "official-announcements",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "臺灣博物館文教基金會",
+      "existing": true,
+      "status": "success",
+      "item_count": 0,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "official-news",
+        "url": "https://www.taiwan-museum.org.tw/category/news/",
+        "url_host": "www.taiwan-museum.org.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 6,
+      "raw_date_filtered": 0,
+      "retained_items": 0,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 1,
+      "exclusion_reasons": {
+        "excluded_title_prefix": 1
+      },
+      "requested_window_covered": [
+        {
+          "route": "official-news",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "醫藥品查驗中心",
+      "existing": true,
+      "status": "success",
+      "item_count": 0,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "official-announcements",
+        "url": "https://www.cde.org.tw/1127/61365/",
+        "url_host": "www.cde.org.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 5,
+      "raw_date_filtered": 0,
+      "retained_items": 0,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 0,
+      "exclusion_reasons": {},
+      "requested_window_covered": [
+        {
+          "route": "official-announcements",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "國家衛生研究院",
+      "existing": true,
+      "status": "success",
+      "item_count": 0,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "official-news",
+        "url": "https://www.nhri.edu.tw/News/?id=b787460a34504b8181d732f7d7f0e5c5",
+        "url_host": "www.nhri.edu.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 10,
+      "raw_date_filtered": 0,
+      "retained_items": 0,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 0,
+      "exclusion_reasons": {},
+      "requested_window_covered": [
+        {
+          "route": "official-news",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "器官捐贈移植登錄及病人自主推廣中心",
+      "existing": true,
+      "status": "success",
+      "item_count": 0,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "official-announcements",
+        "url": "https://www.tosrpapc.org.tw/xmdoc?xsmsid=0P008623086253508127",
+        "url_host": "www.tosrpapc.org.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 9,
+      "raw_date_filtered": 0,
+      "retained_items": 0,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 0,
+      "exclusion_reasons": {},
+      "requested_window_covered": [
+        {
+          "route": "official-announcements",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "賑災基金會",
+      "existing": true,
+      "status": "success",
+      "item_count": 0,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "official-announcements",
+        "url": "https://www.tf4dr.org/posts",
+        "url_host": "www.tf4dr.org",
+        "used_fallback": false
+      },
+      "raw_list_items": 10,
+      "raw_date_filtered": 0,
+      "retained_items": 0,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 0,
+      "exclusion_reasons": {},
+      "requested_window_covered": [
+        {
+          "route": "official-announcements",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "婦女權益促進發展基金會",
+      "existing": true,
+      "status": "success",
+      "item_count": 1,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "official-events",
+        "url": "https://www.wrp.org.tw/List.aspx?mid=111",
+        "url_host": "www.wrp.org.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 3,
+      "raw_date_filtered": 1,
+      "retained_items": 1,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 0,
+      "exclusion_reasons": {},
+      "requested_window_covered": [
+        {
+          "route": "official-events",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "藥害救濟基金會",
+      "existing": true,
+      "status": "success",
+      "item_count": 0,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "official-news",
+        "url": "https://www.tdrf.org.tw/category/news/",
+        "url_host": "www.tdrf.org.tw",
+        "used_fallback": true
+      },
+      "raw_list_items": 14,
+      "raw_date_filtered": 0,
+      "retained_items": 0,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 0,
+      "exclusion_reasons": {},
+      "requested_window_covered": [
+        {
+          "route": "official-news-rss",
+          "covered": false
+        },
+        {
+          "route": "official-news",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "醫院評鑑暨醫療品質策進會",
+      "existing": true,
+      "status": "success",
+      "item_count": 2,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "official-news-rss",
+        "url": "https://www.jct.org.tw/rss-5-1.xml",
+        "url_host": "www.jct.org.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 20,
+      "raw_date_filtered": 2,
+      "retained_items": 2,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 0,
+      "exclusion_reasons": {},
+      "requested_window_covered": [
+        {
+          "route": "official-news-rss",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "國立中正紀念堂管理處",
+      "existing": false,
+      "status": "success",
+      "item_count": 0,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "official-news",
+        "url": "https://www.cksmh.gov.tw/News.aspx?n=6036&sms=14424",
+        "url_host": "www.cksmh.gov.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 6,
+      "raw_date_filtered": 0,
+      "retained_items": 0,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 0,
+      "exclusion_reasons": {},
+      "requested_window_covered": [
+        {
+          "route": "official-news",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "國立國父紀念館",
+      "existing": false,
+      "status": "success",
+      "item_count": 1,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "official-news",
+        "url": "https://www.yatsen.gov.tw/News.aspx?n=6519&sms=14501",
+        "url_host": "www.yatsen.gov.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 20,
+      "raw_date_filtered": 1,
+      "retained_items": 1,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 0,
+      "exclusion_reasons": {},
+      "requested_window_covered": [
+        {
+          "route": "official-news"
+        },
+        {
+          "route": "official-news",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "國立傳統藝術中心",
+      "existing": false,
+      "status": "success",
+      "item_count": 2,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "official-news",
+        "url": "https://www.ncfta.gov.tw/News4.aspx?n=5178&sms=13940",
+        "url_host": "www.ncfta.gov.tw",
+        "used_fallback": true
+      },
+      "raw_list_items": 90,
+      "raw_date_filtered": 4,
+      "retained_items": 2,
+      "normal_overlap_count": 2,
+      "content_filtered_out": 0,
+      "exclusion_reasons": {},
+      "requested_window_covered": [
+        {
+          "route": "official-rss",
+          "covered": false
+        },
+        {
+          "route": "official-news"
+        },
+        {
+          "route": "official-news",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "國立歷史博物館",
+      "existing": false,
+      "status": "success",
+      "item_count": 0,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "official-news",
+        "url": "https://www.nmh.gov.tw/News.aspx?n=7149&sms=14802",
+        "url_host": "www.nmh.gov.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 20,
+      "raw_date_filtered": 0,
+      "retained_items": 0,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 0,
+      "exclusion_reasons": {},
+      "requested_window_covered": [
+        {
+          "route": "official-news",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "文化部影視及流行音樂產業局",
+      "existing": false,
+      "status": "success",
+      "item_count": 0,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "official-news",
+        "url": "https://www.bamid.gov.tw/News.aspx?n=3482&sms=12948",
+        "url_host": "www.bamid.gov.tw",
+        "used_fallback": true
+      },
+      "raw_list_items": 60,
+      "raw_date_filtered": 0,
+      "retained_items": 0,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 0,
+      "exclusion_reasons": {},
+      "requested_window_covered": [
+        {
+          "route": "official-rss",
+          "covered": false
+        },
+        {
+          "route": "official-news",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "國立臺灣史前文化博物館",
+      "existing": false,
+      "status": "success",
+      "item_count": 1,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "official-news",
+        "url": "https://www.nmp.gov.tw/News.aspx?n=8869&sms=11572",
+        "url_host": "www.nmp.gov.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 20,
+      "raw_date_filtered": 1,
+      "retained_items": 1,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 3,
+      "exclusion_reasons": {
+        "administrative_title": 3
+      },
+      "requested_window_covered": [
+        {
+          "route": "official-news"
+        },
+        {
+          "route": "official-news",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "海巡署",
+      "existing": true,
+      "status": "success",
+      "item_count": 16,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "primary",
+        "url": "https://www.cga.gov.tw/GipOpen/wSite/rss?ctNode=650&mp=999",
+        "url_host": "www.cga.gov.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 713,
+      "raw_date_filtered": 16,
+      "retained_items": 16,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 0,
+      "exclusion_reasons": {},
+      "requested_window_covered": [
+        {
+          "route": "primary",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "國立臺灣交響樂團",
+      "existing": false,
+      "status": "success",
+      "item_count": 1,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "official-news",
+        "url": "https://www.ntso.gov.tw/News.aspx?n=2225&sms=11579",
+        "url_host": "www.ntso.gov.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 10,
+      "raw_date_filtered": 1,
+      "retained_items": 1,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 0,
+      "exclusion_reasons": {},
+      "requested_window_covered": [
+        {
+          "route": "official-news",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "國立臺灣博物館",
+      "existing": false,
+      "status": "success",
+      "item_count": 5,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "official-news",
+        "url": "https://www.ntm.gov.tw/News.aspx?n=5651&sms=14296",
+        "url_host": "www.ntm.gov.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 20,
+      "raw_date_filtered": 5,
+      "retained_items": 5,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 0,
+      "exclusion_reasons": {},
+      "requested_window_covered": [
+        {
+          "route": "official-news"
+        },
+        {
+          "route": "official-news",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "國立臺灣歷史博物館",
+      "existing": false,
+      "status": "success",
+      "item_count": 2,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "official-news",
+        "url": "https://www.nmth.gov.tw/News.aspx?n=4233&sms=13200",
+        "url_host": "www.nmth.gov.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 19,
+      "raw_date_filtered": 2,
+      "retained_items": 2,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 3,
+      "exclusion_reasons": {
+        "administrative_category": 3
+      },
+      "requested_window_covered": [
+        {
+          "route": "official-news"
+        },
+        {
+          "route": "official-news",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "國立臺灣美術館",
+      "existing": false,
+      "status": "success",
+      "item_count": 1,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "official-news",
+        "url": "https://www.ntmofa.gov.tw/News.aspx?n=1384&sms=11441",
+        "url_host": "www.ntmofa.gov.tw",
+        "used_fallback": true
+      },
+      "raw_list_items": 749,
+      "raw_date_filtered": 2,
+      "retained_items": 1,
+      "normal_overlap_count": 1,
+      "content_filtered_out": 0,
+      "exclusion_reasons": {},
+      "requested_window_covered": [
+        {
+          "route": "official-rss",
+          "covered": false
+        },
+        {
+          "route": "official-news"
+        },
+        {
+          "route": "official-news",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "國立新竹生活美學館",
+      "existing": false,
+      "status": "success",
+      "item_count": 7,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "official-news",
+        "url": "https://www.nhclac.gov.tw/News.aspx?n=5190&sms=14164",
+        "url_host": "www.nhclac.gov.tw",
+        "used_fallback": true
+      },
+      "raw_list_items": 60,
+      "raw_date_filtered": 14,
+      "retained_items": 7,
+      "normal_overlap_count": 7,
+      "content_filtered_out": 0,
+      "exclusion_reasons": {},
+      "requested_window_covered": [
+        {
+          "route": "official-rss",
+          "covered": false
+        },
+        {
+          "route": "official-news",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "國立臺灣文學館",
+      "existing": false,
+      "status": "success",
+      "item_count": 3,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "official-news",
+        "url": "https://www.nmtl.gov.tw/News.aspx?n=3891&sms=13121",
+        "url_host": "www.nmtl.gov.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 38,
+      "raw_date_filtered": 3,
+      "retained_items": 3,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 4,
+      "exclusion_reasons": {
+        "administrative_title": 4
+      },
+      "requested_window_covered": [
+        {
+          "route": "official-news"
+        },
+        {
+          "route": "official-news",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "國立臺南生活美學館",
+      "existing": false,
+      "status": "success",
+      "item_count": 1,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "official-news",
+        "url": "https://www.tncsec.gov.tw/News.aspx?n=1207&sms=11287",
+        "url_host": "www.tncsec.gov.tw",
+        "used_fallback": true
+      },
+      "raw_list_items": 62,
+      "raw_date_filtered": 2,
+      "retained_items": 1,
+      "normal_overlap_count": 1,
+      "content_filtered_out": 0,
+      "exclusion_reasons": {},
+      "requested_window_covered": [
+        {
+          "route": "official-rss",
+          "covered": false
+        },
+        {
+          "route": "official-news"
+        },
+        {
+          "route": "official-news",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "國立彰化生活美學館",
+      "existing": false,
+      "status": "success",
+      "item_count": 2,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "official-news",
+        "url": "https://www.chcsec.gov.tw/News.aspx?n=4004&sms=13144",
+        "url_host": "www.chcsec.gov.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 40,
+      "raw_date_filtered": 2,
+      "retained_items": 2,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 0,
+      "exclusion_reasons": {},
+      "requested_window_covered": [
+        {
+          "route": "official-news"
+        },
+        {
+          "route": "official-news",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "國立臺東生活美學館",
+      "existing": false,
+      "status": "success",
+      "item_count": 0,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "official-news",
+        "url": "https://www.ttcsec.gov.tw/News.aspx?n=2381&sms=11612",
+        "url_host": "www.ttcsec.gov.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 9,
+      "raw_date_filtered": 0,
+      "retained_items": 0,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 0,
+      "exclusion_reasons": {},
+      "requested_window_covered": [
+        {
+          "route": "official-news",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "艦隊分署",
+      "existing": true,
+      "status": "success",
+      "item_count": 4,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "primary",
+        "url": "https://www.cga.gov.tw/GipOpen/wSite/rss?ctNode=2116&mp=9997",
+        "url_host": "www.cga.gov.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 69,
+      "raw_date_filtered": 4,
+      "retained_items": 4,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 0,
+      "exclusion_reasons": {},
+      "requested_window_covered": [
+        {
+          "route": "primary",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "國家人權博物館",
+      "existing": false,
+      "status": "success",
+      "item_count": 0,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "official-news-html",
+        "url": "https://www.nhrm.gov.tw/w/nhrm/News?type=21082820465793340",
+        "url_host": "www.nhrm.gov.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 20,
+      "raw_date_filtered": 0,
+      "retained_items": 0,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 0,
+      "exclusion_reasons": {},
+      "requested_window_covered": [
+        {
+          "route": "official-news-html",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "臺中國家歌劇院",
+      "existing": false,
+      "status": "success",
+      "item_count": 0,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "official-news",
+        "url": "https://www.npac-ntt.org/news",
+        "url_host": "www.npac-ntt.org",
+        "used_fallback": false
+      },
+      "raw_list_items": 194,
+      "raw_date_filtered": 0,
+      "retained_items": 0,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 0,
+      "exclusion_reasons": {},
+      "requested_window_covered": [
+        {
+          "route": "official-news",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "國家鐵道博物館籌備處",
+      "existing": false,
+      "status": "success",
+      "item_count": 0,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "official-news",
+        "url": "https://www.nrm.gov.tw/News.aspx?n=3307&sms=12883",
+        "url_host": "www.nrm.gov.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 20,
+      "raw_date_filtered": 0,
+      "retained_items": 0,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 8,
+      "exclusion_reasons": {
+        "administrative_category": 8
+      },
+      "requested_window_covered": [
+        {
+          "route": "official-news"
+        },
+        {
+          "route": "official-news",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "臺南國家美術館籌備處",
+      "existing": false,
+      "status": "success",
+      "item_count": 1,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "official-news",
+        "url": "https://www.momatainan.gov.tw/News.aspx?n=9303&sms=16086",
+        "url_host": "www.momatainan.gov.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 20,
+      "raw_date_filtered": 1,
+      "retained_items": 1,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 1,
+      "exclusion_reasons": {
+        "administrative_title": 1
+      },
+      "requested_window_covered": [
+        {
+          "route": "official-news",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "國家兒童未來館籌備處",
+      "existing": false,
+      "status": "success",
+      "item_count": 1,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "official-news",
+        "url": "https://www.ncfm.gov.tw/News.aspx?n=8024&sms=15745",
+        "url_host": "www.ncfm.gov.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 20,
+      "raw_date_filtered": 1,
+      "retained_items": 1,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 0,
+      "exclusion_reasons": {},
+      "requested_window_covered": [
+        {
+          "route": "official-news"
+        },
+        {
+          "route": "official-news",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "衛武營國家藝術文化中心",
+      "existing": false,
+      "status": "success",
+      "item_count": 3,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "official-news",
+        "url": "https://www.npac-weiwuying.org/news",
+        "url_host": "www.npac-weiwuying.org",
+        "used_fallback": false
+      },
+      "raw_list_items": 6,
+      "raw_date_filtered": 3,
+      "retained_items": 3,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 1,
+      "exclusion_reasons": {
+        "excluded_title_prefix": 1
+      },
+      "requested_window_covered": [
+        {
+          "route": "official-news",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "中華民國電影事業發展基金會",
+      "existing": false,
+      "status": "success",
+      "item_count": 0,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "official-news",
+        "url": "https://www.mpfroc.org/news.php?func=1",
+        "url_host": "www.mpfroc.org",
+        "used_fallback": false
+      },
+      "raw_list_items": 102,
+      "raw_date_filtered": 0,
+      "retained_items": 0,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 0,
+      "exclusion_reasons": {},
+      "requested_window_covered": [
+        {
+          "route": "official-news",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "臺港經濟文化合作策進會",
+      "existing": false,
+      "status": "success",
+      "item_count": 0,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "official-news",
+        "url": "https://www.thec.org.tw/tc/news.aspx?mid=15",
+        "url_host": "www.thec.org.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 10,
+      "raw_date_filtered": 0,
+      "retained_items": 0,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 0,
+      "exclusion_reasons": {},
+      "requested_window_covered": [
+        {
+          "route": "official-news",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "公共電視文化事業基金會",
+      "existing": false,
+      "status": "success",
+      "item_count": 0,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "official-news",
+        "url": "https://about.pts.org.tw/pr/latestnews/",
+        "url_host": "about.pts.org.tw",
+        "used_fallback": true
+      },
+      "raw_list_items": 22,
+      "raw_date_filtered": 0,
+      "retained_items": 0,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 0,
+      "exclusion_reasons": {},
+      "requested_window_covered": [
+        {
+          "route": "official-rss",
+          "covered": false
+        },
+        {
+          "route": "official-news",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "國家交響樂團",
+      "existing": false,
+      "status": "success",
+      "item_count": 0,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "official-news",
+        "url": "https://www.npac-nso.org/news",
+        "url_host": "www.npac-nso.org",
+        "used_fallback": false
+      },
+      "raw_list_items": 4,
+      "raw_date_filtered": 0,
+      "retained_items": 0,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 1,
+      "exclusion_reasons": {
+        "administrative_title": 1
+      },
+      "requested_window_covered": [
+        {
+          "route": "official-news",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "偵防分署",
+      "existing": true,
+      "status": "success",
+      "item_count": 16,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "primary",
+        "url": "https://www.cga.gov.tw/GipOpen/wSite/rss?ctNode=10619&mp=9998",
+        "url_host": "www.cga.gov.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 713,
+      "raw_date_filtered": 16,
+      "retained_items": 16,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 0,
+      "exclusion_reasons": {},
+      "requested_window_covered": [
+        {
+          "route": "primary",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "臺灣日本關係協會",
+      "existing": false,
+      "status": "success",
+      "item_count": 1,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "official-news-html",
+        "url": "https://subsite.mofa.gov.tw/aear/News.aspx?n=5827&sms=1556",
+        "url_host": "subsite.mofa.gov.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 15,
+      "raw_date_filtered": 1,
+      "retained_items": 1,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 0,
+      "exclusion_reasons": {},
+      "requested_window_covered": [
+        {
+          "route": "official-news-html",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "外交部外交及國際事務學院",
+      "existing": false,
+      "status": "success",
+      "item_count": 1,
+      "failure_class": "",
+      "final_route": {
+        "aggregated": true,
+        "coverage_reduced": false,
+        "route_id": "official-events-html",
+        "url": "https://subsite.mofa.gov.tw/idia/News.aspx?n=6074&sms=1691",
+        "url_host": "subsite.mofa.gov.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 40,
+      "raw_date_filtered": 1,
+      "retained_items": 1,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 0,
+      "exclusion_reasons": {},
+      "requested_window_covered": [
+        {
+          "route": "official-news-html",
+          "covered": true
+        },
+        {
+          "route": "official-events-html",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "臺灣生活美學基金會",
+      "existing": false,
+      "status": "success",
+      "item_count": 0,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "official-news-html",
+        "url": "https://clab.org.tw/zh/news/",
+        "url_host": "clab.org.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 10,
+      "raw_date_filtered": 0,
+      "retained_items": 0,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 2,
+      "exclusion_reasons": {
+        "excluded_category": 2
+      },
+      "requested_window_covered": [
+        {
+          "route": "official-news-html",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "外交部領事事務局",
+      "existing": false,
+      "status": "success",
+      "item_count": 0,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "official-news-rss",
+        "url": "https://www.boca.gov.tw/rss-56-1.xml",
+        "url_host": "www.boca.gov.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 20,
+      "raw_date_filtered": 0,
+      "retained_items": 0,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 3,
+      "exclusion_reasons": {
+        "administrative_title": 3
+      },
+      "requested_window_covered": [
+        {
+          "route": "official-news-rss",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "臺灣亞洲交流基金會",
+      "existing": false,
+      "status": "success",
+      "item_count": 0,
+      "failure_class": "",
+      "final_route": {
+        "aggregated": true,
+        "coverage_reduced": false,
+        "route_id": "official-events-html",
+        "url": "https://www.taef.org/event",
+        "url_host": "www.taef.org",
+        "used_fallback": false
+      },
+      "raw_list_items": 151,
+      "raw_date_filtered": 0,
+      "retained_items": 0,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 0,
+      "exclusion_reasons": {},
+      "requested_window_covered": [
+        {
+          "route": "official-latest-html",
+          "covered": true
+        },
+        {
+          "route": "official-events-html",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "海峽交流基金會",
+      "existing": false,
+      "status": "success",
+      "item_count": 0,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "official-news",
+        "url": "https://www.sef.org.tw/list-1-15",
+        "url_host": "www.sef.org.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 20,
+      "raw_date_filtered": 0,
+      "retained_items": 0,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 0,
+      "exclusion_reasons": {},
+      "requested_window_covered": [
+        {
+          "route": "official-news",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "國際合作發展基金會",
+      "existing": false,
+      "status": "success",
+      "item_count": 2,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "official-news-html",
+        "url": "https://www.icdf.org.tw/wSite/lp?BaseDSD=7&CtUnit=117&ctNode=31381&mp=1",
+        "url_host": "www.icdf.org.tw",
+        "used_fallback": true
+      },
+      "raw_list_items": 17,
+      "raw_date_filtered": 2,
+      "retained_items": 2,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 2,
+      "exclusion_reasons": {
+        "excluded_title_pattern": 2
+      },
+      "requested_window_covered": [
+        {
+          "route": "official-news-rss",
+          "covered": false
+        },
+        {
+          "route": "official-news-html",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "農業部農田水利署",
+      "existing": false,
+      "status": "success",
+      "item_count": 0,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "official-news-html",
+        "url": "https://www.ia.gov.tw/zh-TW/news/newslist?g=1&a=87",
+        "url_host": "www.ia.gov.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 10,
+      "raw_date_filtered": 0,
+      "retained_items": 0,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 0,
+      "exclusion_reasons": {},
+      "requested_window_covered": [
+        {
+          "route": "official-news-html",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "農業部林業及自然保育署",
+      "existing": false,
+      "status": "success",
+      "item_count": 6,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "official-news-html",
+        "url": "https://www.forest.gov.tw/news",
+        "url_host": "www.forest.gov.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 10,
+      "raw_date_filtered": 6,
+      "retained_items": 6,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 0,
+      "exclusion_reasons": {},
+      "requested_window_covered": [
+        {
+          "route": "official-news-html",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "農業部獸醫研究所",
+      "existing": false,
+      "status": "success",
+      "item_count": 1,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "official-news-html",
+        "url": "https://www.nvri.gov.tw/",
+        "url_host": "www.nvri.gov.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 12,
+      "raw_date_filtered": 1,
+      "retained_items": 1,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 0,
+      "exclusion_reasons": {},
+      "requested_window_covered": [
+        {
+          "route": "official-news-html",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "農業部畜產試驗所",
+      "existing": false,
+      "status": "success",
+      "item_count": 5,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "official-news-html",
+        "url": "https://www.tlri.gov.tw/list.php?theme=news&subtheme=",
+        "url_host": "www.tlri.gov.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 40,
+      "raw_date_filtered": 5,
+      "retained_items": 5,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 0,
+      "exclusion_reasons": {},
+      "requested_window_covered": [
+        {
+          "route": "official-news-html"
+        },
+        {
+          "route": "official-news-html",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "農業部水產試驗所",
+      "existing": false,
+      "status": "success",
+      "item_count": 1,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "official-news-rss",
+        "url": "https://www.tfrin.gov.tw/wm_DATA.php?data=news_news",
+        "url_host": "www.tfrin.gov.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 16,
+      "raw_date_filtered": 1,
+      "retained_items": 1,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 0,
+      "exclusion_reasons": {},
+      "requested_window_covered": [
+        {
+          "route": "official-news-rss",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "農業部生物多樣性研究所",
+      "existing": false,
+      "status": "success",
+      "item_count": 0,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "official-news-html",
+        "url": "https://www.tbri.gov.tw/list.php?theme=hot_news&subtheme=",
+        "url_host": "www.tbri.gov.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 20,
+      "raw_date_filtered": 0,
+      "retained_items": 0,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 0,
+      "exclusion_reasons": {},
+      "requested_window_covered": [
+        {
+          "route": "official-news-html",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "農業部農業藥物試驗所",
+      "existing": false,
+      "status": "success",
+      "item_count": 0,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "official-news-html",
+        "url": "https://www.acri.gov.tw/Category/Items/%E6%9C%80%E6%96%B0%E6%B6%88%E6%81%AF",
+        "url_host": "www.acri.gov.tw",
+        "used_fallback": true
+      },
+      "raw_list_items": 416,
+      "raw_date_filtered": 0,
+      "retained_items": 0,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 0,
+      "exclusion_reasons": {},
+      "requested_window_covered": [
+        {
+          "route": "official-news-rss",
+          "covered": false
+        },
+        {
+          "route": "official-news-html",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "農業部桃園區農業改良場",
+      "existing": false,
+      "status": "success",
+      "item_count": 3,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "official-news-html",
+        "url": "https://www.tydares.gov.tw/theme_list.php?theme=activity&sub_theme=",
+        "url_host": "www.tydares.gov.tw",
+        "used_fallback": true
+      },
+      "raw_list_items": 48,
+      "raw_date_filtered": 3,
+      "retained_items": 3,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 0,
+      "exclusion_reasons": {},
+      "requested_window_covered": [
+        {
+          "route": "official-news-rss",
+          "covered": false
+        },
+        {
+          "route": "official-news-html"
+        },
+        {
+          "route": "official-news-html",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "農業部農業試驗所",
+      "existing": false,
+      "status": "success",
+      "item_count": 4,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "official-news-rss",
+        "url": "https://www.tari.gov.tw/NewsRss.asp",
+        "url_host": "www.tari.gov.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 311,
+      "raw_date_filtered": 4,
+      "retained_items": 4,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 0,
+      "exclusion_reasons": {},
+      "requested_window_covered": [
+        {
+          "route": "official-news-rss",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "農業部苗栗區農業改良場",
+      "existing": false,
+      "status": "success",
+      "item_count": 1,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "official-news-html",
+        "url": "https://www.mdares.gov.tw/",
+        "url_host": "www.mdares.gov.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 18,
+      "raw_date_filtered": 1,
+      "retained_items": 1,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 0,
+      "exclusion_reasons": {},
+      "requested_window_covered": [
+        {
+          "route": "official-news-html",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "農業部臺中區農業改良場",
+      "existing": false,
+      "status": "success",
+      "item_count": 3,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "official-news-rss",
+        "url": "https://www.tcdares.gov.tw/api.php?theme=news&sub_theme=hot&format=rss",
+        "url_host": "www.tcdares.gov.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 1822,
+      "raw_date_filtered": 3,
+      "retained_items": 3,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 96,
+      "exclusion_reasons": {
+        "administrative_title": 96
+      },
+      "requested_window_covered": [
+        {
+          "route": "official-news-rss",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "臺灣民主基金會",
+      "existing": false,
+      "status": "success",
+      "item_count": 1,
+      "failure_class": "",
+      "final_route": {
+        "aggregated": true,
+        "coverage_reduced": false,
+        "route_id": "official-events-browser",
+        "url": "https://www.tfd.org.tw/tw/news/events",
+        "url_host": "www.tfd.org.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 19,
+      "raw_date_filtered": 1,
+      "retained_items": 1,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 0,
+      "exclusion_reasons": {},
+      "requested_window_covered": [
+        {
+          "route": "official-focus-browser",
+          "covered": true
+        },
+        {
+          "route": "official-events-browser",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "農業部臺南區農業改良場",
+      "existing": false,
+      "status": "success",
+      "item_count": 1,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "official-news-rss",
+        "url": "https://www.tndais.gov.tw/api.php?theme=news&sub_theme=news&format=rss",
+        "url_host": "www.tndais.gov.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 1803,
+      "raw_date_filtered": 1,
+      "retained_items": 1,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 0,
+      "exclusion_reasons": {},
+      "requested_window_covered": [
+        {
+          "route": "official-news-rss",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "農業部臺東區農業改良場",
+      "existing": false,
+      "status": "success",
+      "item_count": 2,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "official-news-html",
+        "url": "https://www.ttdares.gov.tw/theme_list.php?theme=news&sub_theme=news",
+        "url_host": "www.ttdares.gov.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 40,
+      "raw_date_filtered": 2,
+      "retained_items": 2,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 0,
+      "exclusion_reasons": {},
+      "requested_window_covered": [
+        {
+          "route": "official-news-html"
+        },
+        {
+          "route": "official-news-html",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "工程會",
+      "existing": true,
+      "status": "success",
+      "item_count": 2,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "official-open-data",
+        "url": "https://www.pcc.gov.tw/content/opendata?item=news&n=CF5DF99964D9DB8E",
+        "url_host": "www.pcc.gov.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 1877,
+      "raw_date_filtered": 2,
+      "retained_items": 2,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 2,
+      "exclusion_reasons": {
+        "administrative_title": 2
+      },
+      "requested_window_covered": [
+        {
+          "route": "official-open-data",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "農業部高雄區農業改良場",
+      "existing": false,
+      "status": "success",
+      "item_count": 0,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "official-news-html",
+        "url": "https://www.kdais.gov.tw/theme_list.php?theme=news&sub_theme=news_releases",
+        "url_host": "www.kdais.gov.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 34,
+      "raw_date_filtered": 0,
+      "retained_items": 0,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 0,
+      "exclusion_reasons": {},
+      "requested_window_covered": [
+        {
+          "route": "official-news-html"
+        },
+        {
+          "route": "official-news-html",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "農業部種苗改良繁殖場",
+      "existing": false,
+      "status": "success",
+      "item_count": 1,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "official-news-html",
+        "url": "https://www.tss.gov.tw/theme_list.php?theme=news&sub_theme=hot",
+        "url_host": "www.tss.gov.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 40,
+      "raw_date_filtered": 1,
+      "retained_items": 1,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 0,
+      "exclusion_reasons": {},
+      "requested_window_covered": [
+        {
+          "route": "official-news-html"
+        },
+        {
+          "route": "official-news-html",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "農業部花蓮區農業改良場",
+      "existing": false,
+      "status": "success",
+      "item_count": 3,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "official-news-html",
+        "url": "https://www.hdares.gov.tw/theme_list.php?theme=news&sub_theme=hot",
+        "url_host": "www.hdares.gov.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 40,
+      "raw_date_filtered": 3,
+      "retained_items": 3,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 0,
+      "exclusion_reasons": {},
+      "requested_window_covered": [
+        {
+          "route": "official-news-html"
+        },
+        {
+          "route": "official-news-html",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "農業部茶及飲料作物改良場",
+      "existing": false,
+      "status": "success",
+      "item_count": 3,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "official-news-html",
+        "url": "https://www.tbrs.gov.tw/theme_list.php?theme=news&sub_theme=hot",
+        "url_host": "www.tbrs.gov.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 40,
+      "raw_date_filtered": 3,
+      "retained_items": 3,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 0,
+      "exclusion_reasons": {},
+      "requested_window_covered": [
+        {
+          "route": "official-news-html"
+        },
+        {
+          "route": "official-news-html",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "農業部農糧署南區分署",
+      "existing": false,
+      "status": "success",
+      "item_count": 0,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "official-news-html",
+        "url": "https://srb.afa.gov.tw/index.php?code=list&ids=186",
+        "url_host": "srb.afa.gov.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 12,
+      "raw_date_filtered": 0,
+      "retained_items": 0,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 0,
+      "exclusion_reasons": {},
+      "requested_window_covered": [
+        {
+          "route": "official-news-html",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "農業部動植物防疫檢疫署基隆分署",
+      "existing": false,
+      "status": "success",
+      "item_count": 0,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "official-news-html",
+        "url": "https://www.aphia.gov.tw/office/klaphia/theme_list.php?theme=news",
+        "url_host": "www.aphia.gov.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 20,
+      "raw_date_filtered": 0,
+      "retained_items": 0,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 0,
+      "exclusion_reasons": {},
+      "requested_window_covered": [
+        {
+          "route": "official-news-html",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "農業部動植物防疫檢疫署桃園分署",
+      "existing": false,
+      "status": "success",
+      "item_count": 0,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "official-news-html",
+        "url": "https://www.aphia.gov.tw/office/tyaphia/theme_list.php?theme=news",
+        "url_host": "www.aphia.gov.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 20,
+      "raw_date_filtered": 0,
+      "retained_items": 0,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 0,
+      "exclusion_reasons": {},
+      "requested_window_covered": [
+        {
+          "route": "official-news-html",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "農業部動植物防疫檢疫署臺中分署",
+      "existing": false,
+      "status": "success",
+      "item_count": 0,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "official-news-html",
+        "url": "https://www.aphia.gov.tw/office/tcaphia/theme_list.php?theme=news",
+        "url_host": "www.aphia.gov.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 20,
+      "raw_date_filtered": 0,
+      "retained_items": 0,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 0,
+      "exclusion_reasons": {},
+      "requested_window_covered": [
+        {
+          "route": "official-news-html",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "農業部農糧署中區分署",
+      "existing": false,
+      "status": "success",
+      "item_count": 0,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "official-news-html",
+        "url": "https://crb.afa.gov.tw/index.php?code=list&ids=17",
+        "url_host": "crb.afa.gov.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 24,
+      "raw_date_filtered": 0,
+      "retained_items": 0,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 0,
+      "exclusion_reasons": {},
+      "requested_window_covered": [
+        {
+          "route": "official-news-html"
+        },
+        {
+          "route": "official-news-html",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "農業部動植物防疫檢疫署高雄分署",
+      "existing": false,
+      "status": "success",
+      "item_count": 0,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "official-news-html",
+        "url": "https://www.aphia.gov.tw/office/khaphia/theme_list.php?theme=news",
+        "url_host": "www.aphia.gov.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 20,
+      "raw_date_filtered": 0,
+      "retained_items": 0,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 0,
+      "exclusion_reasons": {},
+      "requested_window_covered": [
+        {
+          "route": "official-news-html",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "農業部農糧署東區分署",
+      "existing": false,
+      "status": "success",
+      "item_count": 0,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "official-news-html",
+        "url": "https://erb.afa.gov.tw/index.php?code=list&ids=528",
+        "url_host": "erb.afa.gov.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 12,
+      "raw_date_filtered": 0,
+      "retained_items": 0,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 0,
+      "exclusion_reasons": {},
+      "requested_window_covered": [
+        {
+          "route": "official-news-html",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "農業部農糧署北區分署",
+      "existing": false,
+      "status": "success",
+      "item_count": 1,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "official-news-html",
+        "url": "https://nrb.afa.gov.tw/index.php?code=list&ids=114",
+        "url_host": "nrb.afa.gov.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 24,
+      "raw_date_filtered": 1,
+      "retained_items": 1,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 0,
+      "exclusion_reasons": {},
+      "requested_window_covered": [
+        {
+          "route": "official-news-html"
+        },
+        {
+          "route": "official-news-html",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "農業部漁業署漁業廣播電臺",
+      "existing": false,
+      "status": "success",
+      "item_count": 0,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "official-news-html",
+        "url": "https://www.frs.gov.tw/list.php?theme=announcement&subtheme=",
+        "url_host": "www.frs.gov.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 4,
+      "raw_date_filtered": 0,
+      "retained_items": 0,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 0,
+      "exclusion_reasons": {},
+      "requested_window_covered": [
+        {
+          "route": "official-news-html",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "農業部林業及自然保育署南投分署",
+      "existing": false,
+      "status": "success",
+      "item_count": 2,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "official-news-html",
+        "url": "https://nantou.forest.gov.tw/news",
+        "url_host": "nantou.forest.gov.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 10,
+      "raw_date_filtered": 2,
+      "retained_items": 2,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 0,
+      "exclusion_reasons": {},
+      "requested_window_covered": [
+        {
+          "route": "official-news-html",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "農業部林業及自然保育署屏東分署",
+      "existing": false,
+      "status": "success",
+      "item_count": 2,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "official-news-html",
+        "url": "https://pingtung.forest.gov.tw/news",
+        "url_host": "pingtung.forest.gov.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 10,
+      "raw_date_filtered": 2,
+      "retained_items": 2,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 0,
+      "exclusion_reasons": {},
+      "requested_window_covered": [
+        {
+          "route": "official-news-html",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "農業部林業及自然保育署新竹分署",
+      "existing": false,
+      "status": "success",
+      "item_count": 4,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "official-news-html",
+        "url": "https://hsinchu.forest.gov.tw/news",
+        "url_host": "hsinchu.forest.gov.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 10,
+      "raw_date_filtered": 4,
+      "retained_items": 4,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 0,
+      "exclusion_reasons": {},
+      "requested_window_covered": [
+        {
+          "route": "official-news-html",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "農業部林業及自然保育署臺中分署",
+      "existing": false,
+      "status": "success",
+      "item_count": 3,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "official-news-html",
+        "url": "https://taichung.forest.gov.tw/news",
+        "url_host": "taichung.forest.gov.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 10,
+      "raw_date_filtered": 3,
+      "retained_items": 3,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 0,
+      "exclusion_reasons": {},
+      "requested_window_covered": [
+        {
+          "route": "official-news-html",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "農業部花卉創新園區研究發展中心",
+      "existing": false,
+      "status": "success",
+      "item_count": 0,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "official-news-html",
+        "url": "https://www.fiic.gov.tw/announcements/messages",
+        "url_host": "www.fiic.gov.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 10,
+      "raw_date_filtered": 0,
+      "retained_items": 0,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 0,
+      "exclusion_reasons": {},
+      "requested_window_covered": [
+        {
+          "route": "official-news-html",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "農業部林業及自然保育署臺東分署",
+      "existing": false,
+      "status": "success",
+      "item_count": 0,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "official-news-html",
+        "url": "https://taitung.forest.gov.tw/news",
+        "url_host": "taitung.forest.gov.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 10,
+      "raw_date_filtered": 0,
+      "retained_items": 0,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 0,
+      "exclusion_reasons": {},
+      "requested_window_covered": [
+        {
+          "route": "official-news-html",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "農業部林業及自然保育署嘉義分署",
+      "existing": false,
+      "status": "success",
+      "item_count": 3,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "official-news-html",
+        "url": "https://chiayi.forest.gov.tw/news",
+        "url_host": "chiayi.forest.gov.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 10,
+      "raw_date_filtered": 3,
+      "retained_items": 3,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 0,
+      "exclusion_reasons": {},
+      "requested_window_covered": [
+        {
+          "route": "official-news-html",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "農業部林業及自然保育署航測及遙測分署",
+      "existing": false,
+      "status": "success",
+      "item_count": 0,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "official-news-html",
+        "url": "https://www.asrs.gov.tw/news",
+        "url_host": "www.asrs.gov.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 11,
+      "raw_date_filtered": 0,
+      "retained_items": 0,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 0,
+      "exclusion_reasons": {},
+      "requested_window_covered": [
+        {
+          "route": "official-news-html",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "農業部農村發展及水土保持署臺北分署",
+      "existing": false,
+      "status": "success",
+      "item_count": 1,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "official-news-rss",
+        "url": "https://taipei.ardswc.gov.tw/Content/RSS/news.xml",
+        "url_host": "taipei.ardswc.gov.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 50,
+      "raw_date_filtered": 1,
+      "retained_items": 1,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 0,
+      "exclusion_reasons": {},
+      "requested_window_covered": [
+        {
+          "route": "official-news-rss",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "農業部農村發展及水土保持署南投分署",
+      "existing": false,
+      "status": "success",
+      "item_count": 1,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "official-news-rss",
+        "url": "https://nantou.ardswc.gov.tw/Content/RSS/news.xml",
+        "url_host": "nantou.ardswc.gov.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 15,
+      "raw_date_filtered": 1,
+      "retained_items": 1,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 0,
+      "exclusion_reasons": {},
+      "requested_window_covered": [
+        {
+          "route": "official-news-rss",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "農業部農村發展及水土保持署臺中分署",
+      "existing": false,
+      "status": "success",
+      "item_count": 1,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "official-news-rss",
+        "url": "https://taichung.ardswc.gov.tw/Content/RSS/news.xml",
+        "url_host": "taichung.ardswc.gov.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 29,
+      "raw_date_filtered": 1,
+      "retained_items": 1,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 0,
+      "exclusion_reasons": {},
+      "requested_window_covered": [
+        {
+          "route": "official-news-rss",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "農業部林業及自然保育署花蓮分署",
+      "existing": false,
+      "status": "success",
+      "item_count": 8,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "official-news-html",
+        "url": "https://hualien.forest.gov.tw/news",
+        "url_host": "hualien.forest.gov.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 10,
+      "raw_date_filtered": 8,
+      "retained_items": 8,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 0,
+      "exclusion_reasons": {},
+      "requested_window_covered": [
+        {
+          "route": "official-news-html",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "農業部林業及自然保育署宜蘭分署",
+      "existing": false,
+      "status": "success",
+      "item_count": 0,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "official-news-html",
+        "url": "https://yilan.forest.gov.tw/news",
+        "url_host": "yilan.forest.gov.tw",
+        "used_fallback": true
+      },
+      "raw_list_items": 900,
+      "raw_date_filtered": 0,
+      "retained_items": 0,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 0,
+      "exclusion_reasons": {},
+      "requested_window_covered": [
+        {
+          "route": "official-news-rss",
+          "covered": false
+        },
+        {
+          "route": "official-news-html",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "農業部林業及自然保育署阿里山林業鐵路及文化資產管理處",
+      "existing": false,
+      "status": "success",
+      "item_count": 0,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "official-news-html",
+        "url": "https://afrch.forest.gov.tw/",
+        "url_host": "afrch.forest.gov.tw",
+        "used_fallback": true
+      },
+      "raw_list_items": 107,
+      "raw_date_filtered": 0,
+      "retained_items": 0,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 0,
+      "exclusion_reasons": {},
+      "requested_window_covered": [
+        {
+          "route": "official-news-rss",
+          "covered": false
+        },
+        {
+          "route": "official-news-html",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "農業部農村發展及水土保持署臺南分署",
+      "existing": false,
+      "status": "success",
+      "item_count": 2,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "official-news-rss",
+        "url": "https://tainan.ardswc.gov.tw/Content/RSS/news.xml",
+        "url_host": "tainan.ardswc.gov.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 50,
+      "raw_date_filtered": 2,
+      "retained_items": 2,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 0,
+      "exclusion_reasons": {},
+      "requested_window_covered": [
+        {
+          "route": "official-news-rss",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "農業部農村發展及水土保持署臺東分署",
+      "existing": false,
+      "status": "success",
+      "item_count": 1,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "official-news-rss",
+        "url": "https://taitung.ardswc.gov.tw/Content/RSS/news.xml",
+        "url_host": "taitung.ardswc.gov.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 36,
+      "raw_date_filtered": 1,
+      "retained_items": 1,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 0,
+      "exclusion_reasons": {},
+      "requested_window_covered": [
+        {
+          "route": "official-news-rss",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "農業部農業試驗所嘉義農業試驗分所",
+      "existing": false,
+      "status": "success",
+      "item_count": 1,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "official-news-html",
+        "url": "https://www.tari.gov.tw/sub/news/index.asp?Parser=22,38,651,635",
+        "url_host": "www.tari.gov.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 10,
+      "raw_date_filtered": 1,
+      "retained_items": 1,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 0,
+      "exclusion_reasons": {},
+      "requested_window_covered": [
+        {
+          "route": "official-news-html",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "財團法人農業信用保證基金",
+      "existing": false,
+      "status": "success",
+      "item_count": 0,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "official-news-html",
+        "url": "https://www.acgf.org.tw/",
+        "url_host": "www.acgf.org.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 22,
+      "raw_date_filtered": 0,
+      "retained_items": 0,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 2,
+      "exclusion_reasons": {
+        "administrative_title": 2
+      },
+      "requested_window_covered": [
+        {
+          "route": "official-news-html",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "農業部農村發展及水土保持署花蓮分署",
+      "existing": false,
+      "status": "success",
+      "item_count": 1,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "official-news-rss",
+        "url": "https://hualien.ardswc.gov.tw/Content/RSS/news.xml",
+        "url_host": "hualien.ardswc.gov.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 50,
+      "raw_date_filtered": 1,
+      "retained_items": 1,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 0,
+      "exclusion_reasons": {},
+      "requested_window_covered": [
+        {
+          "route": "official-news-rss",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "農業部農業試驗所鳳山熱帶園藝試驗分所",
+      "existing": false,
+      "status": "success",
+      "item_count": 0,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "official-news-html",
+        "url": "https://www.tari.gov.tw/sub/news/index.asp?Parser=22,34,512,493",
+        "url_host": "www.tari.gov.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 10,
+      "raw_date_filtered": 0,
+      "retained_items": 0,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 0,
+      "exclusion_reasons": {},
+      "requested_window_covered": [
+        {
+          "route": "official-news-html",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "財團法人農業保險基金",
+      "existing": false,
+      "status": "success",
+      "item_count": 1,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "official-news-html",
+        "url": "https://www.taif.org.tw/ch/website/news/list?module=headnews&id=11",
+        "url_host": "www.taif.org.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 15,
+      "raw_date_filtered": 1,
+      "retained_items": 1,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 0,
+      "exclusion_reasons": {},
+      "requested_window_covered": [
+        {
+          "route": "official-news-html",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "財團法人農業工程研究中心",
+      "existing": false,
+      "status": "success",
+      "item_count": 0,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "official-news-html",
+        "url": "https://www.aerc.org.tw/news",
+        "url_host": "www.aerc.org.tw",
+        "used_fallback": true
+      },
+      "raw_list_items": 34,
+      "raw_date_filtered": 0,
+      "retained_items": 0,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 0,
+      "exclusion_reasons": {},
+      "requested_window_covered": [
+        {
+          "route": "official-news-rss",
+          "covered": false
+        },
+        {
+          "route": "official-news-html",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "財團法人中正農業科技社會公益基金會",
+      "existing": false,
+      "status": "success",
+      "item_count": 0,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "official-news-html",
+        "url": "https://www.ccasf.org.tw/",
+        "url_host": "www.ccasf.org.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 3,
+      "raw_date_filtered": 0,
+      "retained_items": 0,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 0,
+      "exclusion_reasons": {},
+      "requested_window_covered": [
+        {
+          "route": "official-news-html",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "台灣農林股份有限公司",
+      "existing": false,
+      "status": "success",
+      "item_count": 0,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "official-news-html",
+        "url": "https://www.ttch.com.tw/zh/news/newsList",
+        "url_host": "www.ttch.com.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 15,
+      "raw_date_filtered": 0,
+      "retained_items": 0,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 0,
+      "exclusion_reasons": {},
+      "requested_window_covered": [
+        {
+          "route": "official-news-html",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "財團法人農業科技研究院",
+      "existing": false,
+      "status": "success",
+      "item_count": 1,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "official-news-html",
+        "url": "https://www.atri.org.tw/hotnews",
+        "url_host": "www.atri.org.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 9,
+      "raw_date_filtered": 1,
+      "retained_items": 1,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 0,
+      "exclusion_reasons": {},
+      "requested_window_covered": [
+        {
+          "route": "official-news-html",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "農業部農田水利署宜蘭管理處",
+      "existing": false,
+      "status": "success",
+      "item_count": 0,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "official-news-html",
+        "url": "https://www.iaila.nat.gov.tw/news/NewsPage?a=10701",
+        "url_host": "www.iaila.nat.gov.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 15,
+      "raw_date_filtered": 0,
+      "retained_items": 0,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 1,
+      "exclusion_reasons": {
+        "category_not_in_scope": 1
+      },
+      "requested_window_covered": [
+        {
+          "route": "official-news-html",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "農業部農田水利署石門管理處",
+      "existing": false,
+      "status": "success",
+      "item_count": 0,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "official-news-html",
+        "url": "https://www.iasme.nat.gov.tw/news/NewsPage?a=10201",
+        "url_host": "www.iasme.nat.gov.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 15,
+      "raw_date_filtered": 0,
+      "retained_items": 0,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 10,
+      "exclusion_reasons": {
+        "category_not_in_scope": 10
+      },
+      "requested_window_covered": [
+        {
+          "route": "official-news-html",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "農業部農田水利署新竹管理處",
+      "existing": false,
+      "status": "success",
+      "item_count": 0,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "official-news-html",
+        "url": "https://www.iahch.nat.gov.tw/news/NewsPage?a=10251",
+        "url_host": "www.iahch.nat.gov.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 15,
+      "raw_date_filtered": 0,
+      "retained_items": 0,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 12,
+      "exclusion_reasons": {
+        "category_not_in_scope": 12
+      },
+      "requested_window_covered": [
+        {
+          "route": "official-news-html",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "全國農業金庫股份有限公司",
+      "existing": false,
+      "status": "success",
+      "item_count": 1,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "official-news-html",
+        "url": "https://www.agribank.com.tw/Message?itemid=4&mid=102",
+        "url_host": "www.agribank.com.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 10,
+      "raw_date_filtered": 1,
+      "retained_items": 1,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 0,
+      "exclusion_reasons": {},
+      "requested_window_covered": [
+        {
+          "route": "official-news-html",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "農業部農田水利署桃園管理處",
+      "existing": false,
+      "status": "success",
+      "item_count": 1,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "official-news-html",
+        "url": "https://www.iatyu.nat.gov.tw/news/NewsPage?a=10151",
+        "url_host": "www.iatyu.nat.gov.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 15,
+      "raw_date_filtered": 1,
+      "retained_items": 1,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 5,
+      "exclusion_reasons": {
+        "category_not_in_scope": 5
+      },
+      "requested_window_covered": [
+        {
+          "route": "official-news-html",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "農業部農田水利署苗栗管理處",
+      "existing": false,
+      "status": "success",
+      "item_count": 0,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "official-news-html",
+        "url": "https://www.iamli.nat.gov.tw/news/NewsPage?a=10301",
+        "url_host": "www.iamli.nat.gov.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 15,
+      "raw_date_filtered": 0,
+      "retained_items": 0,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 14,
+      "exclusion_reasons": {
+        "category_not_in_scope": 14
+      },
+      "requested_window_covered": [
+        {
+          "route": "official-news-html",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "農業部農田水利署臺中管理處",
+      "existing": false,
+      "status": "success",
+      "item_count": 0,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "official-news-html",
+        "url": "https://www.iatch.nat.gov.tw/news/NewsPage?a=10351",
+        "url_host": "www.iatch.nat.gov.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 15,
+      "raw_date_filtered": 0,
+      "retained_items": 0,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 13,
+      "exclusion_reasons": {
+        "category_not_in_scope": 13
+      },
+      "requested_window_covered": [
+        {
+          "route": "official-news-html",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "農業部農田水利署南投管理處",
+      "existing": false,
+      "status": "success",
+      "item_count": 0,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "official-news-html",
+        "url": "https://www.ianto.nat.gov.tw/news/NewsPage?a=10501",
+        "url_host": "www.ianto.nat.gov.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 15,
+      "raw_date_filtered": 0,
+      "retained_items": 0,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 12,
+      "exclusion_reasons": {
+        "category_not_in_scope": 12
+      },
+      "requested_window_covered": [
+        {
+          "route": "official-news-html",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "農業部農田水利署雲林管理處",
+      "existing": false,
+      "status": "success",
+      "item_count": 0,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "official-news-html",
+        "url": "https://www.iayli.nat.gov.tw/news/NewsPage?a=10401",
+        "url_host": "www.iayli.nat.gov.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 15,
+      "raw_date_filtered": 0,
+      "retained_items": 0,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 8,
+      "exclusion_reasons": {
+        "category_not_in_scope": 8
+      },
+      "requested_window_covered": [
+        {
+          "route": "official-news-html",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "農業部農田水利署彰化管理處",
+      "existing": false,
+      "status": "success",
+      "item_count": 1,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "official-news-html",
+        "url": "https://www.iachu.nat.gov.tw/news/NewsPage?a=10451",
+        "url_host": "www.iachu.nat.gov.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 15,
+      "raw_date_filtered": 1,
+      "retained_items": 1,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 11,
+      "exclusion_reasons": {
+        "category_not_in_scope": 11
+      },
+      "requested_window_covered": [
+        {
+          "route": "official-news-html",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "財團法人中央畜產會",
+      "existing": false,
+      "status": "success",
+      "item_count": 1,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "official-news-html",
+        "url": "https://www.naif.org.tw/allNews.aspx",
+        "url_host": "www.naif.org.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 21,
+      "raw_date_filtered": 1,
+      "retained_items": 1,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 0,
+      "exclusion_reasons": {},
+      "requested_window_covered": [
+        {
+          "route": "official-news-html",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "農業部農田水利署屏東管理處",
+      "existing": false,
+      "status": "success",
+      "item_count": 0,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "official-news-html",
+        "url": "https://www.iaptu.nat.gov.tw/news/NewsPage?a=10651",
+        "url_host": "www.iaptu.nat.gov.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 15,
+      "raw_date_filtered": 0,
+      "retained_items": 0,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 13,
+      "exclusion_reasons": {
+        "category_not_in_scope": 13
+      },
+      "requested_window_covered": [
+        {
+          "route": "official-news-html",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "農業部農田水利署臺東管理處",
+      "existing": false,
+      "status": "success",
+      "item_count": 0,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "official-news-html",
+        "url": "https://www.iattu.nat.gov.tw/news/NewsPage?a=10801",
+        "url_host": "www.iattu.nat.gov.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 15,
+      "raw_date_filtered": 0,
+      "retained_items": 0,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 10,
+      "exclusion_reasons": {
+        "category_not_in_scope": 10
+      },
+      "requested_window_covered": [
+        {
+          "route": "official-news-html",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "農業部農田水利署高雄管理處",
+      "existing": false,
+      "status": "success",
+      "item_count": 2,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "official-news-html",
+        "url": "https://www.iakhs.nat.gov.tw/news/NewsPage?a=10601",
+        "url_host": "www.iakhs.nat.gov.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 15,
+      "raw_date_filtered": 2,
+      "retained_items": 2,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 9,
+      "exclusion_reasons": {
+        "category_not_in_scope": 9
+      },
+      "requested_window_covered": [
+        {
+          "route": "official-news-html",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "農業部農田水利署七星管理處",
+      "existing": false,
+      "status": "success",
+      "item_count": 0,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "official-news-html",
+        "url": "https://www.iacsi.nat.gov.tw/news/NewsPage?a=10101",
+        "url_host": "www.iacsi.nat.gov.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 15,
+      "raw_date_filtered": 0,
+      "retained_items": 0,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 13,
+      "exclusion_reasons": {
+        "category_not_in_scope": 13
+      },
+      "requested_window_covered": [
+        {
+          "route": "official-news-html",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "農業部農田水利署嘉南管理處",
+      "existing": false,
+      "status": "success",
+      "item_count": 0,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "official-news-html",
+        "url": "https://www.iacna.nat.gov.tw/news/NewsPage?a=10551",
+        "url_host": "www.iacna.nat.gov.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 15,
+      "raw_date_filtered": 0,
+      "retained_items": 0,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 11,
+      "exclusion_reasons": {
+        "category_not_in_scope": 11
+      },
+      "requested_window_covered": [
+        {
+          "route": "official-news-html",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "台農發股份有限公司",
+      "existing": false,
+      "status": "success",
+      "item_count": 0,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "official-news-html",
+        "url": "https://www.mitagri.com.tw/portal_b1.php?owner_num=b1_51988&button_num=b1",
+        "url_host": "www.mitagri.com.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 12,
+      "raw_date_filtered": 0,
+      "retained_items": 0,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 0,
+      "exclusion_reasons": {},
+      "requested_window_covered": [
+        {
+          "route": "official-news-html",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "農業部農田水利署花蓮管理處",
+      "existing": false,
+      "status": "success",
+      "item_count": 2,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "official-news-html",
+        "url": "https://www.iahli.nat.gov.tw/news/NewsPage?a=10751",
+        "url_host": "www.iahli.nat.gov.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 15,
+      "raw_date_filtered": 2,
+      "retained_items": 2,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 9,
+      "exclusion_reasons": {
+        "category_not_in_scope": 9
+      },
+      "requested_window_covered": [
+        {
+          "route": "official-news-html",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "農業部林業試驗所",
+      "existing": false,
+      "status": "success",
+      "item_count": 3,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "official-news-html",
+        "url": "https://www.tfri.gov.tw/News.aspx?n=7495&sms=12314",
+        "url_host": "www.tfri.gov.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 20,
+      "raw_date_filtered": 3,
+      "retained_items": 3,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 0,
+      "exclusion_reasons": {},
+      "requested_window_covered": [
+        {
+          "route": "official-news-html"
+        },
+        {
+          "route": "official-news-html",
+          "covered": true
+        }
+      ],
+      "retry": null
+    },
+    {
+      "source": "財團法人台灣優良農產品發展協會",
+      "existing": false,
+      "status": "success",
+      "item_count": 0,
+      "failure_class": "",
+      "final_route": {
+        "coverage_reduced": false,
+        "route_id": "official-news-html",
+        "url": "https://www.cas.org.tw/#/newslist",
+        "url_host": "www.cas.org.tw",
+        "used_fallback": false
+      },
+      "raw_list_items": 182,
+      "raw_date_filtered": 0,
+      "retained_items": 0,
+      "normal_overlap_count": 0,
+      "content_filtered_out": 0,
+      "exclusion_reasons": {},
+      "requested_window_covered": [
+        {
+          "route": "official-news-html",
+          "covered": true
+        }
+      ],
+      "retry": null
+    }
+  ]
+}

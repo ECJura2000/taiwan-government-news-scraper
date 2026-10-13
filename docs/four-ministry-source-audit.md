@@ -78,3 +78,11 @@ RSS 篇數或日期範圍不足時補抓已驗證的官方列表，並合併去�
 待確認條目包括關係尚未證實、無獨立新聞歸屬、未取得可信日期／連結及暫時連線限制等不同情況，不能一律寫「沒有 RSS」或「機構不存在」。已驗證且啟用的來源發生暫時故障時保留來源與執行證據，不因單次故障從核准名冊刪除。
 
 原始研究證據分別保留於[文化部／陸委會盤點](audits/four-ministry-culture-mac-20261012.json)、[外交部盤點](audits/four-ministry-mofa-20261012.json)、[農業部盤點](audits/four-ministry-agriculture-20261012.json)。正式結果以最新執行紀錄的 `status`、`failed_sources`、`anomalies`、`error_counts`、`quality.alert_reasons`、`source_health` 及 `relevance_policy.ruleset_hash` 為準，並確認 Excel 維持17欄、JSON schema v4與核准來源名稱集合。
+
+## 終版完整回歸（2026-10-13）
+
+以 Rust 正式 CLI 收集 2026-10-05 至 2026-10-11，192 個核准來源全部執行，原有 88 個來源完整保留；取得 488 則、276 則含全文，JSON schema v4、Excel 17 欄及成對 SHA-256 均已核對，國家標準時間校正成功。新增來源均未失敗。品質警示及異常為空，但整體狀態仍為 `partial_failure`，不能稱為完整成功。
+
+國防院為連線故障；公路局官方 XML 保留 49 則，正式列表仍被驗證頁阻擋，不能聲稱週資料範圍完整。兩來源均用同版本重試：國防院故障可在原數量門檻內如實保留，公路局 `access_blocked` 仍阻擋發布。沒有放寬門檻或把缺頁當作成功空週。逐來源篩選、歸屬、正常重疊與覆蓋結果見 [驗收摘要](audits/four-ministry-validation-20261013.json)。重試資料與完整週 Excel 分別記錄，不回寫週報。
+
+最終本機驗證：187 個 Rust 測試、16 個前端測試、14 個門檻測試通過；兩個需 Chrome 的回歸案例另外實測通過。另有一個即時國發會 RSS 測試預設略過。格式、Clippy、前端檢查／建置、CLI 完整集合及 139 組官方路徑樣本均通過。8 個來源仍有明確的資料範圍縮減標記，空週不代表已證明範圍完整。
