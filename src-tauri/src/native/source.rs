@@ -358,6 +358,7 @@ async fn fetch_source_definition(
                         "parser": route.parser.as_str(),
                         "attempt_number": attempt_number,
                         "status": "success",
+                        "tls_intermediate_profile": (cfg!(target_os = "linux") && route.kind != "browser" && policy.intermediate_certificate_for(url).is_some()).then_some("twca-secure2023"),
                         "elapsed_seconds": elapsed_seconds(started),
                         "item_count": parsed_item_count,
                         "content_filtered_out": filtered_out,

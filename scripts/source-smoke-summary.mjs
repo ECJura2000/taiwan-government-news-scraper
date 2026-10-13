@@ -31,6 +31,8 @@ export function buildSmokeSummary(report, gate, retries = [], {
     gate_accepted: gate?.accepted ?? null,
     gate_errors: gate?.errors ?? ['gate evidence unavailable'],
     gate_evidence: 'gate-result.json',
+    verification_scope: gate?.verification_scope ?? null,
+    not_collected_in_cloud: gate?.verification_scope?.unverified_sources ?? [],
     initial_failed_sources: initial,
     retry_recovered_sources: initial.filter(source => !unresolved.includes(source)),
     unresolved_failures: failures,
@@ -49,6 +51,11 @@ export function renderSmokeSummary(summary) {
     '此摘要不改變原始 gate-result.json 的結果。發布另需發布時才啟動的本機 Mac 完整來源檢查；此產物沒有配對的發布驗證證據。', '',
     '文化部的官方驗證頁阻擋會如實列為失敗。其他網路、解析或 Chrome 故障保留當次分類，未視為永久雲端限制，也未排除任何來源。', '',
     'OS、Chrome／Chromium、OpenSSL 與 curl 版本另存 environment-versions.json，供比對實際環境，不含憑證或環境變數內容。'];
+  if (summary.not_collected_in_cloud?.length) {
+    lines.push('', `本次雲端範圍未收集 ${summary.not_collected_in_cloud.length} 個來源，全部仍保留於核准目錄；須由 Mac 完整驗證，不列為本次成功：`, '',
+      '| 須由 Mac 驗證 | 實際證據 | |', '| --- | --- | --- |');
+    for (const row of summary.not_collected_in_cloud) lines.push(`| ${cell(row.source)} | ${row.reason === 'official_verification_page' ? '官方驗證頁阻擋' : 'GitHub TCP／DNS 連線逾時，Mac 成功'} | [雲端證據](${row.network_probe_run}) |`);
+  }
   if (summary.unresolved_failures.length) {
     lines.push('', '| 未恢復來源 | 初次分類 | 重測分類 | 環境限制證據 |', '| --- | --- | --- | --- |');
     for (const row of summary.unresolved_failures) lines.push(`| ${cell(row.source)} | ${cell(row.initial_failure_class)} | ${cell(row.retry_failure_classes.join(', ') || row.retry_status)} | ${row.known_environment_limitation ? '官方驗證頁阻擋 GitHub 執行器' : '未確認永久限制'} |`);

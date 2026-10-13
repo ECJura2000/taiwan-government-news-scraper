@@ -177,6 +177,13 @@ impl TransportPolicy {
 
     pub fn intermediate_certificate_for(&self, url: &str) -> Option<TlsIntermediateCertificate> {
         let declared = self.tls_intermediate.as_ref()?;
+        // The pinned profile was explicitly approved for these hosts only.
+        if !matches!(
+            declared.host.as_str(),
+            "www.nfa.gov.tw" | "www.atp.gov.tw" | "www.hpa.gov.tw"
+        ) {
+            return None;
+        }
         let parsed = url::Url::parse(url).ok()?;
         (parsed.scheme() == "https"
             && parsed.host_str() == Some(declared.host.as_str())
@@ -190,6 +197,41 @@ impl TransportPolicy {
 mod tests {
     use super::*;
     use crate::scraper::catalog::{find_source, routes_for};
+
+    #[test]
+    fn intermediate_profile_is_limited_to_the_three_approved_https_hosts() {
+        let mut declared = Vec::new();
+        for source in crate::scraper::catalog::all_sources() {
+            for route in routes_for(source) {
+                let policy = TransportPolicy::for_route(source, &route);
+                if let Some(profile) = &policy.tls_intermediate {
+                    declared.push(source.name.as_str());
+                    assert!(policy.intermediate_certificate_for(&route.url).is_some());
+                    assert!(policy
+                        .intermediate_certificate_for("https://example.com/")
+                        .is_none());
+                    assert!(policy
+                        .intermediate_certificate_for(&format!("http://{}/", profile.host))
+                        .is_none());
+                    assert!(policy
+                        .intermediate_certificate_for(&format!(
+                            "https://user:password@{}/",
+                            profile.host
+                        ))
+                        .is_none());
+                    assert!(!policy.allows_tls_fallback_for(&route.url));
+                    let mut undeclared = policy.clone();
+                    undeclared.tls_intermediate.as_mut().unwrap().host = "example.com".into();
+                    assert!(undeclared
+                        .intermediate_certificate_for("https://example.com/")
+                        .is_none());
+                }
+            }
+        }
+        declared.sort();
+        declared.dedup();
+        assert_eq!(declared, vec!["國健署", "消防署", "農科園區"]);
+    }
 
     #[test]
     fn homepage_entry_is_scoped_to_declared_browser_route() {

@@ -10,8 +10,8 @@ const output = process.argv[2];
 if (!output) throw Error('Usage: source-network-probe.mjs OUTPUT_JSON');
 const targets = new Map();
 for (const source of catalog) {
-  for (const route of source.routes ?? []) {
-    const url = new URL(route.url);
+  for (const endpoint of new Set([...(source.urls ?? []), ...(source.routes ?? []).map(route => route.url)])) {
+    const url = new URL(endpoint);
     if (url.protocol !== 'https:' || url.username || url.password) continue;
     // One public TLS endpoint per host; never fetch full articles or personal data.
     targets.set(url.hostname, `https://${url.hostname}/`);

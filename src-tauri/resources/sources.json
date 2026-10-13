@@ -148,7 +148,24 @@
     "name": "消防署",
     "urls": [
       "https://www.nfa.gov.tw/pro/index.php?code=list&ids=1470"
-    ]
+    ],
+    "transport": {
+      "list": {
+        "tls_intermediate": {
+          "host": "www.nfa.gov.tw",
+          "certificate": "twca-secure2023"
+        }
+      },
+      "detail": [
+        {
+          "host": "www.nfa.gov.tw",
+          "tls_intermediate": {
+            "host": "www.nfa.gov.tw",
+            "certificate": "twca-secure2023"
+          }
+        }
+      ]
+    }
   },
   {
     "name": "外交部",
@@ -850,7 +867,24 @@
     "parent_ministry": "農業部",
     "aliases": [
       "農業科技園區管理中心"
-    ]
+    ],
+    "transport": {
+      "list": {
+        "tls_intermediate": {
+          "host": "www.atp.gov.tw",
+          "certificate": "twca-secure2023"
+        }
+      },
+      "detail": [
+        {
+          "host": "www.atp.gov.tw",
+          "tls_intermediate": {
+            "host": "www.atp.gov.tw",
+            "certificate": "twca-secure2023"
+          }
+        }
+      ]
+    }
   },
   {
     "name": "衛生福利部",
@@ -926,7 +960,24 @@
         "parser": "standard",
         "priority": 1
       }
-    ]
+    ],
+    "transport": {
+      "list": {
+        "tls_intermediate": {
+          "host": "www.hpa.gov.tw",
+          "certificate": "twca-secure2023"
+        }
+      },
+      "detail": [
+        {
+          "host": "www.hpa.gov.tw",
+          "tls_intermediate": {
+            "host": "www.hpa.gov.tw",
+            "certificate": "twca-secure2023"
+          }
+        }
+      ]
+    }
   },
   {
     "name": "社家署",

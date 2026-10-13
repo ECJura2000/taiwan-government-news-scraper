@@ -1,0 +1,236 @@
+{
+  "version": 1,
+  "review_after": "2026-11-13",
+  "manual_mac_sources": [
+    {
+      "source": "文化部",
+      "host": "www.moc.gov.tw",
+      "reason": "official_verification_page",
+      "checked_at": "2026-10-13",
+      "cloud_run": "https://github.com/ECJura2000/taiwan-government-news-scraper/actions/runs/38339928715",
+      "network_probe_run": "https://github.com/ECJura2000/taiwan-government-news-scraper/actions/runs/38370389589",
+      "mac_run_id": "20261013_164019_513440",
+      "mac_status": "success"
+    },
+    {
+      "source": "防檢署",
+      "host": "www.aphia.gov.tw",
+      "reason": "hosted_connection_timeout",
+      "checked_at": "2026-10-13",
+      "cloud_run": "https://github.com/ECJura2000/taiwan-government-news-scraper/actions/runs/38339928715",
+      "network_probe_run": "https://github.com/ECJura2000/taiwan-government-news-scraper/actions/runs/38370389589",
+      "mac_run_id": "20261013_164019_513440",
+      "mac_status": "success"
+    },
+    {
+      "source": "農業金融署",
+      "host": "www.afna.gov.tw",
+      "reason": "hosted_connection_timeout",
+      "checked_at": "2026-10-13",
+      "cloud_run": "https://github.com/ECJura2000/taiwan-government-news-scraper/actions/runs/38339928715",
+      "network_probe_run": "https://github.com/ECJura2000/taiwan-government-news-scraper/actions/runs/38370389589",
+      "mac_run_id": "20261013_164019_513440",
+      "mac_status": "success"
+    },
+    {
+      "source": "農業部水產試驗所",
+      "host": "www.tfrin.gov.tw",
+      "reason": "hosted_connection_timeout",
+      "checked_at": "2026-10-13",
+      "cloud_run": "https://github.com/ECJura2000/taiwan-government-news-scraper/actions/runs/38339928715",
+      "network_probe_run": "https://github.com/ECJura2000/taiwan-government-news-scraper/actions/runs/38370389589",
+      "mac_run_id": "20261013_164019_513440",
+      "mac_status": "success"
+    },
+    {
+      "source": "農業部生物多樣性研究所",
+      "host": "www.tbri.gov.tw",
+      "reason": "hosted_connection_timeout",
+      "checked_at": "2026-10-13",
+      "cloud_run": "https://github.com/ECJura2000/taiwan-government-news-scraper/actions/runs/38339928715",
+      "network_probe_run": "https://github.com/ECJura2000/taiwan-government-news-scraper/actions/runs/38370389589",
+      "mac_run_id": "20261013_164019_513440",
+      "mac_status": "success"
+    },
+    {
+      "source": "農業部花蓮區農業改良場",
+      "host": "www.hdares.gov.tw",
+      "reason": "hosted_connection_timeout",
+      "checked_at": "2026-10-13",
+      "cloud_run": "https://github.com/ECJura2000/taiwan-government-news-scraper/actions/runs/38339928715",
+      "network_probe_run": "https://github.com/ECJura2000/taiwan-government-news-scraper/actions/runs/38370389589",
+      "mac_run_id": "20261013_164019_513440",
+      "mac_status": "success"
+    },
+    {
+      "source": "農業部苗栗區農業改良場",
+      "host": "www.mdares.gov.tw",
+      "reason": "hosted_connection_timeout",
+      "checked_at": "2026-10-13",
+      "cloud_run": "https://github.com/ECJura2000/taiwan-government-news-scraper/actions/runs/38339928715",
+      "network_probe_run": "https://github.com/ECJura2000/taiwan-government-news-scraper/actions/runs/38370389589",
+      "mac_run_id": "20261013_164019_513440",
+      "mac_status": "success"
+    },
+    {
+      "source": "農業部桃園區農業改良場",
+      "host": "www.tydares.gov.tw",
+      "reason": "hosted_connection_timeout",
+      "checked_at": "2026-10-13",
+      "cloud_run": "https://github.com/ECJura2000/taiwan-government-news-scraper/actions/runs/38339928715",
+      "network_probe_run": "https://github.com/ECJura2000/taiwan-government-news-scraper/actions/runs/38370389589",
+      "mac_run_id": "20261013_164019_513440",
+      "mac_status": "success"
+    },
+    {
+      "source": "農業部畜產試驗所",
+      "host": "www.tlri.gov.tw",
+      "reason": "hosted_connection_timeout",
+      "checked_at": "2026-10-13",
+      "cloud_run": "https://github.com/ECJura2000/taiwan-government-news-scraper/actions/runs/38339928715",
+      "network_probe_run": "https://github.com/ECJura2000/taiwan-government-news-scraper/actions/runs/38370389589",
+      "mac_run_id": "20261013_164019_513440",
+      "mac_status": "success"
+    },
+    {
+      "source": "農業部茶及飲料作物改良場",
+      "host": "www.tbrs.gov.tw",
+      "reason": "hosted_connection_timeout",
+      "checked_at": "2026-10-13",
+      "cloud_run": "https://github.com/ECJura2000/taiwan-government-news-scraper/actions/runs/38339928715",
+      "network_probe_run": "https://github.com/ECJura2000/taiwan-government-news-scraper/actions/runs/38370389589",
+      "mac_run_id": "20261013_164019_513440",
+      "mac_status": "success"
+    },
+    {
+      "source": "農業部高雄區農業改良場",
+      "host": "www.kdais.gov.tw",
+      "reason": "hosted_connection_timeout",
+      "checked_at": "2026-10-13",
+      "cloud_run": "https://github.com/ECJura2000/taiwan-government-news-scraper/actions/runs/38339928715",
+      "network_probe_run": "https://github.com/ECJura2000/taiwan-government-news-scraper/actions/runs/38370389589",
+      "mac_run_id": "20261013_164019_513440",
+      "mac_status": "success"
+    },
+    {
+      "source": "農業部動植物防疫檢疫署桃園分署",
+      "host": "www.aphia.gov.tw",
+      "reason": "hosted_connection_timeout",
+      "checked_at": "2026-10-13",
+      "cloud_run": "https://github.com/ECJura2000/taiwan-government-news-scraper/actions/runs/38339928715",
+      "network_probe_run": "https://github.com/ECJura2000/taiwan-government-news-scraper/actions/runs/38370389589",
+      "mac_run_id": "20261013_164019_513440",
+      "mac_status": "success"
+    },
+    {
+      "source": "農業部動植物防疫檢疫署高雄分署",
+      "host": "www.aphia.gov.tw",
+      "reason": "hosted_connection_timeout",
+      "checked_at": "2026-10-13",
+      "cloud_run": "https://github.com/ECJura2000/taiwan-government-news-scraper/actions/runs/38339928715",
+      "network_probe_run": "https://github.com/ECJura2000/taiwan-government-news-scraper/actions/runs/38370389589",
+      "mac_run_id": "20261013_164019_513440",
+      "mac_status": "success"
+    },
+    {
+      "source": "農業部動植物防疫檢疫署基隆分署",
+      "host": "www.aphia.gov.tw",
+      "reason": "hosted_connection_timeout",
+      "checked_at": "2026-10-13",
+      "cloud_run": "https://github.com/ECJura2000/taiwan-government-news-scraper/actions/runs/38339928715",
+      "network_probe_run": "https://github.com/ECJura2000/taiwan-government-news-scraper/actions/runs/38370389589",
+      "mac_run_id": "20261013_164019_513440",
+      "mac_status": "success"
+    },
+    {
+      "source": "農業部動植物防疫檢疫署臺中分署",
+      "host": "www.aphia.gov.tw",
+      "reason": "hosted_connection_timeout",
+      "checked_at": "2026-10-13",
+      "cloud_run": "https://github.com/ECJura2000/taiwan-government-news-scraper/actions/runs/38339928715",
+      "network_probe_run": "https://github.com/ECJura2000/taiwan-government-news-scraper/actions/runs/38370389589",
+      "mac_run_id": "20261013_164019_513440",
+      "mac_status": "success"
+    },
+    {
+      "source": "農業部漁業署漁業廣播電臺",
+      "host": "www.frs.gov.tw",
+      "reason": "hosted_connection_timeout",
+      "checked_at": "2026-10-13",
+      "cloud_run": "https://github.com/ECJura2000/taiwan-government-news-scraper/actions/runs/38339928715",
+      "network_probe_run": "https://github.com/ECJura2000/taiwan-government-news-scraper/actions/runs/38370389589",
+      "mac_run_id": "20261013_164019_513440",
+      "mac_status": "success"
+    },
+    {
+      "source": "農業部種苗改良繁殖場",
+      "host": "www.tss.gov.tw",
+      "reason": "hosted_connection_timeout",
+      "checked_at": "2026-10-13",
+      "cloud_run": "https://github.com/ECJura2000/taiwan-government-news-scraper/actions/runs/38339928715",
+      "network_probe_run": "https://github.com/ECJura2000/taiwan-government-news-scraper/actions/runs/38370389589",
+      "mac_run_id": "20261013_164019_513440",
+      "mac_status": "success"
+    },
+    {
+      "source": "農業部臺中區農業改良場",
+      "host": "www.tcdares.gov.tw",
+      "reason": "hosted_connection_timeout",
+      "checked_at": "2026-10-13",
+      "cloud_run": "https://github.com/ECJura2000/taiwan-government-news-scraper/actions/runs/38339928715",
+      "network_probe_run": "https://github.com/ECJura2000/taiwan-government-news-scraper/actions/runs/38370389589",
+      "mac_run_id": "20261013_164019_513440",
+      "mac_status": "success"
+    },
+    {
+      "source": "農業部臺東區農業改良場",
+      "host": "www.ttdares.gov.tw",
+      "reason": "hosted_connection_timeout",
+      "checked_at": "2026-10-13",
+      "cloud_run": "https://github.com/ECJura2000/taiwan-government-news-scraper/actions/runs/38339928715",
+      "network_probe_run": "https://github.com/ECJura2000/taiwan-government-news-scraper/actions/runs/38370389589",
+      "mac_run_id": "20261013_164019_513440",
+      "mac_status": "success"
+    },
+    {
+      "source": "農業部臺南區農業改良場",
+      "host": "www.tndais.gov.tw",
+      "reason": "hosted_connection_timeout",
+      "checked_at": "2026-10-13",
+      "cloud_run": "https://github.com/ECJura2000/taiwan-government-news-scraper/actions/runs/38339928715",
+      "network_probe_run": "https://github.com/ECJura2000/taiwan-government-news-scraper/actions/runs/38370389589",
+      "mac_run_id": "20261013_164019_513440",
+      "mac_status": "success"
+    },
+    {
+      "source": "農業部獸醫研究所",
+      "host": "www.nvri.gov.tw",
+      "reason": "hosted_connection_timeout",
+      "checked_at": "2026-10-13",
+      "cloud_run": "https://github.com/ECJura2000/taiwan-government-news-scraper/actions/runs/38339928715",
+      "network_probe_run": "https://github.com/ECJura2000/taiwan-government-news-scraper/actions/runs/38370389589",
+      "mac_run_id": "20261013_164019_513440",
+      "mac_status": "success"
+    },
+    {
+      "source": "矯正署",
+      "host": "www.mjac.moj.gov.tw",
+      "reason": "hosted_connection_timeout",
+      "checked_at": "2026-10-13",
+      "cloud_run": "https://github.com/ECJura2000/taiwan-government-news-scraper/actions/runs/38339928715",
+      "network_probe_run": "https://github.com/ECJura2000/taiwan-government-news-scraper/actions/runs/38370389589",
+      "mac_run_id": "20261013_164019_513440",
+      "mac_status": "success"
+    },
+    {
+      "source": "醫院評鑑暨醫療品質策進會",
+      "host": "www.jct.org.tw",
+      "reason": "hosted_connection_timeout",
+      "checked_at": "2026-10-13",
+      "cloud_run": "https://github.com/ECJura2000/taiwan-government-news-scraper/actions/runs/38339928715",
+      "network_probe_run": "https://github.com/ECJura2000/taiwan-government-news-scraper/actions/runs/38370389589",
+      "mac_run_id": "20261013_164019_513440",
+      "mac_status": "success"
+    }
+  ]
+}

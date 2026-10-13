@@ -21,6 +21,7 @@ use tokio::sync::{Mutex, Notify};
 #[derive(Clone)]
 pub struct HttpClient {
     client: Client,
+    intermediate_client: Option<Client>,
     insecure_tls_client: Client,
     host_limits: Arc<Mutex<HashMap<String, Arc<HostGate>>>>,
     cache_dir: Option<PathBuf>,
@@ -110,8 +111,43 @@ impl HttpClient {
             .map_err(|error| {
                 ScraperError::Unknown(format!("TLS fallback client initialization failed: {error}"))
             })?;
+        // Explicitly user-approved Linux-only chain repair. Actual Linux TLS
+        // tests prove the intermediate still needs an existing trusted root.
+        #[cfg(target_os = "linux")]
+        let intermediate_client = {
+            let der = include_bytes!("../../resources/tls/twca-secure-2023.der");
+            if format!("{:x}", Sha256::digest(der))
+                != "1a2c75fd096e0499e9ff6ac74e526f61eaae3edfc8c2ea4436fee0c24d8b7d0e"
+            {
+                return Err(ScraperError::Unknown(
+                    "Pinned intermediate certificate changed".into(),
+                ));
+            }
+            let certificate = reqwest::Certificate::from_der(der).map_err(|error| {
+                ScraperError::Unknown(format!("Intermediate certificate: {error}"))
+            })?;
+            Some(Client::builder()
+                .timeout(Duration::from_secs(60))
+                .user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36")
+                .default_headers(headers)
+                .gzip(true)
+                .add_root_certificate(certificate)
+                .redirect(reqwest::redirect::Policy::custom(|attempt| {
+                    if attempt.previous().len() >= 10 {
+                        attempt.error("too many redirects")
+                    } else if attempt.url().scheme() == "https" && attempt.previous().first().and_then(url::Url::host_str) == attempt.url().host_str() {
+                        attempt.follow()
+                    } else {
+                        attempt.stop()
+                    }
+                }))
+                .build().map_err(|error| ScraperError::Unknown(format!("Intermediate client: {error}")))?)
+        };
+        #[cfg(not(target_os = "linux"))]
+        let intermediate_client = None;
         Ok(Self {
             client,
+            intermediate_client,
             insecure_tls_client,
             host_limits: Arc::new(Mutex::new(HashMap::new())),
             cache_dir: None,
@@ -163,8 +199,13 @@ impl HttpClient {
         policy: &TransportPolicy,
     ) -> Result<String, ScraperError> {
         let mut last_error = None;
+        let client = if policy.intermediate_certificate_for(url).is_some() {
+            self.intermediate_client.as_ref().unwrap_or(&self.client)
+        } else {
+            &self.client
+        };
         for attempt in 0..policy.retry_attempts {
-            match self.fetch_once(&self.client, url, policy).await {
+            match self.fetch_once(client, url, policy).await {
                 Ok(body) => return Ok(body),
                 Err(error)
                     if policy.allows_tls_fallback_for(url)
