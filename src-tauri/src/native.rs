@@ -617,11 +617,15 @@ pub async fn run_with_progress(
     summary.performance["stage_wall_seconds"] = json!(timings.stages);
     let monotonic_seconds = run_started.elapsed().as_secs_f64();
     summary.performance["monotonic_duration_seconds"] = json!(monotonic_seconds);
-    summary.performance["wall_clock_gap_seconds"] = json!(
+    // Reconcile fields from the same summary boundary. A later wall-clock
+    // sample can be delayed by the scheduler and is a separate diagnostic.
+    summary.performance["wall_clock_gap_seconds"] =
+        json!(summary.duration_seconds - monotonic_seconds);
+    summary.performance["system_wall_clock_gap_seconds"] = json!(
         (Utc::now() - system_started_at).num_milliseconds() as f64 / 1000.0 - monotonic_seconds
     );
     summary.performance["http"] = client.metrics();
-    summary.performance["duration_scope"] = json!("started_at through summary preparation; serialization, fsync and publication are measured in the completion manifest; wall_clock_gap may reflect system sleep or clock adjustment");
+    summary.performance["duration_scope"] = json!("started_at through summary preparation; serialization, fsync and publication are measured in the completion manifest; wall_clock_gap reconciles reported duration with monotonic time; system_wall_clock_gap separately observes system sleep or clock adjustment");
     transaction.commit(&summary, &staged_paths, &paths)?;
     Ok(summary)
 }
