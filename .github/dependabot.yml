@@ -2,6 +2,10 @@ version: 2
 updates:
   - package-ecosystem: cargo
     directory: /
+    # The calibrated policy hash includes this tokenizer version. Upgrade with an explicit policy migration.
+    ignore:
+      - dependency-name: jieba-rs
+        versions: [">=0.11"]
     schedule:
       interval: weekly
     groups:
@@ -10,6 +14,10 @@ updates:
           - "*"
   - package-ecosystem: npm
     directory: /
+    # svelte-check currently accepts TypeScript 5/6; lift when its peer range supports 7.
+    ignore:
+      - dependency-name: typescript
+        versions: [">=7"]
     schedule:
       interval: weekly
     groups:

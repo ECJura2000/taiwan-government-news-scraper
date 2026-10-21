@@ -280,6 +280,9 @@ pub fn parse_catalog(json: &str) -> Result<Vec<SourceDefinition>, String> {
         if let Some(config) = &source.transport {
             validate_settings(&config.list)
                 .map_err(|e| format!("來源 {} transport.list：{e}", source.name))?;
+            if config.list.post_json.is_some() {
+                return Err(format!("來源 {} post_json 僅限 JSON route", source.name));
+            }
             if config.list.tls_fallback_host.is_some() {
                 return Err(format!(
                     "來源 {}：TLS 例外只能指定於國防部 route",
@@ -368,6 +371,7 @@ pub fn parse_catalog(json: &str) -> Result<Vec<SourceDefinition>, String> {
                     | "fa-html"
                     | "sfaa-html"
                     | "mohw-source-filter"
+                    | "moenv-open-data-json"
                     | "moenv-html"
                     | "moenv-news-portal-browser"
                     | "hakka-html"
@@ -378,6 +382,11 @@ pub fn parse_catalog(json: &str) -> Result<Vec<SourceDefinition>, String> {
                 return Err(format!("{context} parser：不支援 {}", route.parser));
             }
             if let Some(settings) = &route.transport {
+                if settings.post_json.is_some()
+                    && (route.kind != "json" || settings.tls_fallback_host.is_some())
+                {
+                    return Err(format!("{context} post_json 僅限無 TLS 例外的 JSON route"));
+                }
                 validate_settings(settings).map_err(|e| format!("{context} transport：{e}"))?;
                 if let Some(entry) = &settings.browser_entry_url {
                     if validate_url(entry)?.origin() != url.origin() {
@@ -489,6 +498,14 @@ fn validate_url(value: &str) -> Result<url::Url, String> {
 }
 
 fn validate_settings(settings: &PolicyOverrides) -> Result<(), String> {
+    if let Some(body) = &settings.post_json {
+        if !body.is_object()
+            || body.as_object().is_none_or(|value| value.is_empty())
+            || body.to_string().len() > 16 * 1024
+        {
+            return Err("post_json 必須為非空且不超過 16 KiB 的 JSON object".into());
+        }
+    }
     if let Some(profile) = &settings.tls_intermediate {
         if !matches!(
             profile.host.as_str(),
@@ -551,6 +568,41 @@ fn matches_source_name(source: &SourceDefinition, name: &str) -> bool {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn json_post_is_route_scoped_and_rejects_invalid_payloads() {
+        let base = serde_json::json!({"name":"測試機關","urls":["https://official.test/query"],
+            "routes":[{"id":"query","url":"https://official.test/query","kind":"json",
+                "parser":"moenv-open-data-json","transport":{"post_json":{"offset":0}}}]});
+        assert!(super::parse_catalog(&serde_json::json!([base.clone()]).to_string()).is_ok());
+        for body in [
+            serde_json::json!([]),
+            serde_json::json!({}),
+            serde_json::json!({"large":"x".repeat(16*1024)}),
+        ] {
+            let mut source = base.clone();
+            source["routes"][0]["transport"]["post_json"] = body;
+            assert!(
+                super::parse_catalog(&serde_json::json!([source]).to_string())
+                    .unwrap_err()
+                    .contains("post_json")
+            );
+        }
+        let mut source = base.clone();
+        source["routes"][0]["kind"] = serde_json::json!("browser");
+        assert!(
+            super::parse_catalog(&serde_json::json!([source]).to_string())
+                .unwrap_err()
+                .contains("post_json")
+        );
+        let mut source = base;
+        source["transport"] = serde_json::json!({"list":{"post_json":{"offset":0}}});
+        assert!(
+            super::parse_catalog(&serde_json::json!([source]).to_string())
+                .unwrap_err()
+                .contains("post_json")
+        );
+    }
+
     #[test]
     fn browser_entry_url_requires_same_origin_and_no_credentials() {
         let mut source = serde_json::json!({"name":"測試機關","urls":["https://official.test/news"],"routes":[{"id":"browser","url":"https://official.test/news","kind":"browser","parser":"standard","transport":{"browser_entry_url":"https://official.test/"}}]});

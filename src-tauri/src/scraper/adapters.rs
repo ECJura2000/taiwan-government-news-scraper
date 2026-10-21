@@ -500,6 +500,10 @@ fn parse_route_raw(
         return Ok(items);
     }
 
+    if route.parser == "moenv-open-data-json" {
+        return special::parse_moenv_open_data(source, body);
+    }
+
     match source {
         "國家公園署" | "國土管理署" => return special::parse_cms_json(source, body),
         "公路局" if route.parser == "thb-json" => return special::parse_thb_json(source, body),

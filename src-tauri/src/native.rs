@@ -617,11 +617,15 @@ pub async fn run_with_progress(
     summary.performance["stage_wall_seconds"] = json!(timings.stages);
     let monotonic_seconds = run_started.elapsed().as_secs_f64();
     summary.performance["monotonic_duration_seconds"] = json!(monotonic_seconds);
-    summary.performance["wall_clock_gap_seconds"] = json!(
+    // Reconcile fields from the same summary boundary. A later wall-clock
+    // sample can be delayed by the scheduler and is a separate diagnostic.
+    summary.performance["wall_clock_gap_seconds"] =
+        json!(summary.duration_seconds - monotonic_seconds);
+    summary.performance["system_wall_clock_gap_seconds"] = json!(
         (Utc::now() - system_started_at).num_milliseconds() as f64 / 1000.0 - monotonic_seconds
     );
     summary.performance["http"] = client.metrics();
-    summary.performance["duration_scope"] = json!("started_at through summary preparation; serialization, fsync and publication are measured in the completion manifest; wall_clock_gap may reflect system sleep or clock adjustment");
+    summary.performance["duration_scope"] = json!("started_at through summary preparation; serialization, fsync and publication are measured in the completion manifest; wall_clock_gap reconciles reported duration with monotonic time; system_wall_clock_gap separately observes system sleep or clock adjustment");
     transaction.commit(&summary, &staged_paths, &paths)?;
     Ok(summary)
 }
@@ -718,7 +722,6 @@ impl OutputTransaction {
         staged: &(PathBuf, PathBuf),
         paths: &(PathBuf, PathBuf),
     ) -> Result<(), String> {
-        use sha2::{Digest, Sha256};
         use std::io::Write;
         let commit_started = Instant::now();
         report::write_json_report(summary, &staged.1)?;
@@ -741,8 +744,8 @@ impl OutputTransaction {
             .trim_start_matches("news_scraper_run_");
         let marker = paths.1.with_extension("complete");
         let mut manifest = json!({"run_id":run_id, "output_file":paths.0, "report_file":paths.1,
-            "excel_sha256":format!("{:x}", Sha256::digest(std::fs::read(&staged.0).map_err(|e| e.to_string())?)),
-            "report_sha256":format!("{:x}", Sha256::digest(std::fs::read(&staged.1).map_err(|e| e.to_string())?))});
+            "excel_sha256":crate::hashing::sha256_hex(std::fs::read(&staged.0).map_err(|e| e.to_string())?),
+            "report_sha256":crate::hashing::sha256_hex(std::fs::read(&staged.1).map_err(|e| e.to_string())?)});
         manifest["performance"] = json!({"report_serialization_and_sync_seconds":serialization_and_sync_seconds,
             "checksum_seconds":checksum_started.elapsed().as_secs_f64(),
             "scope":"artifact preparation before commit marker publication"});
@@ -887,7 +890,6 @@ mod tests {
 
     #[tokio::test]
     async fn repeated_week_preserves_completed_pairs_and_mode_pointers() {
-        use sha2::{Digest, Sha256};
         let dir = tempfile::tempdir().unwrap();
         let mut opts = options();
         opts.sources = vec!["未註冊測試來源".into()];
@@ -916,7 +918,7 @@ mod tests {
             ] {
                 assert_eq!(
                     marker[field],
-                    format!("{:x}", Sha256::digest(std::fs::read(file).unwrap()))
+                    crate::hashing::sha256_hex(std::fs::read(file).unwrap())
                 );
             }
         }

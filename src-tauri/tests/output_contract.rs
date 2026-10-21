@@ -78,7 +78,10 @@ fn cli_preserves_failures_and_publishes_matching_excel_json_pairs() {
             let file = summary[file_field].as_str().unwrap();
             assert_eq!(
                 marker[hash_field],
-                format!("{:x}", Sha256::digest(std::fs::read(file).unwrap()))
+                Sha256::digest(std::fs::read(file).unwrap())
+                    .iter()
+                    .map(|byte| format!("{byte:02x}"))
+                    .collect::<String>()
             );
         }
         let mut workbook = zip::ZipArchive::new(

@@ -139,7 +139,7 @@ async fn fetch_source_definition(
                 fetched.and_then(|body| adapters::parse_route_records(source, route, &body));
             // An official JSON snapshot can lag behind its corresponding list.
             // Never silently accept an out-of-date snapshot as an empty week.
-            if route.parser == "thb-json"
+            if matches!(route.parser.as_str(), "thb-json" | "moenv-open-data-json")
                 && outcome.as_ref().is_ok_and(|records| {
                     snapshot_predates_week(
                         &records.iter().map(|r| r.item.clone()).collect::<Vec<_>>(),
@@ -149,6 +149,19 @@ async fn fetch_source_definition(
             {
                 outcome = Err(ScraperError::SourceOutage(
                     "official JSON snapshot predates the requested week; try the live list".into(),
+                ));
+            }
+            if route.parser == "moenv-open-data-json"
+                && outcome.as_ref().is_ok_and(|records| {
+                    records
+                        .iter()
+                        .filter_map(|record| parse_date(&record.item.date))
+                        .min()
+                        .is_none_or(|oldest| oldest > date_range.start)
+                })
+            {
+                outcome = Err(ScraperError::SourceOutage(
+                    "official news datastore window does not reach the requested week".into(),
                 ));
             }
             if uses_recent_nps_prefix
