@@ -118,7 +118,7 @@ async fn fetch_source_definition(
                     crate::browser::fetch_rendered_html_after_with_transport(
                         url,
                         page_script.as_deref(),
-                        None,
+                        Some(policy.timeout),
                         policy.browser_native_user_agent,
                         policy.browser_entry_url.as_deref(),
                     )
@@ -250,7 +250,7 @@ async fn fetch_source_definition(
                             crate::browser::fetch_rendered_html_after_with_transport(
                                 page_url.as_str(),
                                 page_script.as_deref(),
-                                None,
+                                Some(policy.timeout),
                                 policy.browser_native_user_agent,
                                 policy.browser_entry_url.as_deref(),
                             )
@@ -1017,6 +1017,64 @@ mod tests {
         )
         .await;
         (result, server.join().unwrap())
+    }
+
+    #[tokio::test]
+    #[ignore = "requires system Chrome and a local HTTP listener"]
+    async fn browser_list_applies_declared_page_deadline() {
+        use std::io::{Read, Write};
+        use std::sync::{
+            atomic::{AtomicBool, Ordering},
+            Arc,
+        };
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        listener.set_nonblocking(true).unwrap();
+        let url = format!("http://{}/", listener.local_addr().unwrap());
+        let stopped = Arc::new(AtomicBool::new(false));
+        let server_stop = stopped.clone();
+        let server = std::thread::spawn(move || {
+            while !server_stop.load(Ordering::Relaxed) {
+                match listener.accept() {
+                    Ok((mut socket, _)) => {
+                        socket
+                            .set_read_timeout(Some(std::time::Duration::from_secs(1)))
+                            .unwrap();
+                        let _ = socket.read(&mut [0; 4096]);
+                        let body = "<html><body>Official page without ready selector</body></html>";
+                        let _ = write!(socket, "HTTP/1.1 200 OK\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}", body.len());
+                    }
+                    Err(error) if error.kind() == std::io::ErrorKind::WouldBlock => {
+                        std::thread::sleep(std::time::Duration::from_millis(5));
+                    }
+                    Err(error) => panic!("mock browser server: {error}"),
+                }
+            }
+        });
+        let definition: SourceDefinition = serde_json::from_value(json!({
+            "name":"Browser deadline fixture", "urls":[url],
+            "routes":[{"id":"browser", "url":url, "kind":"browser", "parser":"standard",
+                "priority":1, "wait_for_selector":"#never-ready", "transport":{"timeout_seconds":1}}]
+        })).unwrap();
+        let date = NaiveDate::from_ymd_opt(2026, 10, 21).unwrap();
+        let result = fetch_source_definition(
+            &HttpClient::new().unwrap(),
+            &definition,
+            &definition.name,
+            DateRange {
+                start: date,
+                end: date,
+            },
+            None,
+            1,
+            date,
+        )
+        .await;
+        stopped.store(true, Ordering::Relaxed);
+        server.join().unwrap();
+        let error = result.error.expect("missing selector must time out");
+        assert_eq!(error.failure_class().as_str(), "browser_runtime");
+        assert!(error.to_string().contains("頁面逾時（1 秒）"), "{error}");
+        assert_eq!(result.attempts.len(), 1);
     }
 
     #[tokio::test]

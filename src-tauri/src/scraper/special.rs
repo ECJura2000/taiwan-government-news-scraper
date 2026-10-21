@@ -779,3 +779,71 @@ mod moenv_datastore_tests {
         .is_err());
     }
 }
+
+/// TPS publishes many news releases as PDF links with the publication date in
+/// the visible title. Navigation links are not article rows or date evidence.
+pub fn parse_tps_news(source: &str, body: &str, base: &str) -> Result<Vec<NewsItem>, ScraperError> {
+    let document = Html::parse_document(body);
+    let rows = require_rows(source, &document, "section.lp .list > ul > li")?;
+    let link_selector = selector("a[href]");
+    let numbering = Regex::new(r"^\d+\s+").expect("valid TPS row number regex");
+    let publication_date =
+        Regex::new(r"\d{2,4}年\s*\d{1,2}月\s*\d{1,2}日").expect("valid TPS publication date regex");
+    let mut items = Vec::new();
+    for row in rows {
+        let anchor = row.select(&link_selector).next().ok_or_else(|| {
+            ScraperError::ParserRegression("TPS news row is missing its publication link".into())
+        })?;
+        let title = numbering.replace(&clean_text(anchor), "").trim().to_owned();
+        // The official list also contains undated association records. Do not
+        // infer publication dates from PDF filenames or dates of past events.
+        let Some(date) = publication_date
+            .find(&title)
+            .and_then(|matched| parse_list_date(matched.as_str()))
+        else {
+            continue;
+        };
+        let link = resolve(base, anchor.value().attr("href").unwrap());
+        let url =
+            Url::parse(&link).map_err(|error| ScraperError::ParserRegression(error.to_string()))?;
+        if !matches!(url.scheme(), "http" | "https") || url.host_str().is_none() {
+            return Err(ScraperError::ParserRegression(
+                "TPS news row has an invalid publication link".into(),
+            ));
+        }
+        items.push(item(source, date, title, link));
+    }
+    if items.is_empty() {
+        return Err(ScraperError::ParserRegression(
+            "TPS news list has no dated publications".into(),
+        ));
+    }
+    Ok(items)
+}
+
+#[cfg(test)]
+mod tps_tests {
+    use super::*;
+    #[test]
+    fn official_list_uses_publication_titles_and_keeps_pdf_links() {
+        let body = include_str!("../../tests/fixtures/tps-news-list.html");
+        let items = parse_tps_news(
+            "最高檢察署",
+            body,
+            "https://www.tps.moj.gov.tw/16314/1140948/",
+        )
+        .unwrap();
+        assert_eq!(items.len(), 3);
+        assert_eq!(items[0].date, "2026-09-12");
+        assert!(items[0].title.starts_with("115年9月12日新聞稿"));
+        assert!(!items[0].title.starts_with("1 "));
+        assert!(items[0].link.ends_with(".pdf?mediaDL=true"));
+        assert_eq!(items[1].date, "2026-09-01");
+        assert_eq!(items[2].date, "2026-08-19");
+        assert!(items.iter().all(|item| item.date_source == "published"));
+        for body in ["<nav><a href='/news'>115年9月12日新聞稿</a></nav>",
+            "<section class='lp'><div class='list'><ul><li><a href='/news'>沒有發布日期</a></li></ul></div></section>"] {
+            assert!(parse_tps_news("最高檢察署", body, "https://www.tps.moj.gov.tw/").is_err());
+        }
+    }
+}
