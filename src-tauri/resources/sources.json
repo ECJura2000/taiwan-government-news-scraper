@@ -1242,6 +1242,27 @@
         "kind": "browser",
         "parser": "moenv-news-portal-browser",
         "priority": 2
+      },
+      {
+        "id": "official-open-data",
+        "url": "https://data.moenv.gov.tw/api/frontstage/datastore.search",
+        "kind": "json",
+        "parser": "moenv-open-data-json",
+        "priority": 3,
+        "coverage_reduced": true,
+        "transport": {
+          "timeout_seconds": 20,
+          "retry_attempts": 2,
+          "cache": false,
+          "post_json": {
+            "resource_id": "4e310c23-568c-4b12-813f-f94700d5fa14",
+            "limit": 1000,
+            "offset": 0,
+            "sort": {
+              "newsdate": false
+            }
+          }
+        }
       }
     ]
   },
@@ -6290,6 +6311,20 @@
           "date": "span.newsItem__meta-item",
           "category": ".newsItem__meta-item:nth-child(2)"
         }
+      },
+      {
+        "id": "official-news-browser",
+        "url": "https://www.iacna.nat.gov.tw/news/NewsPage?a=10551",
+        "kind": "browser",
+        "parser": "standard",
+        "priority": 2,
+        "selectors": {
+          "item": "li.commonList-item",
+          "link": "a[title]",
+          "title": ".newsItem__content-title",
+          "date": "span.newsItem__meta-item",
+          "category": ".newsItem__meta-item:nth-child(2)"
+        }
       }
     ],
     "filters": {
@@ -6302,7 +6337,7 @@
     "transport": {
       "list": {
         "timeout_seconds": 20,
-        "retry_attempts": 1
+        "retry_attempts": 3
       },
       "detail": [
         {

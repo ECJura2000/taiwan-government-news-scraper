@@ -6,6 +6,7 @@ use tauri::{Emitter, Manager, State};
 
 pub mod browser;
 pub mod core;
+mod hashing;
 pub mod native;
 pub mod policy;
 pub mod ranking;

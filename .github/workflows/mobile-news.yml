@@ -11,6 +11,10 @@ on:
         description: '迄日 YYYY-MM-DD（包含當日）'
         required: false
         type: string
+      upload_to_drive:
+        description: '同時上傳 Google Drive（需先設定專用授權）'
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -29,11 +33,11 @@ jobs:
       END_DATE: ${{ inputs.end_date }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: '22'
       - name: Verify cloud delivery contracts
-        run: node --test scripts/cloud-delivery.test.mjs
+        run: node --test scripts/cloud-delivery.checks.mjs
       - name: Validate dates before network collection
         run: node scripts/cloud-delivery.mjs validate-inputs
       - name: Install Linux CLI dependencies
@@ -78,13 +82,16 @@ jobs:
             cloud-publish/
           if-no-files-found: warn
           retention-days: 30
+      - name: Explain artifact-only delivery
+        if: ${{ success() && !inputs.upload_to_drive }}
+        run: echo '報表已保存為 GitHub Artifacts；本次未選擇上傳 Google Drive。' >> "$GITHUB_STEP_SUMMARY"
       - name: Install Drive uploader
-        if: ${{ success() && steps.stage.outcome == 'success' }}
+        if: ${{ success() && steps.stage.outcome == 'success' && inputs.upload_to_drive }}
         run: |
           sudo apt-get update
           sudo apt-get install -y rclone
       - name: Upload verified reports to Google Drive
-        if: ${{ success() && steps.stage.outcome == 'success' }}
+        if: ${{ success() && steps.stage.outcome == 'success' && inputs.upload_to_drive }}
         env:
           RCLONE_CONFIG_TEXT: ${{ secrets.RCLONE_CONFIG }}
           DRIVE_FOLDER_ID: ${{ vars.DRIVE_FOLDER_ID }}

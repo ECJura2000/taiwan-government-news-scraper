@@ -718,7 +718,6 @@ impl OutputTransaction {
         staged: &(PathBuf, PathBuf),
         paths: &(PathBuf, PathBuf),
     ) -> Result<(), String> {
-        use sha2::{Digest, Sha256};
         use std::io::Write;
         let commit_started = Instant::now();
         report::write_json_report(summary, &staged.1)?;
@@ -741,8 +740,8 @@ impl OutputTransaction {
             .trim_start_matches("news_scraper_run_");
         let marker = paths.1.with_extension("complete");
         let mut manifest = json!({"run_id":run_id, "output_file":paths.0, "report_file":paths.1,
-            "excel_sha256":format!("{:x}", Sha256::digest(std::fs::read(&staged.0).map_err(|e| e.to_string())?)),
-            "report_sha256":format!("{:x}", Sha256::digest(std::fs::read(&staged.1).map_err(|e| e.to_string())?))});
+            "excel_sha256":crate::hashing::sha256_hex(std::fs::read(&staged.0).map_err(|e| e.to_string())?),
+            "report_sha256":crate::hashing::sha256_hex(std::fs::read(&staged.1).map_err(|e| e.to_string())?)});
         manifest["performance"] = json!({"report_serialization_and_sync_seconds":serialization_and_sync_seconds,
             "checksum_seconds":checksum_started.elapsed().as_secs_f64(),
             "scope":"artifact preparation before commit marker publication"});
@@ -887,7 +886,6 @@ mod tests {
 
     #[tokio::test]
     async fn repeated_week_preserves_completed_pairs_and_mode_pointers() {
-        use sha2::{Digest, Sha256};
         let dir = tempfile::tempdir().unwrap();
         let mut opts = options();
         opts.sources = vec!["未註冊測試來源".into()];
@@ -916,7 +914,7 @@ mod tests {
             ] {
                 assert_eq!(
                     marker[field],
-                    format!("{:x}", Sha256::digest(std::fs::read(file).unwrap()))
+                    crate::hashing::sha256_hex(std::fs::read(file).unwrap())
                 );
             }
         }

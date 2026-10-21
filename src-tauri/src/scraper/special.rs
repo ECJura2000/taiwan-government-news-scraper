@@ -671,3 +671,111 @@ mod tests {
         assert_eq!(items[0].summary, "施工交管");
     }
 }
+
+/// The agency's public data preview is independent of the news site's browser
+/// verification. Its three-day publication cadence is a reduced-coverage route.
+pub fn parse_moenv_open_data(source: &str, body: &str) -> Result<Vec<NewsItem>, ScraperError> {
+    let data: Value = serde_json::from_str(body)
+        .map_err(|error| ScraperError::ParserRegression(error.to_string()))?;
+    if data["success"] != true || data["code"] != 200 {
+        return Err(ScraperError::SourceOutage(
+            "official news datastore did not return a successful response".into(),
+        ));
+    }
+    let rows = data["payload"]["records"].as_array().ok_or_else(|| {
+        ScraperError::ParserRegression("official news datastore is missing records".into())
+    })?;
+    if rows.is_empty() {
+        return Err(ScraperError::SourceOutage(
+            "official news datastore returned no coverage".into(),
+        ));
+    }
+    let mut items = Vec::new();
+    for row in rows {
+        match row["deletemark"].as_str() {
+            Some("1") => continue,
+            Some("0") => {}
+            _ => {
+                return Err(ScraperError::ParserRegression(
+                    "missing official news deletion status".into(),
+                ))
+            }
+        }
+        let date = row["newsdate"]
+            .as_str()
+            .and_then(parse_list_date)
+            .ok_or_else(|| {
+                ScraperError::ParserRegression("missing official news publication date".into())
+            })?;
+        let title = row["newstitle"].as_str().unwrap_or_default().trim();
+        let number = row["newsno"].as_str().unwrap_or_default().trim();
+        let content = row["newscontent"].as_str().unwrap_or_default();
+        if title.is_empty() || number.is_empty() || content.trim().is_empty() {
+            return Err(ScraperError::ParserRegression(
+                "incomplete official news record".into(),
+            ));
+        }
+        // The dataset often uses "-" for RelativeUrl. Do not invent an article
+        // address from NewsNo: it is not the news site's article identifier.
+        let link = row["relativeurl"]
+            .as_str()
+            .and_then(|link| Url::parse(link).ok())
+            .filter(|link| {
+                matches!(link.scheme(), "http" | "https")
+                    && link.username().is_empty()
+                    && link.password().is_none()
+                    && link.host_str().is_some_and(|host| {
+                        host == "moenv.gov.tw" || host.ends_with(".moenv.gov.tw")
+                    })
+            })
+            .map(|link| link.to_string())
+            .unwrap_or_else(|| "https://data.moenv.gov.tw/dataset/detail/MNEWS_P_01".into());
+        let mut news = item(source, date, title.to_owned(), link);
+        news.department = row["newssource"]
+            .as_str()
+            .filter(|value| !value.trim().is_empty())
+            .unwrap_or(source)
+            .to_owned();
+        news.full_text = clean_text(Html::parse_fragment(content).root_element());
+        news.summary = news.full_text.clone();
+        items.push(news);
+    }
+    Ok(items)
+}
+
+#[cfg(test)]
+mod moenv_datastore_tests {
+    use super::*;
+    #[test]
+    fn public_datastore_preserves_dates_body_and_official_provenance() {
+        let record = serde_json::json!({"newsno":"20261020135000", "newstitle":"環保綠點再升級",
+            "newsdate":"2026-10-20 15:00:00", "newssource":"環境部綜合規劃司",
+            "newscontent":"<p>官方新聞內文。</p>", "relativeurl":"-", "deletemark":"0"});
+        let mut deleted = record.clone();
+        deleted["deletemark"] = serde_json::json!("1");
+        let response = serde_json::json!({"success":true,"code":200,"payload":{"records":[record.clone(),deleted]}});
+        let items = parse_moenv_open_data("環境部", &response.to_string()).unwrap();
+        assert_eq!(items.len(), 1);
+        assert_eq!(items[0].date, "2026-10-20");
+        assert_eq!(items[0].department, "環境部綜合規劃司");
+        assert_eq!(items[0].full_text, "官方新聞內文。");
+        assert_eq!(
+            items[0].link,
+            "https://data.moenv.gov.tw/dataset/detail/MNEWS_P_01"
+        );
+        for body in [
+            serde_json::json!({"success":false,"code":400}),
+            serde_json::json!({"success":true,"code":200,"payload":{"records":[]}}),
+        ] {
+            assert!(parse_moenv_open_data("環境部", &body.to_string()).is_err());
+        }
+        let mut invalid = record;
+        invalid["newsdate"] = serde_json::json!("not a publication date");
+        assert!(parse_moenv_open_data(
+            "環境部",
+            &serde_json::json!({"success":true,"code":200,"payload":{"records":[invalid]}})
+                .to_string()
+        )
+        .is_err());
+    }
+}

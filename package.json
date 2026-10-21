@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "check": "svelte-check --tsconfig ./tsconfig.json",
-    "test": "vitest run && node --test scripts/*gate.checks.mjs",
+    "test": "vitest run src && node --test scripts/*gate.checks.mjs scripts/cloud-delivery.checks.mjs",
     "tauri": "tauri"
   },
   "devDependencies": {
@@ -16,7 +16,7 @@
     "@types/node": "^26.6.5",
     "svelte": "^5.57.2",
     "svelte-check": "^4.7.6",
-    "typescript": "^7.0.2",
+    "typescript": "^6.0.3",
     "vite": "^8.3.4",
     "vitest": "^5.0.4"
   },

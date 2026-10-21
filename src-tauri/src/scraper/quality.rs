@@ -70,7 +70,11 @@ pub fn process(items: Vec<NewsItem>) -> QualityOutput {
             normalize_title(&item.title)
         );
         let url_key = format!("{}\u{1f}{normalized_url}", clean_text(&item.source));
-        if seen_titles.contains(&title_key) || seen_urls.contains(&url_key) {
+        // Public datasets may omit per-article URLs. Their shared index is
+        // provenance, not a unique article identity; title/date still deduplicate.
+        let shared_dataset =
+            normalized_url == "https://data.moenv.gov.tw/dataset/detail/MNEWS_P_01";
+        if seen_titles.contains(&title_key) || (!shared_dataset && seen_urls.contains(&url_key)) {
             duplicate_count += 1;
             issues.push(
                 json!({"category":"duplicate", "reason":"same_source_title_or_url", "item":item}),
@@ -343,6 +347,17 @@ mod tests {
             full_text: String::new(),
             date_source: "published".into(),
         }
+    }
+
+    #[test]
+    fn shared_official_dataset_link_keeps_distinct_news_and_deduplicates_titles() {
+        let mut first = item("第一則官方新聞");
+        first.link = "https://data.moenv.gov.tw/dataset/detail/MNEWS_P_01".into();
+        let mut second = first.clone();
+        second.title = "第二則官方新聞".into();
+        let result = process(vec![first.clone(), second, first]);
+        assert_eq!(result.items.len(), 2);
+        assert_eq!(result.duplicate_count, 1);
     }
 
     #[test]

@@ -116,7 +116,7 @@ impl HttpClient {
         #[cfg(target_os = "linux")]
         let intermediate_client = {
             let der = include_bytes!("../../resources/tls/twca-secure-2023.der");
-            if format!("{:x}", Sha256::digest(der))
+            if crate::hashing::sha256_hex(der)
                 != "1a2c75fd096e0499e9ff6ac74e526f61eaae3edfc8c2ea4436fee0c24d8b7d0e"
             {
                 return Err(ScraperError::Unknown(
@@ -315,13 +315,17 @@ impl HttpClient {
         policy: &TransportPolicy,
     ) -> Result<String, ScraperError> {
         let permit = self.acquire_host(url, policy.host_concurrency).await?;
-        let cached = if policy.cache {
+        let cached = if policy.cache && policy.post_json.is_none() {
             self.read_cache(url)
                 .filter(|entry| entry.body.len() <= policy.max_response_bytes)
         } else {
             None
         };
-        let mut request = client.get(url).timeout(policy.timeout);
+        let mut request = match &policy.post_json {
+            Some(body) => client.post(url).json(body),
+            None => client.get(url),
+        }
+        .timeout(policy.timeout);
         if !policy.accept_compression {
             request = request.header(ACCEPT_ENCODING, "identity");
         }
@@ -384,7 +388,11 @@ impl HttpClient {
         validate_status(status)?;
         let bytes = read_response_bytes(response, policy.max_response_bytes).await?;
         let body = String::from_utf8_lossy(&bytes).into_owned();
-        if policy.cache && (etag.is_some() || last_modified.is_some()) && body.len() <= 2_000_000 {
+        if policy.cache
+            && policy.post_json.is_none()
+            && (etag.is_some() || last_modified.is_some())
+            && body.len() <= 2_000_000
+        {
             self.write_cache(&CachedResponse {
                 url: url.to_owned(),
                 etag,
@@ -636,6 +644,66 @@ mod tests {
             cache_path(Path::new("cache"), "https://example.test/a"),
             cache_path(Path::new("cache"), "https://example.test/b")
         );
+    }
+
+    #[tokio::test]
+    async fn json_post_queries_do_not_reuse_get_cache_or_cross_contaminate_bodies() {
+        use std::io::{Read, Write};
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let url = format!("http://{}/query", listener.local_addr().unwrap());
+        let server = std::thread::spawn(move || {
+            let mut requests = Vec::new();
+            for _ in 0..2 {
+                let (mut socket, _) = listener.accept().unwrap();
+                socket
+                    .set_read_timeout(Some(Duration::from_secs(3)))
+                    .unwrap();
+                let mut request = Vec::new();
+                loop {
+                    let mut bytes = [0u8; 4096];
+                    let count = socket.read(&mut bytes).unwrap();
+                    assert!(count > 0);
+                    request.extend_from_slice(&bytes[..count]);
+                    if let Some(end) = request.windows(4).position(|part| part == b"\r\n\r\n") {
+                        let headers = String::from_utf8_lossy(&request[..end]).to_ascii_lowercase();
+                        let length: usize = headers
+                            .lines()
+                            .find_map(|line| line.strip_prefix("content-length:"))
+                            .unwrap()
+                            .trim()
+                            .parse()
+                            .unwrap();
+                        if request.len() >= end + 4 + length {
+                            break;
+                        }
+                    }
+                }
+                requests.push(String::from_utf8(request).unwrap());
+                socket.write_all(b"HTTP/1.1 200 OK\r\nETag: \"same\"\r\nContent-Length: 2\r\nConnection: close\r\n\r\n{}").unwrap();
+            }
+            requests
+        });
+        let directory = tempfile::tempdir().unwrap();
+        let client = HttpClient::new()
+            .unwrap()
+            .with_cache_dir(directory.path().to_path_buf());
+        for offset in [0, 100] {
+            let policy = TransportPolicy {
+                post_json: Some(serde_json::json!({"offset":offset})),
+                ..TransportPolicy::list_default()
+            };
+            assert_eq!(client.fetch_text(&url, &policy).await.unwrap(), "{}");
+        }
+        let requests = server.join().unwrap();
+        assert!(requests
+            .iter()
+            .all(|request| request.starts_with("POST /query ")));
+        assert!(requests[0].contains("\"offset\":0"));
+        assert!(requests[1].contains("\"offset\":100"));
+        assert!(requests
+            .iter()
+            .all(|request| !request.to_ascii_lowercase().contains("if-none-match")));
+        assert_eq!(std::fs::read_dir(directory.path()).unwrap().count(), 0);
     }
 
     #[tokio::test]

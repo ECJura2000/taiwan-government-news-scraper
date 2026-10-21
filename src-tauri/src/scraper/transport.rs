@@ -24,6 +24,7 @@ pub struct DetailPolicy {
 #[derive(Debug, Clone, Default, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct PolicyOverrides {
+    pub post_json: Option<serde_json::Value>,
     pub accept_compression: Option<bool>,
     pub tls_intermediate: Option<TlsIntermediatePolicy>,
     pub timeout_seconds: Option<u64>,
@@ -54,6 +55,7 @@ pub enum TlsIntermediateCertificate {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TransportPolicy {
+    pub post_json: Option<serde_json::Value>,
     pub accept_compression: bool,
     pub tls_intermediate: Option<TlsIntermediatePolicy>,
     pub timeout: Duration,
@@ -71,6 +73,7 @@ pub struct TransportPolicy {
 impl TransportPolicy {
     pub fn list_default() -> Self {
         Self {
+            post_json: None,
             accept_compression: true,
             tls_intermediate: None,
             timeout: Duration::from_secs(60),
@@ -94,6 +97,9 @@ impl TransportPolicy {
     }
 
     fn overlay(mut self, settings: &PolicyOverrides) -> Self {
+        if let Some(value) = &settings.post_json {
+            self.post_json = Some(value.clone());
+        }
         if let Some(value) = settings.accept_compression {
             self.accept_compression = value;
         }

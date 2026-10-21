@@ -1,6 +1,5 @@
 use crate::{policy::Profile, ranking::RankedBatch, scraper::NewsItem, ContentMode};
 use serde_json::{json, Value};
-use sha2::{Digest, Sha256};
 use std::collections::{BTreeMap, BTreeSet};
 
 pub(super) const MIN_SUMMARY_CHARS: usize = 80;
@@ -130,13 +129,10 @@ pub(super) fn shadow(
                 && (!retained || !predictions.contains_key(&id) || rejected.contains(&id))
         })
         .count();
-    let hash = format!(
-        "{:x}",
-        Sha256::digest(format!(
-            "{PREFILTER_VERSION}:{MIN_SUMMARY_CHARS}:{}",
-            profile.hash()
-        ))
-    );
+    let hash = crate::hashing::sha256_hex(format!(
+        "{PREFILTER_VERSION}:{MIN_SUMMARY_CHARS}:{}",
+        profile.hash()
+    ));
     json!({"mode":"shadow", "version":PREFILTER_VERSION, "ruleset_hash":hash,
         "prefilter_input_count":quality.items.len(), "prefilter_candidate_count":predictions.len()-rejected.len(),
         "prefilter_uncertain_count":predictions.values().filter(|value| value["decision"] == "uncertain").count(),

@@ -10,6 +10,10 @@ updates:
           - "*"
   - package-ecosystem: npm
     directory: /
+    # svelte-check currently accepts TypeScript 5/6; lift when its peer range supports 7.
+    ignore:
+      - dependency-name: typescript
+        versions: [">=7"]
     schedule:
       interval: weekly
     groups:

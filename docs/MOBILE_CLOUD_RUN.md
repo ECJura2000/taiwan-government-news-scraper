@@ -2,7 +2,7 @@
 
 ## 架構與實際變更
 
-手機瀏覽器 → GitHub Actions `workflow_dispatch` → GitHub Linux runner 抓取與產製 Excel → 驗證 Excel/JSON → GitHub Artifacts 備份 → rclone OAuth 上傳 Google Drive。
+手機瀏覽器 → GitHub Actions `workflow_dispatch` → GitHub Linux runner 抓取與產製 Excel → 驗證 Excel/JSON → GitHub Artifacts 備份 →（選用）rclone OAuth 上傳 Google Drive。
 
 手機只送出指令，不負責運算；送出後可關閉網頁，電腦不必開機。本工作流程沒有 `schedule` 或 `push` 觸發。Repository 原有測試、Release 與來源 smoke 工作流程維持原設定。
 
@@ -13,11 +13,13 @@
 - `scripts/upload-cloud-drive.sh`：從 Actions Secret 建立臨時 rclone 設定，上傳後核對檔案，最後刪除臨時設定。
 - 不更動既有爬取、分類、排序或 Excel 格式。
 
-台灣：使用 Rust stable、Cargo.lock 與系統 Chrome，建置 `news-scraper` CLI；因 Cargo 套件仍依賴 Tauri，Linux 要安裝 WebKit 等函式庫，但不啟動 GUI。日期留白沿用原規則：臺北時間週一抓上一完整週，其餘日抓本週。指定起訖則使用 `--start-date/--end-date`。維持 88 來源、17 欄與正式全文模式。
+台灣：使用 Rust stable、Cargo.lock 與系統 Chrome，建置 `news-scraper` CLI；因 Cargo 套件仍依賴 Tauri，Linux 要安裝 WebKit 等函式庫，但不啟動 GUI。日期留白沿用原規則：臺北時間週一抓上一完整週，其餘日抓本週。指定起訖則使用 `--start-date/--end-date`。維持 192 來源、17 欄與正式全文模式。
 
-Artifacts 保存 30 天，仍受 Repository/組織政策、配額及帳務限制；Drive 持續保留到你自行刪除或儲存容量用完。Runner 本機檔案不是持久儲存。成功產檔後先存 Artifacts，再上傳 Drive；Drive 授權失效或上傳錯誤會使工作流程失敗，但已上傳的 Artifacts 可下載。程式或建置失敗時，不一定能產生 Excel；已有的 collection.log 和輸出檔會嘗試保存為診斷 Artifacts。
+Artifacts 保存 30 天，仍受 Repository/組織政策、配額及帳務限制；Drive 持續保留到你自行刪除或儲存容量用完。Runner 本機檔案不是持久儲存。成功產檔後先存 Artifacts；有勾選 `upload_to_drive` 時才上傳 Drive。Drive 授權失效或上傳錯誤會使工作流程失敗，但已上傳的 Artifacts 可下載。程式或建置失敗時，不一定能產生 Excel；已有的 collection.log 和輸出檔會嘗試保存為診斷 Artifacts。
 
-## 首次設定（建議先在 Mac 完成一次）
+## Google Drive 選用設定（建議先在 Mac 完成一次）
+
+預設不勾選 `upload_to_drive`，不需 Google OAuth 或 Secrets，完成後直接下載 GitHub Artifacts。只有需要同時上傳 Drive 時，才完成下列設定並勾選此選項。
 
 ### 1. 建立你自己的 Google OAuth client
 
@@ -63,7 +65,7 @@ rclone mkdir gdrive:新聞雲端報表 --config "$HOME/.config/news-cloud/rclone
 rclone 的共用 client ID 正在退場，請使用自己的 client ID。
 ChatGPT 已連接的 Google Drive 授權不會自動傳給 GitHub runner；這份 OAuth 是 GitHub Actions 專用。
 
-### 3. 在兩個 Repository 分別設定
+### 3. 在需要 Drive 上傳的 Repository 設定
 
 進入 `Settings → Secrets and variables → Actions`：
 
@@ -72,7 +74,7 @@ ChatGPT 已連接的 Google Drive 授權不會自動傳給 GitHub runner；這�
 | Repository secret | `RCLONE_CONFIG` | 專用 rclone.conf 的完整文字，包括 `[gdrive]`、type、client_id、client_secret、scope 與 token |
 | Repository variable | `DRIVE_FOLDER_ID` | 前一步的資料夾 ID，不是完整網址 |
 
-可使用本機編輯器開啟 rclone.conf，貼到 GitHub 的 Secret 欄位；不要貼到 issue、PR、README 或對話。兩個 Repository 可以使用同一份設定和同一個資料夾 ID。GitHub Secrets 只在受授權的 Actions 工作流程中提供。
+可使用本機編輯器開啟 rclone.conf，貼到 GitHub 的 Secret 欄位；不要貼到 issue、PR、README 或對話。若另一個 Repository 也啟用此流程，可以使用同一份設定和同一個資料夾 ID。GitHub Secrets 只在受授權的 Actions 工作流程中提供。
 
 這裡設定的是 **GitHub Repository Secrets**，不是 Codex Environment 的 Secrets。Codex 的環境網路開關也不會決定 GitHub runner 的網路權限。
 
