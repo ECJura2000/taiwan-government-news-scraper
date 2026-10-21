@@ -159,7 +159,7 @@ async fn linux_intermediate_store_still_requires_root_and_matching_hostname() {
     let make = || {
         reqwest::Client::builder()
             .no_proxy()
-            .tls_built_in_root_certs(false)
+            .tls_certs_only([])
             .timeout(Duration::from_secs(5))
     };
     let root_only = make().add_root_certificate(root.clone()).build().unwrap();
