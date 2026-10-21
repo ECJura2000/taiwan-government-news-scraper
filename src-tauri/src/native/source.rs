@@ -118,7 +118,7 @@ async fn fetch_source_definition(
                     crate::browser::fetch_rendered_html_after_with_transport(
                         url,
                         page_script.as_deref(),
-                        Some(policy.timeout),
+                        policy.browser_page_timeout,
                         policy.browser_native_user_agent,
                         policy.browser_entry_url.as_deref(),
                     )
@@ -250,7 +250,7 @@ async fn fetch_source_definition(
                             crate::browser::fetch_rendered_html_after_with_transport(
                                 page_url.as_str(),
                                 page_script.as_deref(),
-                                Some(policy.timeout),
+                                policy.browser_page_timeout,
                                 policy.browser_native_user_agent,
                                 policy.browser_entry_url.as_deref(),
                             )

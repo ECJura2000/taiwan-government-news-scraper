@@ -59,6 +59,8 @@ pub struct TransportPolicy {
     pub accept_compression: bool,
     pub tls_intermediate: Option<TlsIntermediatePolicy>,
     pub timeout: Duration,
+    /// Only an explicitly declared timeout bounds the whole browser list page.
+    pub browser_page_timeout: Option<Duration>,
     pub retry_attempts: usize,
     pub host_concurrency: usize,
     pub cache: bool,
@@ -77,6 +79,7 @@ impl TransportPolicy {
             accept_compression: true,
             tls_intermediate: None,
             timeout: Duration::from_secs(60),
+            browser_page_timeout: None,
             retry_attempts: 3,
             host_concurrency: 2,
             cache: true,
@@ -108,6 +111,7 @@ impl TransportPolicy {
         }
         if let Some(value) = settings.timeout_seconds {
             self.timeout = Duration::from_secs(value);
+            self.browser_page_timeout = Some(self.timeout);
         }
         if let Some(value) = settings.retry_attempts {
             self.retry_attempts = value;
@@ -209,6 +213,34 @@ impl TransportPolicy {
 mod tests {
     use super::*;
     use crate::scraper::catalog::{find_source, routes_for};
+
+    #[test]
+    fn browser_page_deadline_requires_a_declaration_and_honors_route_override() {
+        let mut source = SourceDefinition::default();
+        let mut route = SourceRoute::default();
+        let default = TransportPolicy::for_route(&source, &route);
+        assert_eq!(default.timeout, Duration::from_secs(60));
+        assert_eq!(default.browser_page_timeout, None);
+        source.transport = Some(TransportConfig {
+            list: PolicyOverrides {
+                timeout_seconds: Some(12),
+                ..Default::default()
+            },
+            ..Default::default()
+        });
+        assert_eq!(
+            TransportPolicy::for_route(&source, &route).browser_page_timeout,
+            Some(Duration::from_secs(12))
+        );
+        route.transport = Some(PolicyOverrides {
+            timeout_seconds: Some(30),
+            ..Default::default()
+        });
+        assert_eq!(
+            TransportPolicy::for_route(&source, &route).browser_page_timeout,
+            Some(Duration::from_secs(30))
+        );
+    }
 
     #[test]
     fn identity_encoding_is_scoped_to_wdas_official_rss_only() {

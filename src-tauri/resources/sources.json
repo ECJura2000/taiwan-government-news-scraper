@@ -560,22 +560,6 @@
           "first_page": 1,
           "max_pages": 20
         }
-      },
-      {
-        "id": "official-news-browser",
-        "url": "https://www.tps.moj.gov.tw/16314/1140948/?Page=1&PageSize=30",
-        "kind": "browser",
-        "parser": "tps-html",
-        "priority": 2,
-        "pagination": {
-          "parameter": "Page",
-          "first_page": 1,
-          "max_pages": 20
-        },
-        "wait_for_selector": "section.lp .list > ul > li > a[href]",
-        "transport": {
-          "timeout_seconds": 30
-        }
       }
     ],
     "transport": {
@@ -854,17 +838,6 @@
         "kind": "html",
         "parser": "fa-html",
         "priority": 2
-      },
-      {
-        "id": "official-news-browser",
-        "url": "https://www.fa.gov.tw/list.php?theme=Press_release",
-        "kind": "browser",
-        "parser": "fa-html",
-        "priority": 3,
-        "wait_for_selector": "tbody tr td:first-child a[href]",
-        "transport": {
-          "timeout_seconds": 30
-        }
       }
     ],
     "official_name": "農業部漁業署",
