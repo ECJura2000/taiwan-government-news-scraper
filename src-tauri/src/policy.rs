@@ -9,6 +9,8 @@ use std::{
 };
 use unicode_normalization::UnicodeNormalization;
 
+const TOKENIZER_VERSION: &str = "jieba-rs 0.10.3";
+
 pub const MAX_POLICY_BYTES: u64 = 2 * 1024 * 1024;
 fn yes() -> bool {
     true
@@ -238,7 +240,7 @@ impl Profile {
     pub fn hash(&self) -> String {
         let mut value = serde_json::to_value(self).expect("validated policy serializes");
         value.as_object_mut().unwrap().remove("name");
-        value["tokenizer"] = json!("jieba-rs 0.10.3");
+        value["tokenizer"] = json!(TOKENIZER_VERSION);
         value["dictionary"] = json!(include_str!("../resources/policy-dictionary.txt"));
         let hash = Sha256::digest(serde_json::to_vec(&value).unwrap());
         hash.iter().map(|b| format!("{b:02x}")).collect()
@@ -291,7 +293,7 @@ impl Profile {
             .flat_map(|t| &t.exclude_keywords)
             .filter(|r| r.enabled)
             .count();
-        json!({"name":self.name,"schema_version":2,"template_version":self.version,"ruleset_hash":self.hash(),"source":"本次主題設定","topic_count":self.initiatives.len(),"enabled_topic_count":self.initiatives.iter().filter(|t|t.enabled).count(),"disabled_topic_count":self.initiatives.iter().filter(|t|!t.enabled).count(),"keyword_count":count,"enabled_keyword_count":enabled,"disabled_keyword_count":count-enabled,"penalty_count":penalties,"enabled_penalty_count":enabled_penalties,"exclusion_count":exclusions,"enabled_exclusion_count":enabled_exclusions,"disabled_exclusion_count":exclusions-enabled_exclusions,"tokenizer":"jieba-rs 0.10.3","dictionary_version":"zh-Hant-policy-1","scoring":self.scoring,"references":self.references,"effective_policy":self})
+        json!({"name":self.name,"schema_version":2,"template_version":self.version,"ruleset_hash":self.hash(),"source":"本次主題設定","topic_count":self.initiatives.len(),"enabled_topic_count":self.initiatives.iter().filter(|t|t.enabled).count(),"disabled_topic_count":self.initiatives.iter().filter(|t|!t.enabled).count(),"keyword_count":count,"enabled_keyword_count":enabled,"disabled_keyword_count":count-enabled,"penalty_count":penalties,"enabled_penalty_count":enabled_penalties,"exclusion_count":exclusions,"enabled_exclusion_count":enabled_exclusions,"disabled_exclusion_count":exclusions-enabled_exclusions,"tokenizer":TOKENIZER_VERSION,"dictionary_version":"zh-Hant-policy-1","scoring":self.scoring,"references":self.references,"effective_policy":self})
     }
 }
 fn valid_text(text: &str, topic: &str) -> Result<(), String> {
@@ -396,4 +398,16 @@ pub fn preview_import(current: &Profile, text: &str, replace: bool) -> Result<Va
     Ok(
         json!({"profile":result,"added":added,"updated":updated,"deleted":deleted,"common_changes":common_changes}),
     )
+}
+
+#[cfg(test)]
+mod fingerprint_tests {
+    #[test]
+    fn tokenizer_fingerprint_matches_the_pinned_dependency() {
+        let version = super::TOKENIZER_VERSION.strip_prefix("jieba-rs ").unwrap();
+        let declaration = format!("jieba-rs = \"={version}\"");
+        assert!(include_str!("../Cargo.toml")
+            .lines()
+            .any(|line| line.trim() == declaration));
+    }
 }

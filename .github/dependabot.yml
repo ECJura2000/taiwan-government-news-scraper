@@ -2,6 +2,10 @@ version: 2
 updates:
   - package-ecosystem: cargo
     directory: /
+    # The calibrated policy hash includes this tokenizer version. Upgrade with an explicit policy migration.
+    ignore:
+      - dependency-name: jieba-rs
+        versions: [">=0.11"]
     schedule:
       interval: weekly
     groups:
