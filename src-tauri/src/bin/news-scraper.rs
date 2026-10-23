@@ -5,6 +5,9 @@ use std::sync::Arc;
 use taiwan_government_news_lib::{native, RunOptions};
 
 fn main() -> ExitCode {
+    if let Some(status) = taiwan_government_news_lib::scraper::pdf::run_worker_if_requested() {
+        return status;
+    }
     let mut args: Vec<String> = std::env::args().skip(1).collect();
     if matches!(args.first().map(String::as_str), Some("--version" | "-V")) {
         println!("{}", version_text());

@@ -64,3 +64,13 @@
 一般瀏覽器列表與後續分頁套用來源／路由明確宣告的 `transport.timeout_seconds`；沒有宣告期限的路由保留既有分階段等待行為，不額外套用 HTTP 的通用 60 秒總期限。Chrome 佇列及啟動時間另計，逾時仍清理程序與暫存 profile。沒有文件網路失敗證據的 Chrome 逾時仍列為 `browser_runtime`，不偽裝成可豁免的網路故障，也不保證能解決遠端網站對雲端 IP 的拒絕連線。
 
 漁業署 HTML 內文採官方 `.article-info dl.full > dd` 正文區，排除發布日期、點閱率、返回列表與頁尾；沒有正文的中繼資料頁仍回報空內文，不把整頁文字當作成功。
+
+## PDF 新聞正文（2026-10-23）
+
+詳細頁以原始位元組下載；`%PDF-` 檔頭才使用 PDF 解析，網址含 `.pdf` 卻回傳 HTML 驗證頁時仍依 HTML 判斷，保留 `access_blocked`。HTTP client 不辨識政府機關或解析文件；位元組下載共用原有重試、逾時、同主機限制、大小上限及受限 TLS 政策，並跳過文字快取，避免 UTF-8 轉碼破壞 PDF。
+
+PDF 解析使用獨立的同一執行檔工作程序；CLI 與桌面入口均在啟動收集流程／GUI 前處理內部工作旗標。解析上限為 8 MiB 輸入、100 頁、2 MiB 文字及 10 秒；逾時會停止並回收工作程序，暫存附件隨擁有者清理。解析器崩潰僅使該則內文擷取失敗，不中止整批收集。掃描式、加密、損壞或超限附件不猜文字，保留原始連結及 `pdf_no_text`、`pdf_encrypted`、`pdf_invalid`、`pdf_size_limit`、`pdf_timeout`、`pdf_worker_failed` 等診斷。
+
+成功文字沿用原有 `full_text`／摘要欄位，詳細請求另記 `content_format=pdf`；來源日期、新聞網址、JSON v4 與 Excel 17 欄不變。固定案例驗證中文 ToUnicode 文字、CLI／桌面入口的無 GUI 工作程序、非 UTF-8 位元組與文字快取隔離、重試、空白／損壞／過多頁數附件，以及程序失敗、逾時與回收。此功能只處理直接連到 PDF 的新聞，不自動逐一下載 HTML 文章的全部附件，也不提供 OCR。
+
+未能完成的 HTTP 3xx 轉址回報 `source_outage` 並沿用既有重試政策，不再誤列為內容解析錯誤。有效 `Location` 的正常轉址及既有 TLS client 轉址限制維持原行為，未新增機關名稱判斷或 TLS 例外。

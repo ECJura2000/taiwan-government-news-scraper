@@ -705,6 +705,23 @@ pub(super) fn items_cover_date_range(items: &[NewsItem], date_range: DateRange) 
         .is_some_and(|oldest| oldest <= date_range.start)
 }
 
+async fn parse_detail_document(source: &str, bytes: &[u8]) -> Result<String, &'static str> {
+    if crate::scraper::pdf::is_pdf(bytes) {
+        return crate::scraper::pdf::extract(bytes).await;
+    }
+    let body = String::from_utf8_lossy(bytes);
+    if adapters::is_access_blocked_document(&body) || adapters::is_access_challenge_document(&body)
+    {
+        return Err("access_blocked");
+    }
+    let text = adapters::parse_detail_full_text(source, &body);
+    if text.is_empty() {
+        Err(adapters::detail_empty_reason(source, &body))
+    } else {
+        Ok(text)
+    }
+}
+
 pub(super) async fn enrich_detail_full_text(
     client: &HttpClient,
     items: Vec<NewsItem>,
@@ -720,12 +737,23 @@ pub(super) async fn enrich_detail_full_text(
                             TransportPolicy::for_detail(source, &item.link)
                         });
                     let http_started = Instant::now();
-                    let mut fetched = client.fetch_detail_text(&item.link, &policy).await;
+                    let fetched = client.fetch_bytes(&item.link, &policy).await;
                     let http_seconds = http_started.elapsed().as_secs_f64();
                     let mut fallback = None;
                     let mut browser_seconds = 0.0;
-                    if policy.browser_fallback && !fetched.as_ref().is_ok_and(|body| !adapters::parse_detail_full_text(&item.source, body).is_empty()) {
-                        let initial_reason = fetched.as_ref().err().map_or("empty_detail_text", |error| error.failure_class().as_str());
+                    let mut content_format = "unknown";
+                    let parse_started = Instant::now();
+                    let mut parsed = match fetched {
+                        Ok(bytes) => {
+                            content_format = if crate::scraper::pdf::is_pdf(&bytes) { "pdf" } else { "html" };
+                            parse_detail_document(&item.source, &bytes).await
+                        }
+                        Err(error) => Err(error.failure_class().as_str()),
+                    };
+                    let mut parse_seconds = parse_started.elapsed().as_secs_f64();
+                    // Chrome is an HTML recovery route, not a PDF text extractor.
+                    if policy.browser_fallback && parsed.is_err() && content_format != "pdf" {
+                        let initial_reason = parsed.as_ref().err().copied().unwrap();
                         let browser_started = Instant::now();
                         let wait_script = policy.browser_wait_script();
                         let rendered = crate::browser::fetch_rendered_html_after_with_transport(&item.link, wait_script.as_deref(), Some(policy.timeout), policy.browser_native_user_agent, policy.browser_entry_url.as_deref())
@@ -735,24 +763,23 @@ pub(super) async fn enrich_detail_full_text(
                             "wait_for_selector":policy.browser_wait_for_selector,
                             "browser_status":if rendered.is_ok(){"success"}else{"failed"},
                             "browser_failure_class":rendered.as_ref().err().map(|error|error.failure_class().as_str())}));
-                        fetched = rendered;
+                        let parse_started = Instant::now();
+                        parsed = match rendered {
+                            Ok(body) => { content_format = "html"; parse_detail_document(&item.source, body.as_bytes()).await }
+                            Err(error) => Err(error.failure_class().as_str()),
+                        };
+                        parse_seconds += parse_started.elapsed().as_secs_f64();
                     }
-                    let parse_started = Instant::now();
-                    let issue = match fetched {
-                        Ok(body) => {
-                            let full_text = adapters::parse_detail_full_text(&item.source, &body);
-                            if full_text.is_empty() {
-                                Some(json!({"source": item.source, "url": item.link, "reason": adapters::detail_empty_reason(&item.source, &body)}))
-                            } else {
-                                item.summary = full_text.clone();
-                                item.full_text = full_text;
-                                None
-                            }
+                    let issue = match parsed {
+                        Ok(full_text) => {
+                            item.summary = full_text.clone();
+                            item.full_text = full_text;
+                            None
                         }
-                        Err(error) => Some(json!({"source": item.source, "url": item.link, "reason": error.failure_class().as_str()})),
+                        Err(reason) => Some(json!({"source": item.source, "url": item.link, "reason": reason})),
                     };
                     let request = json!({"source":item.source,"url":item.link,"http_seconds":http_seconds,
-                        "browser_seconds":browser_seconds,"parse_seconds":parse_started.elapsed().as_secs_f64(),
+                        "browser_seconds":browser_seconds,"parse_seconds":parse_seconds,"content_format":content_format,
                         "status":if issue.is_none(){"recovered"}else{"failed"},"reason":issue.as_ref().and_then(|value|value.get("reason"))});
                     (item, true, issue, fallback, Some(request))
                 } else {
@@ -927,6 +954,15 @@ fn complete_json_array_prefix(bytes: &[u8]) -> Result<String, ScraperError> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[tokio::test]
+    async fn pdf_url_with_html_challenge_remains_access_blocked() {
+        let body = b"<html><title>Just a moment...</title><script>_cf_chl_opt</script><script src='/cdn-cgi/challenge-platform/script'></script></html>";
+        assert_eq!(
+            parse_detail_document("最高檢察署", body).await,
+            Err("access_blocked")
+        );
+    }
 
     fn list_page(items: &[(&str, &str, &str)]) -> String {
         items
