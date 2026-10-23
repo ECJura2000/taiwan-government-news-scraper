@@ -372,6 +372,7 @@ pub fn parse_catalog(json: &str) -> Result<Vec<SourceDefinition>, String> {
                     | "sfaa-html"
                     | "mohw-source-filter"
                     | "moenv-open-data-json"
+                    | "tps-html"
                     | "moenv-html"
                     | "moenv-news-portal-browser"
                     | "hakka-html"

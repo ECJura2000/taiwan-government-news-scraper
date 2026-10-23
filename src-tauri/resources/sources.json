@@ -547,7 +547,27 @@
     "name": "最高檢察署",
     "urls": [
       "https://www.tps.moj.gov.tw/16314/1140948/"
-    ]
+    ],
+    "routes": [
+      {
+        "id": "official-news-html",
+        "url": "https://www.tps.moj.gov.tw/16314/1140948/?Page=1&PageSize=30",
+        "kind": "html",
+        "parser": "tps-html",
+        "priority": 1,
+        "pagination": {
+          "parameter": "Page",
+          "first_page": 1,
+          "max_pages": 20
+        }
+      }
+    ],
+    "transport": {
+      "list": {
+        "timeout_seconds": 12,
+        "retry_attempts": 1
+      }
+    }
   },
   {
     "name": "經濟部",
@@ -823,7 +843,13 @@
     "official_name": "農業部漁業署",
     "parent_source": "農業部",
     "parent_ministry": "農業部",
-    "aliases": []
+    "aliases": [],
+    "transport": {
+      "list": {
+        "timeout_seconds": 12,
+        "retry_attempts": 1
+      }
+    }
   },
   {
     "name": "農村發展及水土保持署",

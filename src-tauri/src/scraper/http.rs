@@ -198,6 +198,26 @@ impl HttpClient {
         url: &str,
         policy: &TransportPolicy,
     ) -> Result<String, ScraperError> {
+        self.fetch_body(url, policy, true)
+            .await
+            .map(|bytes| String::from_utf8_lossy(&bytes).into_owned())
+    }
+
+    /// Binary responses bypass the UTF-8 text cache without changing transport policy.
+    pub async fn fetch_bytes(
+        &self,
+        url: &str,
+        policy: &TransportPolicy,
+    ) -> Result<Vec<u8>, ScraperError> {
+        self.fetch_body(url, policy, false).await
+    }
+
+    async fn fetch_body(
+        &self,
+        url: &str,
+        policy: &TransportPolicy,
+        text_cache: bool,
+    ) -> Result<Vec<u8>, ScraperError> {
         let mut last_error = None;
         let client = if policy.intermediate_certificate_for(url).is_some() {
             self.intermediate_client.as_ref().unwrap_or(&self.client)
@@ -205,7 +225,7 @@ impl HttpClient {
             &self.client
         };
         for attempt in 0..policy.retry_attempts {
-            match self.fetch_once(client, url, policy).await {
+            match self.fetch_once(client, url, policy, text_cache).await {
                 Ok(body) => return Ok(body),
                 Err(error)
                     if policy.allows_tls_fallback_for(url)
@@ -215,7 +235,7 @@ impl HttpClient {
                         ) =>
                 {
                     let result = self
-                        .fetch_once(&self.insecure_tls_client, url, policy)
+                        .fetch_once(&self.insecure_tls_client, url, policy, text_cache)
                         .await;
                     if result.is_ok() {
                         if let Some(host) = url::Url::parse(url)
@@ -313,9 +333,10 @@ impl HttpClient {
         client: &Client,
         url: &str,
         policy: &TransportPolicy,
-    ) -> Result<String, ScraperError> {
+        text_cache: bool,
+    ) -> Result<Vec<u8>, ScraperError> {
         let permit = self.acquire_host(url, policy.host_concurrency).await?;
-        let cached = if policy.cache && policy.post_json.is_none() {
+        let cached = if text_cache && policy.cache && policy.post_json.is_none() {
             self.read_cache(url)
                 .filter(|entry| entry.body.len() <= policy.max_response_bytes)
         } else {
@@ -349,7 +370,7 @@ impl HttpClient {
             if cached.is_some() {
                 increment(&self.metrics.cache_hits, 1);
             }
-            return cached.map(|entry| entry.body).ok_or_else(|| {
+            return cached.map(|entry| entry.body.into_bytes()).ok_or_else(|| {
                 ScraperError::SourceOutage("HTTP 304 without a cached body".into())
             });
         }
@@ -387,20 +408,23 @@ impl HttpClient {
         }
         validate_status(status)?;
         let bytes = read_response_bytes(response, policy.max_response_bytes).await?;
-        let body = String::from_utf8_lossy(&bytes).into_owned();
-        if policy.cache
+        if text_cache
+            && policy.cache
             && policy.post_json.is_none()
             && (etag.is_some() || last_modified.is_some())
-            && body.len() <= 2_000_000
+            && bytes.len() <= 2_000_000
         {
-            self.write_cache(&CachedResponse {
-                url: url.to_owned(),
-                etag,
-                last_modified,
-                body: body.clone(),
-            });
+            let body = String::from_utf8_lossy(&bytes).into_owned();
+            if body.len() <= 2_000_000 {
+                self.write_cache(&CachedResponse {
+                    url: url.to_owned(),
+                    etag,
+                    last_modified,
+                    body,
+                });
+            }
         }
-        Ok(body)
+        Ok(bytes)
     }
 
     async fn acquire_host(
@@ -557,7 +581,10 @@ fn validate_status(status: StatusCode) -> Result<(), ScraperError> {
     if status == StatusCode::FORBIDDEN || status == StatusCode::UNAUTHORIZED {
         return Err(ScraperError::AccessBlocked(format!("HTTP {status}")));
     }
-    if status == StatusCode::TOO_MANY_REQUESTS || status.is_server_error() {
+    if status.is_redirection()
+        || status == StatusCode::TOO_MANY_REQUESTS
+        || status.is_server_error()
+    {
         return Err(ScraperError::SourceOutage(format!("HTTP {status}")));
     }
     if !status.is_success() {
@@ -569,6 +596,94 @@ fn validate_status(status: StatusCode) -> Result<(), ScraperError> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[tokio::test]
+    async fn follows_valid_redirects_and_retries_incomplete_upstream_redirects() {
+        use std::io::{Read, Write};
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let base = format!("http://{}", listener.local_addr().unwrap());
+        let server = std::thread::spawn(move || {
+            for (expected, response) in [
+                ("/start", "HTTP/1.1 307 Temporary Redirect\r\nLocation: /news\r\nContent-Length: 0\r\nConnection: close\r\n\r\n"),
+                ("/news", "HTTP/1.1 200 OK\r\nContent-Length: 4\r\nConnection: close\r\n\r\nnews"),
+                ("/interrupted", "HTTP/1.1 307 Temporary Redirect\r\nContent-Length: 0\r\nConnection: close\r\n\r\n"),
+                ("/interrupted", "HTTP/1.1 200 OK\r\nContent-Length: 4\r\nConnection: close\r\n\r\nnews"),
+            ] {
+                let (mut socket, _) = listener.accept().unwrap();
+                let mut request = [0; 4096];
+                let count = socket.read(&mut request).unwrap();
+                assert_eq!(String::from_utf8_lossy(&request[..count]).split_whitespace().nth(1), Some(expected));
+                socket.write_all(response.as_bytes()).unwrap();
+            }
+        });
+        let client = HttpClient::new().unwrap();
+        let mut policy = TransportPolicy::list_default();
+        policy.retry_attempts = 2;
+        assert_eq!(
+            client
+                .fetch_text(&format!("{base}/start"), &policy)
+                .await
+                .unwrap(),
+            "news"
+        );
+        assert_eq!(
+            client
+                .fetch_text(&format!("{base}/interrupted"), &policy)
+                .await
+                .unwrap(),
+            "news"
+        );
+        assert_eq!(client.metrics()["retry_count"], 1);
+        assert_eq!(
+            validate_status(StatusCode::TEMPORARY_REDIRECT)
+                .unwrap_err()
+                .failure_class()
+                .as_str(),
+            "source_outage"
+        );
+        server.join().unwrap();
+    }
+
+    #[tokio::test]
+    async fn binary_download_preserves_non_utf8_and_bypasses_text_cache() {
+        use std::io::{Read, Write};
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let url = format!("http://{}/news.pdf", listener.local_addr().unwrap());
+        let binary = b"%PDF-1.5\n\xff\xfe binary stream";
+        let server = std::thread::spawn(move || {
+            for index in 0..3 {
+                let (mut socket, _) = listener.accept().unwrap();
+                let mut request = [0; 4096];
+                let count = socket.read(&mut request).unwrap();
+                let request = String::from_utf8_lossy(&request[..count]).to_ascii_lowercase();
+                if index > 0 {
+                    assert!(!request.contains("if-none-match"));
+                }
+                let status = if index == 1 {
+                    "503 Unavailable"
+                } else {
+                    "200 OK"
+                };
+                write!(socket, "HTTP/1.1 {status}\r\nETag: stable\r\nContent-Length: {}\r\nConnection: close\r\n\r\n", binary.len()).unwrap();
+                socket.write_all(binary).unwrap();
+            }
+        });
+        let cache = tempfile::tempdir().unwrap();
+        let client = HttpClient::new()
+            .unwrap()
+            .with_cache_dir(cache.path().to_owned());
+        let mut policy = TransportPolicy::list_default();
+        policy.retry_attempts = 2;
+        assert!(client
+            .fetch_text(&url, &policy)
+            .await
+            .unwrap()
+            .contains('\u{fffd}'));
+        assert_eq!(client.fetch_bytes(&url, &policy).await.unwrap(), binary);
+        assert_eq!(client.metrics()["request_attempts"], 3);
+        assert_eq!(client.metrics()["retry_count"], 1);
+        server.join().unwrap();
+    }
 
     #[tokio::test]
     async fn identity_policy_recovers_a_compression_dependent_framing_stall() {

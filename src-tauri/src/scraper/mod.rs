@@ -3,6 +3,7 @@ pub mod catalog;
 pub mod filter;
 pub mod html;
 pub mod http;
+pub mod pdf;
 pub mod quality;
 pub mod rss;
 pub mod scheduler;

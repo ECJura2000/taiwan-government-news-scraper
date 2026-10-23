@@ -500,6 +500,10 @@ fn parse_route_raw(
         return Ok(items);
     }
 
+    if route.parser == "tps-html" {
+        return special::parse_tps_news(source, body, &route.url);
+    }
+
     if route.parser == "moenv-open-data-json" {
         return special::parse_moenv_open_data(source, body);
     }
@@ -611,6 +615,7 @@ pub fn parse_detail_full_text(source: &str, body: &str) -> String {
     let source_selectors: &[&str] = match source {
         "財團法人台灣優良農產品發展協會" => &["#postblock .post-block"],
         "國防部" => &["div.maincontent"],
+        "漁業署" => &[".article-info dl.full > dd"],
         "行政院" => &[".words_content .data_left"],
         "高速公路局" => &[".FCKdetail"],
         "交通部" => &[".d_subnews .editor"],
@@ -848,6 +853,22 @@ mod tests {
     }
 
     #[test]
+    fn fishery_detail_keeps_body_without_metadata_or_navigation() {
+        let text = parse_detail_full_text(
+            "漁業署",
+            include_str!("../../tests/fixtures/fa_detail.html"),
+        );
+        assert!(text.contains("供水系統正常"));
+        assert!(text.contains("提供船員更完善、友善的服務環境"));
+        assert!(!text.contains("excluded_"));
+        assert!(parse_detail_full_text(
+            "漁業署",
+            "<div class='article-info'><dl><dt>發佈日期</dt><dd>115年09月13日</dd></dl></div>"
+        )
+        .is_empty());
+    }
+
+    #[test]
     fn defense_and_hakka_detail_containers_exclude_page_navigation() {
         for (source, article) in [
             ("國防部", "<div class='maincontent'><p>第一段內文</p><p>最後一段內文</p></div>"),
@@ -1028,6 +1049,19 @@ mod tests {
             transport: None,
             ..Default::default()
         }
+    }
+
+    #[test]
+    fn dispatches_tps_publication_dates_before_week_filtering() {
+        let records = parse_route_records(
+            "最高檢察署",
+            &route("tps-html"),
+            include_str!("../../tests/fixtures/tps-news-list.html"),
+        )
+        .unwrap();
+        assert_eq!(records.len(), 3);
+        assert_eq!(records[1].item.date, "2026-09-01");
+        assert!(records.iter().all(|record| !record.item.date.is_empty()));
     }
 
     #[test]
