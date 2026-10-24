@@ -616,6 +616,7 @@ pub fn parse_detail_full_text(source: &str, body: &str) -> String {
         "財團法人台灣優良農產品發展協會" => &["#postblock .post-block"],
         "國防部" => &["div.maincontent"],
         "漁業署" => &[".article-info dl.full > dd"],
+        "農業部種苗改良繁殖場" => &[".detail_box .detail_txt"],
         "行政院" => &[".words_content .data_left"],
         "高速公路局" => &[".FCKdetail"],
         "交通部" => &[".d_subnews .editor"],
@@ -1152,6 +1153,19 @@ mod tests {
         let full_text = parse_detail_full_text("數位發展部", &body);
         assert_eq!(full_text.chars().count(), 1_254);
         assert!(full_text.ends_with("第二段"));
+    }
+
+    #[test]
+    fn tss_agriculture_detail_keeps_article_body_without_page_controls() {
+        let body = include_str!("../../tests/fixtures/tss_agriculture_detail.html");
+        let text = parse_detail_full_text("農業部種苗改良繁殖場", body);
+        assert!(text.contains("種苗5號-夏之戀"));
+        assert!(text.contains("縮短繁殖與栽培時間"));
+        assert!(!text.contains("首頁"));
+        assert!(!text.contains("友善列印"));
+        assert!(!text.contains("附件下載"));
+        assert!(!text.contains("版權所有"));
+        assert!(parse_detail_full_text("未宣告來源", body).is_empty());
     }
 
     #[test]
