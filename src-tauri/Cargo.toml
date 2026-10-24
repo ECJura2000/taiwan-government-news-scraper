@@ -17,7 +17,7 @@ tauri-build = { version = "2", features = [] }
 chrono = { version = "0.4", features = ["serde"] }
 chrono-tz = "0.10"
 futures = "0.3"
-jieba-rs = "=0.10.3"
+jieba-rs = "=0.10.4"
 unicode-normalization = "0.1"
 tempfile = "3"
 quick-xml = "0.42"
