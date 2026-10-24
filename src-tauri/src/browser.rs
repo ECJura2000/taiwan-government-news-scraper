@@ -422,6 +422,7 @@ async fn wait_for_response(
 struct NavigationState {
     target_url: String,
     document_requests: Vec<String>,
+    document_status: Option<u16>,
     loader_id: Option<String>,
     loaded_loaders: Vec<String>,
     loaded: bool,
@@ -435,13 +436,37 @@ impl NavigationState {
             {
                 // Match the requested navigation (redirects retain requestId),
                 // not unrelated iframe, image or analytics failures.
-                if payload
-                    .pointer("/params/request/url")
-                    .and_then(Value::as_str)
-                    == Some(self.target_url.as_str())
-                {
-                    if let Some(id) = payload.pointer("/params/requestId").and_then(Value::as_str) {
-                        self.document_requests.push(id.to_owned());
+                if let Some(id) = payload.pointer("/params/requestId").and_then(Value::as_str) {
+                    if payload
+                        .pointer("/params/request/url")
+                        .and_then(Value::as_str)
+                        == Some(self.target_url.as_str())
+                        || self.document_requests.iter().any(|known| known == id)
+                    {
+                        if !self.document_requests.iter().any(|known| known == id) {
+                            self.document_requests.push(id.to_owned());
+                        }
+                        self.document_status = None;
+                    }
+                }
+            }
+            Some("Network.responseReceived" | "Network.responseReceivedExtraInfo")
+                if payload.get("method").and_then(Value::as_str)
+                    == Some("Network.responseReceivedExtraInfo")
+                    || payload.pointer("/params/type").and_then(Value::as_str)
+                        == Some("Document") =>
+            {
+                let id = payload.pointer("/params/requestId").and_then(Value::as_str);
+                if id.is_some_and(|id| self.document_requests.iter().any(|known| known == id)) {
+                    if let Some(status) = payload
+                        .pointer("/params/response/status")
+                        .or_else(|| payload.pointer("/params/statusCode"))
+                        .and_then(Value::as_f64)
+                        .filter(|status| (100.0..600.0).contains(status) && status.fract() == 0.0)
+                    {
+                        // A rendered challenge can resolve normally. Only use
+                        // this status when Chrome reports a navigation failure.
+                        self.document_status = Some(status as u16);
                     }
                 }
             }
@@ -452,7 +477,7 @@ impl NavigationState {
                         .pointer("/params/errorText")
                         .and_then(Value::as_str)
                         .unwrap_or("unknown document network error");
-                    return Err(navigation_error(error));
+                    return Err(self.navigation_error(error));
                 }
             }
             Some("Page.lifecycleEvent")
@@ -466,6 +491,15 @@ impl NavigationState {
             _ => {}
         }
         Ok(())
+    }
+
+    fn navigation_error(&self, error: &str) -> String {
+        if error == "net::ERR_HTTP_RESPONSE_CODE_FAILURE" {
+            if let Some(status) = self.document_status.filter(|status| *status >= 400) {
+                return format!("browser_navigation_http: HTTP {status}");
+            }
+        }
+        navigation_error(error)
     }
 }
 
@@ -526,7 +560,7 @@ async fn navigate_document(
                     return Err(format!("CDP command error：{error}"));
                 }
                 if let Some(error) = payload.pointer("/result/errorText").and_then(Value::as_str) {
-                    return Err(navigation_error(error));
+                    return Err(state.navigation_error(error));
                 }
                 state.loader_id = payload
                     .pointer("/result/loaderId")
@@ -658,6 +692,75 @@ mod tests {
     use super::*;
 
     #[test]
+    fn navigation_preserves_http_errors_from_the_target_document() {
+        for status in [401.0, 403.0, 404.0, 410.0, 429.0, 503.0] {
+            let mut state = NavigationState {
+                target_url: "https://official.example/news".into(),
+                ..Default::default()
+            };
+            state.observe(&json!({"method":"Network.requestWillBeSent","params":{"requestId":"news","type":"Document","request":{"url":"https://official.example/news"}}})).unwrap();
+            // A redirect keeps the original request ID, even on a different URL.
+            state.observe(&json!({"method":"Network.requestWillBeSent","params":{"requestId":"news","type":"Document","request":{"url":"https://official.example/redirected-news"}}})).unwrap();
+            state.observe(&json!({"method":"Network.responseReceived","params":{"requestId":"news","type":"Document","response":{"status":status}}})).unwrap();
+            let error = state.observe(&json!({"method":"Network.loadingFailed","params":{"requestId":"news","errorText":"net::ERR_HTTP_RESPONSE_CODE_FAILURE"}})).unwrap_err();
+            assert_eq!(
+                error,
+                format!("browser_navigation_http: HTTP {}", status as u16)
+            );
+        }
+    }
+
+    #[test]
+    fn response_headers_preserve_empty_error_status_and_do_not_abort_rendered_challenges() {
+        let mut state = NavigationState {
+            target_url: "https://official.example/news".into(),
+            ..Default::default()
+        };
+        let request = json!({"method":"Network.requestWillBeSent","params":{"requestId":"news","type":"Document","request":{"url":"https://official.example/news"}}});
+        state.observe(&request).unwrap();
+        state.observe(&json!({"method":"Network.responseReceivedExtraInfo","params":{"requestId":"news","statusCode":403}})).unwrap();
+        assert_eq!(
+            state.navigation_error("net::ERR_HTTP_RESPONSE_CODE_FAILURE"),
+            "browser_navigation_http: HTTP 403"
+        );
+        assert_eq!(
+            state.navigation_error("net::ERR_ABORTED"),
+            "browser_navigation_runtime: net::ERR_ABORTED"
+        );
+        // A challenge retry must not retain the earlier response status.
+        state.observe(&request).unwrap();
+        assert_eq!(
+            state.navigation_error("net::ERR_HTTP_RESPONSE_CODE_FAILURE"),
+            "browser_navigation_runtime: net::ERR_HTTP_RESPONSE_CODE_FAILURE"
+        );
+        state.observe(&json!({"method":"Network.responseReceived","params":{"requestId":"news","type":"Document","response":{"status":200}}})).unwrap();
+        assert_eq!(state.document_status, Some(200));
+    }
+
+    #[test]
+    fn navigation_http_evidence_ignores_subresources_other_documents_and_non_errors() {
+        let mut state = NavigationState {
+            target_url: "https://official.example/news".into(),
+            ..Default::default()
+        };
+        state.observe(&json!({"method":"Network.requestWillBeSent","params":{"requestId":"news","type":"Document","request":{"url":"https://official.example/news"}}})).unwrap();
+        for (id, kind, status) in [
+            ("iframe", "Document", 503.0),
+            ("news", "Image", 404.0),
+            ("news", "Document", 200.0),
+            ("news", "Document", 302.0),
+            ("news", "Document", 404.5),
+            ("news", "Document", 600.0),
+        ] {
+            state.observe(&json!({"method":"Network.responseReceived","params":{"requestId":id,"type":kind,"response":{"status":status}}})).unwrap();
+        }
+        assert_eq!(
+            navigation_error("net::ERR_HTTP_RESPONSE_CODE_FAILURE"),
+            "browser_navigation_runtime: net::ERR_HTTP_RESPONSE_CODE_FAILURE"
+        );
+    }
+
+    #[test]
     fn navigation_network_evidence_ignores_unrelated_documents_and_subresources() {
         let mut state = NavigationState {
             target_url: "https://official.example/news".into(),
@@ -727,6 +830,38 @@ mod tests {
             error,
             "browser_navigation_network: net::ERR_CONNECTION_REFUSED"
         );
+    }
+
+    #[tokio::test]
+    #[ignore = "requires a system Chrome or Chromium executable"]
+    async fn empty_http_errors_preserve_status_in_real_chrome() {
+        use tokio::io::{AsyncReadExt, AsyncWriteExt};
+        for status in [403, 404, 503] {
+            let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+            let address = listener.local_addr().unwrap();
+            let server = tokio::spawn(async move {
+                loop {
+                    let (mut stream, _) = listener.accept().await.unwrap();
+                    let mut request = [0_u8; 4096];
+                    let _ = stream.read(&mut request).await;
+                    let response = format!(
+                        "HTTP/1.1 {status} Error\r\nContent-Length: 0\r\nConnection: close\r\n\r\n"
+                    );
+                    let _ = stream.write_all(response.as_bytes()).await;
+                }
+            });
+            let result = fetch_rendered_html_after_with_timeout(
+                &format!("http://{address}/news"),
+                None,
+                Duration::from_secs(20),
+            )
+            .await;
+            server.abort();
+            assert_eq!(
+                result.unwrap_err(),
+                format!("browser_navigation_http: HTTP {status}")
+            );
+        }
     }
 
     #[tokio::test]

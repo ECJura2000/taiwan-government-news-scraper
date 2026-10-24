@@ -561,6 +561,14 @@ pub(super) fn browser_page_script(parser: &str) -> Option<&'static str> {
 }
 
 fn classify_browser_error(error: String) -> ScraperError {
+    if let Some(status) = error
+        .strip_prefix("browser_navigation_http: HTTP ")
+        .and_then(|code| code.parse::<reqwest::StatusCode>().ok())
+    {
+        return crate::scraper::http::validate_status(status)
+            .err()
+            .unwrap_or(ScraperError::BrowserRuntime(error));
+    }
     if error.starts_with("access_blocked:") || error.contains("Incapsula 驗證超過") {
         ScraperError::AccessBlocked(error)
     } else if error.starts_with("browser_navigation_tls:") {
@@ -1678,6 +1686,14 @@ mod tests {
                 "source_outage",
             ),
             ("CDP command 5 等待逾時", "browser_runtime"),
+            ("browser_navigation_http: HTTP 401", "access_blocked"),
+            ("browser_navigation_http: HTTP 403", "access_blocked"),
+            ("browser_navigation_http: HTTP 404", "parser_regression"),
+            ("browser_navigation_http: HTTP 410", "parser_regression"),
+            ("browser_navigation_http: HTTP 429", "source_outage"),
+            ("browser_navigation_http: HTTP 503", "source_outage"),
+            ("browser_navigation_http: HTTP 200", "browser_runtime"),
+            ("browser_navigation_http: HTTP unknown", "browser_runtime"),
         ] {
             assert_eq!(
                 classify_browser_error(message.into())

@@ -577,7 +577,7 @@ fn request_error_chain(error: &(dyn std::error::Error + 'static)) -> String {
     message
 }
 
-fn validate_status(status: StatusCode) -> Result<(), ScraperError> {
+pub(crate) fn validate_status(status: StatusCode) -> Result<(), ScraperError> {
     if status == StatusCode::FORBIDDEN || status == StatusCode::UNAUTHORIZED {
         return Err(ScraperError::AccessBlocked(format!("HTTP {status}")));
     }
