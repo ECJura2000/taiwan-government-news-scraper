@@ -238,10 +238,15 @@ impl Profile {
         }
     }
     pub fn hash(&self) -> String {
+        self.hash_with_dictionary(include_str!("../resources/policy-dictionary.txt"))
+    }
+    fn hash_with_dictionary(&self, dictionary: &str) -> String {
         let mut value = serde_json::to_value(self).expect("validated policy serializes");
         value.as_object_mut().unwrap().remove("name");
         value["tokenizer"] = json!(TOKENIZER_VERSION);
-        value["dictionary"] = json!(include_str!("../resources/policy-dictionary.txt"));
+        // Git checkouts can use CRLF on Windows. Dictionary line endings do not
+        // change tokenization and must not change the policy fingerprint.
+        value["dictionary"] = json!(dictionary.replace("\r\n", "\n"));
         let hash = Sha256::digest(serde_json::to_vec(&value).unwrap());
         hash.iter().map(|b| format!("{b:02x}")).collect()
     }
@@ -402,6 +407,27 @@ pub fn preview_import(current: &Profile, text: &str, replace: bool) -> Result<Va
 
 #[cfg(test)]
 mod fingerprint_tests {
+    use super::Profile;
+
+    #[test]
+    fn dictionary_line_endings_do_not_change_the_policy_fingerprint() {
+        let profile = Profile::embedded();
+        let lf = include_str!("../resources/policy-dictionary.txt").replace("\r\n", "\n");
+        let crlf = lf.replace('\n', "\r\n");
+        assert_eq!(
+            profile.hash_with_dictionary(&lf),
+            profile.hash_with_dictionary(&crlf)
+        );
+        assert_eq!(
+            profile.hash(),
+            "0677679b2db2644c0d272e124c23b3564eabb979ed120c9f8f18457023fef53c"
+        );
+        assert_ne!(
+            profile.hash_with_dictionary(&lf),
+            profile.hash_with_dictionary(&format!("{lf}\n新增政策詞 100 n\n"))
+        );
+    }
+
     #[test]
     fn tokenizer_fingerprint_matches_the_pinned_dependency() {
         let version = super::TOKENIZER_VERSION.strip_prefix("jieba-rs ").unwrap();

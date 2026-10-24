@@ -4315,12 +4315,12 @@
     "name": "農業部種苗改良繁殖場",
     "parent_ministry": "農業部",
     "urls": [
-      "https://www.tss.gov.tw/theme_list.php?theme=news&sub_theme=hot"
+      "https://www.tss.gov.tw/theme_list.php?theme=news&sub_theme=news"
     ],
     "routes": [
       {
         "id": "official-news-html",
-        "url": "https://www.tss.gov.tw/theme_list.php?theme=news&sub_theme=hot",
+        "url": "https://www.tss.gov.tw/theme_list.php?theme=news&sub_theme=news",
         "kind": "html",
         "parser": "standard",
         "priority": 1,
@@ -4339,7 +4339,7 @@
       },
       {
         "id": "official-browser",
-        "url": "https://www.tss.gov.tw/theme_list.php?theme=news&sub_theme=hot",
+        "url": "https://www.tss.gov.tw/theme_list.php?theme=news&sub_theme=news",
         "kind": "browser",
         "parser": "standard",
         "priority": 2,
