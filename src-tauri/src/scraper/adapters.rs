@@ -8,6 +8,25 @@ pub(crate) fn is_access_blocked_document(body: &str) -> bool {
         return false;
     }
     let lower = body.to_ascii_lowercase();
+    // Cloudflare's terminal denial page is not the transient managed challenge.
+    // Require the document title and its dedicated denial heading together so
+    // an article discussing Cloudflare is not mistaken for an access failure.
+    if lower.contains("cf-error-details") {
+        let document = Html::parse_document(body);
+        let title = Selector::parse("title").expect("valid title selector");
+        let heading = Selector::parse("#cf-error-details h1").expect("valid heading selector");
+        if document.select(&title).any(|node| {
+            html::clean_text(node)
+                .trim()
+                .eq_ignore_ascii_case("Attention Required! | Cloudflare")
+        }) && document.select(&heading).any(|node| {
+            html::clean_text(node)
+                .trim()
+                .eq_ignore_ascii_case("Sorry, you have been blocked")
+        }) {
+            return true;
+        }
+    }
     lower.contains("incapsula incident id")
         || (lower.contains("request unsuccessful") && lower.contains("_incapsula_resource"))
         || (lower.contains("the url you requested has been blocked")
@@ -732,6 +751,26 @@ fn clean_article_text(container: scraper::ElementRef<'_>) -> String {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn cloudflare_terminal_denial_is_access_blocked_not_parser_regression() {
+        let denied = r#"<html><head><title>Attention Required! | Cloudflare</title></head><body><div id="cf-error-details"><h1>Sorry, you have been blocked</h1></div></body></html>"#;
+        assert!(super::is_access_blocked_document(denied));
+        assert!(!super::is_access_challenge_document(denied));
+        let route: crate::scraper::catalog::SourceRoute = serde_json::from_value(serde_json::json!({
+            "id":"browser", "url":"https://official.test/news", "kind":"browser", "parser":"moea-html"
+        })).unwrap();
+        assert!(matches!(
+            super::parse_route_records("經濟部", &route, denied),
+            Err(crate::scraper::ScraperError::AccessBlocked(_))
+        ));
+        assert!(super::parse_detail_full_text("經濟部", denied).is_empty());
+        assert!(!super::is_access_blocked_document(
+            &denied.replace("<h1>", "<p>").replace("</h1>", "</p>")
+        ));
+        let feed = format!("<rss><channel><item><title>防火牆說明</title><description><![CDATA[{denied}]]></description></item></channel></rss>");
+        assert!(!super::is_access_blocked_document(&feed));
+    }
+
     #[test]
     fn firewall_block_page_is_access_failure_for_browser_rss_and_not_empty_week() {
         let blocked = "<html><head><title>The URL you requested has been blocked</title></head><body><h3>Web Page Blocked!</h3></body></html>";
