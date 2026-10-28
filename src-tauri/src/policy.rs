@@ -9,7 +9,7 @@ use std::{
 };
 use unicode_normalization::UnicodeNormalization;
 
-const TOKENIZER_VERSION: &str = "jieba-rs 0.10.3";
+const TOKENIZER_VERSION: &str = "jieba-rs 0.10.4";
 
 pub const MAX_POLICY_BYTES: u64 = 2 * 1024 * 1024;
 fn yes() -> bool {
@@ -420,7 +420,7 @@ mod fingerprint_tests {
         );
         assert_eq!(
             profile.hash(),
-            "0677679b2db2644c0d272e124c23b3564eabb979ed120c9f8f18457023fef53c"
+            "2639ee66b6685887ab91644e824da67ca13924611482f50548817c66814544f5"
         );
         assert_ne!(
             profile.hash_with_dictionary(&lf),
