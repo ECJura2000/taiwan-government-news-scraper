@@ -25,7 +25,7 @@ test('unknown, duplicate and unproven exclusions fail closed', () => {
     data=>data.manual_mac_sources[0].source='國科會',
     data=>data.manual_mac_sources[0].mac_status='failed',
     data=>data.manual_mac_sources[0].network_probe_run='',
-    data=>data.manual_mac_sources[0].checked_at=data.review_after,
+    data=>data.review_after=data.manual_mac_sources[0].checked_at,
     data=>data.review_after='2026-02-31',
     data=>data.review_after='2099-01-01',
   ]) {

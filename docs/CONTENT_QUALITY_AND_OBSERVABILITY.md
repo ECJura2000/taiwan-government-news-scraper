@@ -34,6 +34,6 @@
 
 `environment-summary.json`、`environment-summary.md` 與 Actions 摘要都顯示選取範圍、完整來源是否驗證及門檻結果。重測後最多允許八個來源失敗，且失敗比例不得超過 10%，分母為本次核定的採集範圍。解析、拒絕存取、Chrome 執行錯誤及連續三次未恢復仍會阻擋。cloud 與 full 的歷史分別存於 `rust-source-smoke-cloud` 與 `rust-source-smoke`。
 
-日常雲端檢查不能代替發布檢查。發布仍需發布時才啟動、只接一個工作的本機 Mac 執行器，以全部 192 個核准來源及原嚴格門檻驗證。雲端產物沒有配對的本機發布證據時，`release_verification.status` 固定為 `not_evaluated`；cloud 永遠不能宣稱全目錄或發布驗證成功，也不新增永久 Mac 排程。
+發布驗證仍由只接一個工作、在發布時啟動的本機 Mac 執行器，依原有門檻檢查全部 192 個核准來源。雲端產物的 `release_verification.status` 固定為 `not_evaluated`。
 
 本次沒有修改核准來源集合（192 個）、CLI 選項、JSON schema v4、17 欄 Excel、預設 full／prefilter off 或國防部 TLS 例外。OS、Chrome／Chromium、OpenSSL、curl 版本另存 `environment-versions.json`，不輸出憑證或環境變數。新增診斷不代表發布檢查已通過。
