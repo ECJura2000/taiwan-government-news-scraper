@@ -61,7 +61,7 @@ export function evaluateSourceSmoke(report, retries, previous = null, {
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const [reportPath, retryRoot, historyPath, outputPath, profileName = 'full'] = process.argv.slice(2);
-  const profile = resolveSmokeProfile(profileName);
+  const profile = resolveSmokeProfile(profileName, {today:process.env.SOURCE_SMOKE_PROFILE_DATE});
   const report = JSON.parse(fs.readFileSync(reportPath, 'utf8'));
   const retries = fs.readdirSync(retryRoot).map(dir => path.join(retryRoot, dir, 'retry-evidence.json'))
     .filter(file => fs.existsSync(file)).map(file => JSON.parse(fs.readFileSync(file, 'utf8')));

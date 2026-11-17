@@ -30,9 +30,9 @@
 
 同一來源連續三次完整檢查（包含重測）仍失敗時，阻擋並列出次數。成功或重測恢復會歸零，同一 run ID 不重複累加。歷史由前一次同分支 `rust-source-smoke` artifact 讀回；產物保留 7 天，即使門檻失敗仍上傳歷史。工作流程序列化，避免平行執行覆寫歷史。首次啟用或找不到保留歷史時，工作流程會顯示重新建立歷史的 notice；無法讀回或歷史格式錯誤會失敗，不靜默忽略。
 
-核准來源集合仍完整比對 `approved_sources.json`（192 個）。日常預設 `cloud` 範圍依 `source_verification_profiles.json` 的逐來源證據執行 169 個；23 個在兩次 GitHub 查核連線逾時／驗證頁阻擋而 Mac 全量成功的來源，明示「本次未收集、須由 Mac 驗證」，不算本次成功，也不從 GUI、CLI 或發布清單移除。範圍證據於 2026-11-13 必須複查，到期或證據缺漏會阻擋 cloud 工作，不靜默沿用；不得把重要來源移入此清單。手動 `full` 仍嘗試全部 192 個，原始失敗分類及門檻保留。
+核准來源集合與 `approved_sources.json` 完整比對（192 個）。日常預設 `cloud` 依 `source_verification_profiles.json` 的有效逐來源證據決定範圍。清單內的來源在 GitHub 連線逾時或受驗證頁阻擋，但當時的 Mac 全量檢查成功。證據有效期間，這些來源標示為「本次未收集、須由 Mac 驗證」。到期後，雲端排程重新納入全部核准來源，Actions 摘要會顯示複查日期與到期警告。採集和門檻使用同一個 UTC 查核日。證據格式錯誤或缺漏仍會阻擋工作。重要來源不得列為例外。手動 `full` 一律嘗試全部 192 個來源。
 
-`environment-summary.json`／`.md` 與 Actions 摘要區分選取範圍、完整来源是否驗證及門檻結果。cloud 的綠色門檻只代表其明確選取範圍符合原有最多八個且 10% 的限制；分母是實際範圍 169，完整檢查仍為 192，沒有提高允許失敗比例。解析、拒絕存取、Chrome 執行錯誤及連續三次未恢復仍阻擋。cloud/full 的歷史分別存於 `rust-source-smoke-cloud`／`rust-source-smoke`，不混合計算。
+`environment-summary.json`、`environment-summary.md` 與 Actions 摘要都顯示選取範圍、完整來源是否驗證及門檻結果。重測後最多允許八個來源失敗，且失敗比例不得超過 10%，分母為本次核定的採集範圍。解析、拒絕存取、Chrome 執行錯誤及連續三次未恢復仍會阻擋。cloud 與 full 的歷史分別存於 `rust-source-smoke-cloud` 與 `rust-source-smoke`。
 
 日常雲端檢查不能代替發布檢查。發布仍需發布時才啟動、只接一個工作的本機 Mac 執行器，以全部 192 個核准來源及原嚴格門檻驗證。雲端產物沒有配對的本機發布證據時，`release_verification.status` 固定為 `not_evaluated`；cloud 永遠不能宣稱全目錄或發布驗證成功，也不新增永久 Mac 排程。
 

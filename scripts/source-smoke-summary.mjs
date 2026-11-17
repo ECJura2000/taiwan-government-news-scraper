@@ -6,7 +6,7 @@ import {loadApprovedSources, matchesApprovedSources} from './check-source-catalo
 // Presentation only: this never recomputes acceptance, removes failures, or
 // writes source-health history. The adjacent raw gate remains authoritative.
 export function buildSmokeSummary(report, gate, retries = [], {
-  environment = 'unknown', expectedSources = loadApprovedSources(), environmentVersions = null,
+  environment = 'unknown', expectedSources = loadApprovedSources(), environmentVersions = null, plannedScope = null,
 } = {}) {
   const fullSet = !!report && report.selected_source_count === expectedSources.length &&
     matchesApprovedSources(report.selected_sources ?? [], expectedSources);
@@ -31,7 +31,7 @@ export function buildSmokeSummary(report, gate, retries = [], {
     gate_accepted: gate?.accepted ?? null,
     gate_errors: gate?.errors ?? ['gate evidence unavailable'],
     gate_evidence: 'gate-result.json',
-    verification_scope: gate?.verification_scope ?? null,
+    verification_scope: gate?.verification_scope ?? plannedScope,
     not_collected_in_cloud: gate?.verification_scope?.unverified_sources ?? [],
     initial_failed_sources: initial,
     retry_recovered_sources: initial.filter(source => !unresolved.includes(source)),
@@ -49,8 +49,13 @@ export function renderSmokeSummary(summary) {
     `執行環境：${cell(summary.execution_environment)}。核准來源：${summary.approved_source_count}；本次選擇：${summary.selected_source_count ?? '未確認'}。`, '',
     `${verified}。原始門檻：${summary.gate_accepted === true ? '通過' : summary.gate_accepted === false ? '未通過' : '缺少證據'}；未恢復來源：${summary.unresolved_failures.length}。`, '',
     '此摘要不改變原始 gate-result.json 的結果。發布另需發布時才啟動的本機 Mac 完整來源檢查；此產物沒有配對的發布驗證證據。', '',
-    '文化部的官方驗證頁阻擋會如實列為失敗。其他網路、解析或 Chrome 故障保留當次分類，未視為永久雲端限制，也未排除任何來源。', '',
     'OS、Chrome／Chromium、OpenSSL 與 curl 版本另存 environment-versions.json，供比對實際環境，不含憑證或環境變數內容。'];
+  const scope = summary.verification_scope;
+  if (scope?.evidence_status === 'expired') {
+    lines.push('', `雲端例外證據已於 ${cell(scope.review_after)} 到期。本次雲端排程以全部 ${scope.approved_source_count} 個核准來源為驗證範圍，需重新查核例外證據。`);
+  } else if (scope?.evidence_status === 'current') {
+    lines.push('', `雲端例外證據須於 ${cell(scope.review_after)} 前複查。`);
+  }
   if (summary.not_collected_in_cloud?.length) {
     lines.push('', `本次雲端範圍未收集 ${summary.not_collected_in_cloud.length} 個來源，全部仍保留於核准目錄；須由 Mac 完整驗證，不列為本次成功：`, '',
       '| 須由 Mac 驗證 | 實際原因 | 證據 |', '| --- | --- | --- |');
@@ -75,7 +80,8 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   const summary = buildSmokeSummary(latest ? read(path.join(reports, latest)) : null,
     read(path.join(root, 'gate-result.json')), retries,
     {environment: process.env.SOURCE_SMOKE_EXECUTION_ENVIRONMENT ?? 'unknown',
-      environmentVersions:read(path.join(root, 'environment-versions.json'))});
+      environmentVersions:read(path.join(root, 'environment-versions.json')),
+      plannedScope:read(path.join(root, 'verification-profile.json'))});
   fs.mkdirSync(root, {recursive: true});
   fs.writeFileSync(path.join(root, 'environment-summary.json'), JSON.stringify(summary, null, 2) + '\n');
   const markdown = renderSmokeSummary(summary);

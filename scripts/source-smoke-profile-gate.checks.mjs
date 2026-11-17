@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import {resolveSmokeProfile} from './source-smoke-profile.mjs';
 import {loadApprovedSources} from './check-source-catalog.mjs';
 import {evaluateSourceSmoke} from './source-smoke-gate.mjs';
-import {buildSmokeSummary} from './source-smoke-summary.mjs';
+import {buildSmokeSummary, renderSmokeSummary} from './source-smoke-summary.mjs';
 
 const approved = loadApprovedSources();
 const evidence = JSON.parse(fs.readFileSync('src-tauri/resources/source_verification_profiles.json'));
@@ -17,15 +17,15 @@ test('cloud and manual verification exactly partition the approved catalog', () 
   assert.deepEqual(full.expected_sources, approved);
   assert.deepEqual(full.unverified_sources, []);
 });
-test('unknown, duplicate, stale and unproven exclusions fail closed', () => {
+test('unknown, duplicate and unproven exclusions fail closed', () => {
   assert.throws(()=>resolveSmokeProfile('other', options));
-  assert.throws(()=>resolveSmokeProfile('cloud', {...options,today:evidence.review_after}));
   for (const change of [
     data=>data.manual_mac_sources.push(data.manual_mac_sources[0]),
     data=>data.manual_mac_sources[0].source='未知來源',
     data=>data.manual_mac_sources[0].source='國科會',
     data=>data.manual_mac_sources[0].mac_status='failed',
     data=>data.manual_mac_sources[0].network_probe_run='',
+    data=>data.manual_mac_sources[0].checked_at=data.review_after,
     data=>data.review_after='2026-02-31',
     data=>data.review_after='2099-01-01',
   ]) {
@@ -33,6 +33,25 @@ test('unknown, duplicate, stale and unproven exclusions fail closed', () => {
     assert.throws(()=>resolveSmokeProfile('cloud',{...options,evidence:copy}));
   }
   assert.deepEqual(resolveSmokeProfile('full',{...options,today:evidence.review_after}).expected_sources,approved);
+});
+test('expired exclusions return to the cloud scope and are required by the gate', () => {
+  const profile = resolveSmokeProfile('cloud',{...options,today:evidence.review_after});
+  assert.equal(profile.name,'cloud');
+  assert.equal(profile.evidence_status,'expired');
+  assert.deepEqual(profile.expected_sources,approved);
+  assert.deepEqual(profile.unverified_sources,[]);
+  const selected = resolveSmokeProfile('cloud',options).expected_sources;
+  const report = {run_id:'expired-profile-fixture',report_schema_version:4,selected_sources:selected,
+    selected_source_count:selected.length,news_count:1,status:'success',failed_sources:[],
+    relevance_policy:{ruleset_hash:'a'.repeat(64)},quality:{alert_reasons:[]},
+    source_diagnostics:selected.map(source=>({source,status:'success'}))};
+  const gate = evaluateSourceSmoke(report,[],null,{expectedSources:profile.expected_sources});
+  assert.equal(gate.accepted,false);
+  assert.equal(gate.history_update_allowed,false);
+  const summary = buildSmokeSummary(null,null,[],{plannedScope:profile});
+  assert.match(renderSmokeSummary(summary),/雲端例外證據已於 .* 到期/);
+  assert.deepEqual(summary.not_collected_in_cloud,[]);
+  assert.equal(summary.complete_source_verification,false);
 });
 test('a cloud green gate still cannot claim full or Mac release verification', () => {
   const profile = resolveSmokeProfile('cloud',options);
