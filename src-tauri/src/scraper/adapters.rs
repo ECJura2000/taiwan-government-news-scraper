@@ -640,6 +640,7 @@ pub fn parse_detail_full_text(source: &str, body: &str) -> String {
         "高速公路局" => &[".FCKdetail"],
         "交通部" => &[".d_subnews .editor"],
         "外交部" | "文化部" => &["#CCMS_Content .essay .p"],
+        "陸委會" => &[".area-essay.page-caption-p .essay .p"],
         "教育部" => &["#ContentPlaceHolder1_divcontent"],
         "勞動部" => &["section.cp"],
         "金管會" => &[".maincontent .page-edit"],
@@ -650,6 +651,7 @@ pub fn parse_detail_full_text(source: &str, body: &str) -> String {
         }
         "國科會" => &[".articleContent", ".article-content", "article"],
         "經濟部" => &[
+            "#divPageDetail_Content .div-left-info",
             "#ctl00_ContentPlaceHolder1_divContent",
             ".article-content",
             ".cpArticle",

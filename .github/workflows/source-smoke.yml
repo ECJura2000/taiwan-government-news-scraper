@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       profile:
-        description: 'cloud = verified cloud scope; full = attempt all approved sources'
+        description: 'cloud = use current cloud evidence; full = always attempt all approved sources'
         type: choice
         options: [cloud, full]
         default: cloud
@@ -63,15 +63,24 @@ jobs:
             echo "::notice::No retained history found; starting a new source-health history."
           fi
       - name: Run declared official-source verification scope
+        id: collect
         shell: bash
         run: |
           mkdir -p source-smoke/output source-smoke/reports
           node scripts/check-source-catalog.mjs
-          node scripts/source-smoke-profile.mjs "$SOURCE_SMOKE_PROFILE" > source-smoke/verification-profile.json
+          SOURCE_SMOKE_PROFILE_DATE="$(date -u +%F)"
+          export SOURCE_SMOKE_PROFILE_DATE
+          echo "SOURCE_SMOKE_PROFILE_DATE=$SOURCE_SMOKE_PROFILE_DATE" >> "$GITHUB_ENV"
+          profile_json="$(node scripts/source-smoke-profile.mjs "$SOURCE_SMOKE_PROFILE")"
+          printf '%s\n' "$profile_json" > source-smoke/verification-profile.json
           source_args=()
           if [ "$SOURCE_SMOKE_PROFILE" = "cloud" ]; then
-            mapfile -t sources < <(node scripts/source-smoke-profile.mjs cloud --sources)
+            expected_sources="$(jq -er '.expected_sources[]' source-smoke/verification-profile.json)"
+            mapfile -t sources <<< "$expected_sources"
             for source in "${sources[@]}"; do source_args+=(--sources "$source"); done
+            if jq -e '.evidence_status == "expired"' source-smoke/verification-profile.json > /dev/null; then
+              echo "::warning::Cloud profile evidence expired; checking all approved sources on GitHub-hosted runner. Review the Mac-only evidence."
+            fi
           fi
           cargo run --release --bin news-scraper -- collect \
             "${source_args[@]}" \
@@ -79,7 +88,7 @@ jobs:
             --report-dir source-smoke/reports \
             --max-workers 8 | tee source-smoke/summary.jsonl
       - name: Validate smoke artifacts and report status
-        if: always()
+        if: steps.collect.outcome == 'success'
         shell: bash
         run: |
           report="$(find source-smoke/reports -name 'news_scraper_run_*.json' -type f | sort | tail -n 1)"

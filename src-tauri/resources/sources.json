@@ -204,7 +204,8 @@
   {
     "name": "陸委會",
     "urls": [
-      "https://www.mac.gov.tw/OpenData.aspx?SN=D33B55D537402BAA"
+      "https://www.mac.gov.tw/OpenData.aspx?SN=D33B55D537402BAA",
+      "https://www.mac.gov.tw/News.aspx?n=B383123AEADAEE52&sms=2B7F1AE4AC63A181"
     ],
     "routes": [
       {
@@ -213,8 +214,36 @@
         "kind": "rss",
         "parser": "standard-rss",
         "priority": 1
+      },
+      {
+        "id": "official-press-list",
+        "url": "https://www.mac.gov.tw/News.aspx?n=B383123AEADAEE52&sms=2B7F1AE4AC63A181",
+        "kind": "browser",
+        "parser": "standard",
+        "priority": 2,
+        "coverage_reduced": true,
+        "selectors": {
+          "item": "#table_0 tbody tr",
+          "link": "td[data-title='主題'] a[href]",
+          "title": "td[data-title='主題'] a[href]",
+          "date": "td[data-title='發布日期']"
+        },
+        "pagination": {
+          "parameter": "page",
+          "first_page": 1,
+          "max_pages": 8
+        },
+        "wait_for_selector": "#table_0 td[data-title='發布日期']"
       }
-    ]
+    ],
+    "transport": {
+      "detail": [
+        {
+          "host": "www.mac.gov.tw",
+          "browser_fallback": true
+        }
+      ]
+    }
   },
   {
     "name": "國防部",
@@ -573,6 +602,7 @@
     "name": "經濟部",
     "urls": [
       "https://www.moea.gov.tw/Mns/populace/news/NewsRSSdetail.aspx?Kind=1",
+      "https://www.moea.gov.tw/MNS/populace/news/NewsList.aspx?kind=1&menu_id=40",
       "https://www.moea.gov.tw/Mns/Populace/news/News.aspx?kind=1&menu_id=40"
     ],
     "routes": [
@@ -584,14 +614,30 @@
         "priority": 1
       },
       {
-        "id": "official-browser",
-        "url": "https://www.moea.gov.tw/Mns/Populace/news/News.aspx?kind=1&menu_id=40",
+        "id": "official-browser-list",
+        "url": "https://www.moea.gov.tw/MNS/populace/news/NewsList.aspx?kind=1&menu_id=40",
         "kind": "browser",
         "parser": "moea-html",
         "priority": 2,
         "coverage_reduced": true
+      },
+      {
+        "id": "official-browser",
+        "url": "https://www.moea.gov.tw/Mns/Populace/news/News.aspx?kind=1&menu_id=40",
+        "kind": "browser",
+        "parser": "moea-html",
+        "priority": 3,
+        "coverage_reduced": true
       }
-    ]
+    ],
+    "transport": {
+      "detail": [
+        {
+          "host": "www.moea.gov.tw",
+          "browser_fallback": true
+        }
+      ]
+    }
   },
   {
     "name": "交通部",
@@ -2902,16 +2948,36 @@
     "name": "公共電視文化事業基金會",
     "parent_ministry": "文化部",
     "urls": [
+      "https://www.pts.org.tw/zh_tw/about/pr/latestnews",
       "https://about.pts.org.tw/rss/XML/newsletter.xml",
       "https://about.pts.org.tw/pr/latestnews/"
     ],
     "routes": [
       {
+        "id": "official-press-list",
+        "url": "https://www.pts.org.tw/zh_tw/about/pr/latestnews",
+        "kind": "html",
+        "parser": "standard",
+        "priority": 1,
+        "selectors": {
+          "item": "li.i-annc__item",
+          "link": "a[href]",
+          "title": ".i-annc__title",
+          "date": ".i-annc__postdate",
+          "category": ".i-annc__category"
+        },
+        "pagination": {
+          "parameter": "page_no",
+          "first_page": 1,
+          "max_pages": 8
+        }
+      },
+      {
         "id": "official-rss",
         "url": "https://about.pts.org.tw/rss/XML/newsletter.xml",
         "kind": "rss",
         "parser": "standard-rss",
-        "priority": 1,
+        "priority": 2,
         "coverage_reduced": true
       },
       {
@@ -2919,7 +2985,7 @@
         "url": "https://about.pts.org.tw/pr/latestnews/",
         "kind": "html",
         "parser": "standard",
-        "priority": 2,
+        "priority": 3,
         "selectors": {
           "item": "li.list-news-item",
           "link": ".list-news-title a",
