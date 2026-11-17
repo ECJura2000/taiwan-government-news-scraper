@@ -2902,16 +2902,36 @@
     "name": "公共電視文化事業基金會",
     "parent_ministry": "文化部",
     "urls": [
+      "https://www.pts.org.tw/zh_tw/about/pr/latestnews",
       "https://about.pts.org.tw/rss/XML/newsletter.xml",
       "https://about.pts.org.tw/pr/latestnews/"
     ],
     "routes": [
       {
+        "id": "official-press-list",
+        "url": "https://www.pts.org.tw/zh_tw/about/pr/latestnews",
+        "kind": "html",
+        "parser": "standard",
+        "priority": 1,
+        "selectors": {
+          "item": "li.i-annc__item",
+          "link": "a[href]",
+          "title": ".i-annc__title",
+          "date": ".i-annc__postdate",
+          "category": ".i-annc__category"
+        },
+        "pagination": {
+          "parameter": "page_no",
+          "first_page": 1,
+          "max_pages": 8
+        }
+      },
+      {
         "id": "official-rss",
         "url": "https://about.pts.org.tw/rss/XML/newsletter.xml",
         "kind": "rss",
         "parser": "standard-rss",
-        "priority": 1,
+        "priority": 2,
         "coverage_reduced": true
       },
       {
@@ -2919,7 +2939,7 @@
         "url": "https://about.pts.org.tw/pr/latestnews/",
         "kind": "html",
         "parser": "standard",
-        "priority": 2,
+        "priority": 3,
         "selectors": {
           "item": "li.list-news-item",
           "link": ".list-news-title a",
