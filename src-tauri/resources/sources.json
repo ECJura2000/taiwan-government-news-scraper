@@ -149,6 +149,28 @@
     "urls": [
       "https://www.nfa.gov.tw/pro/index.php?code=list&ids=1470"
     ],
+    "routes": [
+      {
+        "id": "primary",
+        "url": "https://www.nfa.gov.tw/pro/index.php?code=list&ids=1470",
+        "kind": "html",
+        "parser": "standard",
+        "priority": 1
+      },
+      {
+        "id": "official-browser",
+        "url": "https://www.nfa.gov.tw/pro/index.php?code=list&ids=1470",
+        "kind": "browser",
+        "parser": "standard",
+        "priority": 2,
+        "wait_for_selector": ".pageContent.news table td:nth-child(3)",
+        "pagination": {
+          "parameter": "page",
+          "first_page": 1,
+          "max_pages": 8
+        }
+      }
+    ],
     "transport": {
       "list": {
         "tls_intermediate": {
@@ -159,6 +181,7 @@
       "detail": [
         {
           "host": "www.nfa.gov.tw",
+          "browser_fallback": true,
           "tls_intermediate": {
             "host": "www.nfa.gov.tw",
             "certificate": "twca-secure2023"
@@ -5859,6 +5882,23 @@
           "link": "a[href]",
           "title": "h3",
           "date": "div.date"
+        }
+      },
+      {
+        "id": "official-browser",
+        "url": "https://www.atri.org.tw/hotnews",
+        "kind": "browser",
+        "parser": "standard",
+        "priority": 2,
+        "selectors": {
+          "item": "div.item",
+          "link": "a[href]",
+          "title": "h3",
+          "date": "div.date"
+        },
+        "wait_for_selector": "div.item h3",
+        "transport": {
+          "timeout_seconds": 45
         }
       }
     ],

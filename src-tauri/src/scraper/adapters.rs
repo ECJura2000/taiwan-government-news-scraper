@@ -56,9 +56,10 @@ pub(crate) fn is_access_challenge_document(body: &str) -> bool {
         let document = Html::parse_document(body);
         let title = Selector::parse("title").expect("valid title selector");
         return document.select(&title).any(|node| {
-            html::clean_text(node)
-                .trim()
-                .eq_ignore_ascii_case("Just a moment...")
+            let text = html::clean_text(node);
+            ["Just a moment...", "請稍候...", "请稍候..."]
+                .iter()
+                .any(|title| text.trim().eq_ignore_ascii_case(title))
         });
     }
     if lower.contains("_incapsula_resource") {
@@ -801,6 +802,14 @@ mod tests {
     fn managed_challenge_is_not_a_feed_or_article_and_resources_alone_are_not_blocked() {
         let challenge = r#"<html><head><title>Just a moment...</title><script>window._cf_chl_opt = {};</script></head><body><script src="/cdn-cgi/challenge-platform/h/g/orchestrate/chl_page/v1"></script></body></html>"#;
         assert!(super::is_access_challenge_document(challenge));
+        for title in ["請稍候...", "请稍候..."] {
+            let localized = challenge.replace("Just a moment...", title);
+            assert!(super::is_access_challenge_document(&localized));
+            assert!(super::parse_detail_full_text("財團法人農業科技研究院", &localized).is_empty());
+            assert!(!super::is_access_challenge_document(
+                &localized.replace("_cf_chl_opt", "news_options")
+            ));
+        }
         let route: crate::scraper::catalog::SourceRoute = serde_json::from_value(serde_json::json!({"id":"rss","url":"https://example.test/rss","kind":"rss","parser":"standard-rss"})).unwrap();
         assert!(matches!(
             super::parse_route("文化部", &route, challenge),
