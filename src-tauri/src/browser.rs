@@ -1035,7 +1035,7 @@ mod tests {
         use tokio::io::{AsyncReadExt, AsyncWriteExt};
         let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
         let address = listener.local_addr().unwrap();
-        let body = r#"<!doctype html><html><head><title>Just a moment...</title></head><body>
+        let body = r#"<!doctype html><html><head><title>請稍候...</title></head><body>
         <script>window._cf_chl_opt = {}; /* /cdn-cgi/challenge-platform/ */
         setTimeout(() => { document.title = 'Official news'; document.body.innerHTML = '<main id="official-news">News</main>'; }, 4000);
         </script></body></html>"#;
@@ -1058,7 +1058,7 @@ mod tests {
         .unwrap();
         server.await.unwrap();
         assert!(captured.contains("data-checked=\"yes\""));
-        assert!(!captured.contains("Just a moment..."));
+        assert!(!captured.contains("請稍候..."));
     }
 
     #[tokio::test]
