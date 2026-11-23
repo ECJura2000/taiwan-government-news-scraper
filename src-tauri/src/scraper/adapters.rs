@@ -635,6 +635,7 @@ pub fn parse_detail_full_text(source: &str, body: &str) -> String {
     let source_selectors: &[&str] = match source {
         "財團法人台灣優良農產品發展協會" => &["#postblock .post-block"],
         "國防部" => &["div.maincontent"],
+        "消防署" => &["article.pageContent"],
         "漁業署" => &[".article-info dl.full > dd"],
         "農業部種苗改良繁殖場" => &[".detail_box .detail_txt"],
         "行政院" => &[".words_content .data_left"],
@@ -754,6 +755,21 @@ fn clean_article_text(container: scraper::ElementRef<'_>) -> String {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn nfa_detail_uses_the_news_article_instead_of_an_earlier_layout_article() {
+        let body = r#"<html><body><article>首頁導覽</article>
+        <article class="pageContent"><h3>防災交流會</h3>
+        <span>消防署舉辦全國防災交流會。</span><br>
+        <span>中央與地方共同提升防救災韌性。</span>
+        <script>tracking()</script></article><footer>網站頁尾</footer></body></html>"#;
+        let text = super::parse_detail_full_text("消防署", body);
+        assert!(text.contains("消防署舉辦全國防災交流會。"));
+        assert!(text.contains("中央與地方共同提升防救災韌性。"));
+        for excluded in ["首頁導覽", "tracking()", "網站頁尾"] {
+            assert!(!text.contains(excluded));
+        }
+    }
+
     #[test]
     fn cloudflare_terminal_denial_is_access_blocked_not_parser_regression() {
         let denied = r#"<html><head><title>Attention Required! | Cloudflare</title></head><body><div id="cf-error-details"><h1>Sorry, you have been blocked</h1></div></body></html>"#;
