@@ -48,19 +48,26 @@ pub(crate) fn is_access_blocked_document(body: &str) -> bool {
 }
 
 pub(crate) fn is_access_challenge_document(body: &str) -> bool {
+    access_challenge_provider(body).is_some()
+}
+
+pub(crate) fn access_challenge_provider(body: &str) -> Option<&'static str> {
     if rss::is_feed_document(body) {
-        return false;
+        return None;
     }
     let lower = body.to_ascii_lowercase();
     if lower.contains("_cf_chl_opt") && lower.contains("/cdn-cgi/challenge-platform/") {
         let document = Html::parse_document(body);
         let title = Selector::parse("title").expect("valid title selector");
-        return document.select(&title).any(|node| {
-            let text = html::clean_text(node);
-            ["Just a moment...", "請稍候...", "请稍候..."]
-                .iter()
-                .any(|title| text.trim().eq_ignore_ascii_case(title))
-        });
+        return document
+            .select(&title)
+            .any(|node| {
+                let text = html::clean_text(node);
+                ["Just a moment...", "請稍候...", "请稍候..."]
+                    .iter()
+                    .any(|title| text.trim().eq_ignore_ascii_case(title))
+            })
+            .then_some("Cloudflare");
     }
     if lower.contains("_incapsula_resource") {
         let document = Html::parse_document(body);
@@ -68,9 +75,10 @@ pub(crate) fn is_access_challenge_document(body: &str) -> bool {
         return document
             .select(&selector)
             .next()
-            .is_some_and(|body| !body.text().any(|text| !text.trim().is_empty()));
+            .is_some_and(|body| !body.text().any(|text| !text.trim().is_empty()))
+            .then_some("Incapsula");
     }
-    false
+    None
 }
 
 fn html_profile(source: &str) -> Option<DatedListSelectors<'static>> {
