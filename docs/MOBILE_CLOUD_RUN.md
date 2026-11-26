@@ -13,7 +13,7 @@
 - `scripts/upload-cloud-drive.sh`：從 Actions Secret 建立臨時 rclone 設定，上傳後核對檔案，最後刪除臨時設定。
 - 不更動既有爬取、分類、排序或 Excel 格式。
 
-台灣：使用 Rust stable、Cargo.lock 與系統 Chrome，建置 `news-scraper` CLI；因 Cargo 套件仍依賴 Tauri，Linux 要安裝 WebKit 等函式庫，但不啟動 GUI。日期留白沿用原規則：臺北時間週一抓上一完整週，其餘日抓本週。指定起訖則使用 `--start-date/--end-date`。維持 192 來源、17 欄與正式全文模式。
+台灣：使用 Rust stable、Cargo.lock 與系統 Chrome，建置 `news-scraper` CLI；因 Cargo 套件仍依賴 Tauri，Linux 要安裝 WebKit 等函式庫，但不啟動 GUI。日期留白沿用原規則：臺北時間週一抓上一完整週，其餘日抓本週。指定起訖則使用 `--start-date/--end-date`。使用核准來源清單（191 個）、17 欄與正式全文模式。
 
 Artifacts 保存 30 天，仍受 Repository/組織政策、配額及帳務限制；Drive 持續保留到你自行刪除或儲存容量用完。Runner 本機檔案不是持久儲存。成功產檔後先存 Artifacts；有勾選 `upload_to_drive` 時才上傳 Drive。Drive 授權失效或上傳錯誤會使工作流程失敗，但已上傳的 Artifacts 可下載。程式或建置失敗時，不一定能產生 Excel；已有的 collection.log 和輸出檔會嘗試保存為診斷 Artifacts。
 

@@ -5865,60 +5865,6 @@
     }
   },
   {
-    "name": "財團法人農業科技研究院",
-    "parent_ministry": "農業部",
-    "urls": [
-      "https://www.atri.org.tw/hotnews"
-    ],
-    "routes": [
-      {
-        "id": "official-news-html",
-        "url": "https://www.atri.org.tw/hotnews",
-        "kind": "html",
-        "parser": "standard",
-        "priority": 1,
-        "selectors": {
-          "item": "div.item",
-          "link": "a[href]",
-          "title": "h3",
-          "date": "div.date"
-        }
-      },
-      {
-        "id": "official-browser",
-        "url": "https://www.atri.org.tw/hotnews",
-        "kind": "browser",
-        "parser": "standard",
-        "priority": 2,
-        "selectors": {
-          "item": "div.item",
-          "link": "a[href]",
-          "title": "h3",
-          "date": "div.date"
-        },
-        "wait_for_selector": "div.item h3",
-        "transport": {
-          "timeout_seconds": 45
-        }
-      }
-    ],
-    "official_name": "財團法人農業科技研究院",
-    "parent_source": "農業部",
-    "transport": {
-      "list": {
-        "timeout_seconds": 20,
-        "retry_attempts": 1
-      },
-      "detail": [
-        {
-          "host": "www.atri.org.tw",
-          "timeout_seconds": 12,
-          "retry_attempts": 1
-        }
-      ]
-    }
-  },
-  {
     "name": "全國農業金庫股份有限公司",
     "parent_ministry": "農業部",
     "urls": [
