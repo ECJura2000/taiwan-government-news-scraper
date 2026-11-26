@@ -3,7 +3,7 @@
 [![Rust quality](https://github.com/ECJura2000/taiwan-government-news-scraper/actions/workflows/test.yml/badge.svg)](https://github.com/ECJura2000/taiwan-government-news-scraper/actions/workflows/test.yml)
 [![Tauri v2](https://github.com/ECJura2000/taiwan-government-news-scraper/actions/workflows/tauri-v2.yml/badge.svg)](https://github.com/ECJura2000/taiwan-government-news-scraper/actions/workflows/tauri-v2.yml)
 
-v2.2.4 是完整 Rust 版；目前核准來源目錄含 192 個政府機關、館舍、政府捐助法人及政府投資事業發布來源。CLI、Tauri GUI、RSS／HTML／JSON、Chrome CDP、品質檢查、相關性規則、JSON schema v4 與 Excel 都由同一個 Rust application service 執行。四部會擴充與待確認名單見 [四部會來源查核](docs/four-ministry-source-audit.md)，既有法人依據見 [主管財團法人來源查核](docs/foundation-source-audit.md)。Excel 新聞日期使用斜線格式，新聞全文欄位會優先寫入官方完整內容；「開啟原文」欄會顯示「機關官網：完整網址」，並以同一網址建立可點擊的 Excel 超連結。經濟部改用官方 RSS 全文並保留瀏覽器列表頁備援；文策院採官方 Chrome CDP 路由，國防部僅在官方主機的 TLS 問題下使用瀏覽器備援。JSON 報告會記錄全文覆蓋率與摘要 fallback 數；入選新聞排序採關聯等級、規則分數、BM25、日期的穩定順序。v2.0.0 保留在 GitHub Releases 作為 rollback。
+v2.2.4 是完整 Rust 版；目前核准來源目錄含 191 個政府機關、館舍、政府捐助法人及政府投資事業發布來源。CLI、Tauri GUI、RSS／HTML／JSON、Chrome CDP、品質檢查、相關性規則、JSON schema v4 與 Excel 都由同一個 Rust application service 執行。四部會擴充與待確認名單見 [四部會來源查核](docs/four-ministry-source-audit.md)，既有法人依據見 [主管財團法人來源查核](docs/foundation-source-audit.md)。Excel 新聞日期使用斜線格式，新聞全文欄位會優先寫入官方完整內容；「開啟原文」欄會顯示「機關官網：完整網址」，並以同一網址建立可點擊的 Excel 超連結。經濟部改用官方 RSS 全文並保留瀏覽器列表頁備援；文策院採官方 Chrome CDP 路由，國防部僅在官方主機的 TLS 問題下使用瀏覽器備援。JSON 報告會記錄全文覆蓋率與摘要 fallback 數；入選新聞排序採關聯等級、規則分數、BM25、日期的穩定順序。v2.0.0 保留在 GitHub Releases 作為 rollback。
 
 v2.1.29 修正九類官方新聞正文容器及金管會 RSS 連結，加入來源別全文品質門檻、完整分段計時，以及日常來源檢查的失敗比例與連續失敗追蹤，本次 v2.1.30 另加入官方 RSS 優先、日期涵蓋不足備援，以及國家標準時間校正；v2.1.31 另補上驗證頁等待與辨識，以及發布時才啟動的本機完整來源檢查，v2.1.32 擴充四部會來源並統一 RSS／網頁篩選，詳見 [四部會擴充說明](docs/v2.1.32-release-notes.md)與 [88 來源 RSS 查核](docs/RSS_PRIORITY_AUDIT.md)。
 

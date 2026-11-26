@@ -30,10 +30,10 @@
 
 同一來源連續三次完整檢查（包含重測）仍失敗時，阻擋並列出次數。成功或重測恢復會歸零，同一 run ID 不重複累加。歷史由前一次同分支 `rust-source-smoke` artifact 讀回；產物保留 7 天，即使門檻失敗仍上傳歷史。工作流程序列化，避免平行執行覆寫歷史。首次啟用或找不到保留歷史時，工作流程會顯示重新建立歷史的 notice；無法讀回或歷史格式錯誤會失敗，不靜默忽略。
 
-核准來源集合與 `approved_sources.json` 完整比對（192 個）。日常預設 `cloud` 依 `source_verification_profiles.json` 的有效逐來源證據決定範圍。清單內的來源在 GitHub 連線逾時或受驗證頁阻擋，但當時的 Mac 全量檢查成功。證據有效期間，這些來源標示為「本次未收集、須由 Mac 驗證」。到期後，雲端排程重新納入全部核准來源，Actions 摘要會顯示複查日期與到期警告。採集和門檻使用同一個 UTC 查核日。證據格式錯誤或缺漏仍會阻擋工作。重要來源不得列為例外。手動 `full` 一律嘗試全部 192 個來源。
+核准來源集合與 `approved_sources.json` 完整比對（191 個）。日常預設 `cloud` 依 `source_verification_profiles.json` 的有效逐來源證據決定範圍。清單內的來源在 GitHub 連線逾時或受驗證頁阻擋，但當時的 Mac 全量檢查成功。證據有效期間，這些來源標示為「本次未收集、須由 Mac 驗證」。到期後，雲端排程重新納入全部核准來源，Actions 摘要會顯示複查日期與到期警告。採集和門檻使用同一個 UTC 查核日。證據格式錯誤或缺漏仍會阻擋工作。重要來源不得列為例外。手動 `full` 一律嘗試全部 191 個來源。
 
 `environment-summary.json`、`environment-summary.md` 與 Actions 摘要都顯示選取範圍、完整來源是否驗證及門檻結果。重測後最多允許八個來源失敗，且失敗比例不得超過 10%，分母為本次核定的採集範圍。解析、拒絕存取、Chrome 執行錯誤及連續三次未恢復仍會阻擋。cloud 與 full 的歷史分別存於 `rust-source-smoke-cloud` 與 `rust-source-smoke`。
 
-發布驗證仍由只接一個工作、在發布時啟動的本機 Mac 執行器，依原有門檻檢查全部 192 個核准來源。雲端產物的 `release_verification.status` 固定為 `not_evaluated`。
+發布驗證仍由只接一個工作、在發布時啟動的本機 Mac 執行器，依原有門檻檢查全部 191 個核准來源。雲端產物的 `release_verification.status` 固定為 `not_evaluated`。
 
-本次沒有修改核准來源集合（192 個）、CLI 選項、JSON schema v4、17 欄 Excel、預設 full／prefilter off 或國防部 TLS 例外。OS、Chrome／Chromium、OpenSSL、curl 版本另存 `environment-versions.json`，不輸出憑證或環境變數。新增診斷不代表發布檢查已通過。
+來源檢查沿用 CLI 選項、JSON schema v4、17 欄 Excel、預設 full／prefilter off 與國防部 TLS 例外。OS、Chrome／Chromium、OpenSSL、curl 版本另存 `environment-versions.json`，不輸出憑證或環境變數。新增診斷不代表發布檢查已通過。
