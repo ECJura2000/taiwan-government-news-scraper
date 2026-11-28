@@ -138,23 +138,34 @@ async fn fetch_rendered_html_after_with_certificate_policy(
         launch_browser(allow_invalid_certificates, native_user_agent).await?;
     // Scope the deadline inside the owner so timeout still kills Chrome and
     // removes its profile. Semaphore queueing and browser startup are separate.
+    let mut challenge_provider = None;
     let fetch = fetch_from_target(
         &endpoint,
         url,
         page_script,
         expected_host.as_deref(),
         entry_url,
+        &mut challenge_provider,
     );
     let result = if let Some(timeout) = timeout {
         tokio::time::timeout(timeout, fetch)
             .await
-            .unwrap_or_else(|_| Err(format!("Chrome CDP 頁面逾時（{} 秒）", timeout.as_secs())))
+            .unwrap_or_else(|_| Err(browser_timeout_error(challenge_provider, timeout.as_secs())))
     } else {
         fetch.await
     };
     let _ = child.kill().await;
     let _ = tokio::fs::remove_dir_all(profile_dir).await;
     result
+}
+
+fn browser_timeout_error(challenge_provider: Option<&str>, seconds: u64) -> String {
+    match challenge_provider {
+        Some(provider) => {
+            format!("access_blocked: 瀏覽器等待 {provider} 驗證頁逾時（{seconds} 秒）")
+        }
+        None => format!("Chrome CDP 頁面逾時（{seconds} 秒）"),
+    }
 }
 
 async fn launch_browser(
@@ -256,6 +267,7 @@ async fn fetch_from_target(
     page_script: Option<&str>,
     expected_host: Option<&str>,
     entry_url: Option<&str>,
+    challenge_provider: &mut Option<&'static str>,
 ) -> Result<String, String> {
     let (mut socket, _) = connect_async(endpoint)
         .await
@@ -321,7 +333,8 @@ async fn fetch_from_target(
         // a failure. Treating the resource script itself as blocked causes
         // false positives after the browser has passed the challenge.
         let blocked = crate::scraper::adapters::is_access_blocked_document(html);
-        let challenge = crate::scraper::adapters::is_access_challenge_document(html);
+        *challenge_provider = crate::scraper::adapters::access_challenge_provider(html);
+        let challenge = challenge_provider.is_some();
         if blocked && !challenge {
             let _ = socket.close(None).await;
             return Err(
@@ -369,7 +382,7 @@ async fn fetch_from_target(
         tokio::time::sleep(Duration::from_secs(1)).await;
     }
     let _ = socket.close(None).await;
-    Err("access_blocked: 瀏覽器等待官方驗證頁超過 30 秒".to_owned())
+    Err(browser_timeout_error(*challenge_provider, 30))
 }
 
 async fn send_command(
@@ -1032,13 +1045,44 @@ mod tests {
     #[tokio::test]
     #[ignore = "requires a system Chrome or Chromium executable"]
     async fn waits_for_challenge_before_running_official_page_script() {
+        let (url, server) = serve_challenge(
+            r#"setTimeout(() => { document.title = 'Official news'; document.body.innerHTML = '<main id="official-news">News</main>'; }, 4000);"#,
+        )
+        .await;
+        let script = "(() => { const news = document.querySelector('#official-news'); if (!news) throw new Error('script ran before official document'); news.dataset.checked = 'yes'; })()";
+        let captured =
+            fetch_rendered_html_after_with_timeout(&url, Some(script), Duration::from_secs(30))
+                .await
+                .unwrap();
+        server.await.unwrap();
+        assert!(captured.contains("data-checked=\"yes\""));
+        assert!(!captured.contains("請稍候..."));
+    }
+
+    #[tokio::test]
+    #[ignore = "requires a system Chrome or Chromium executable"]
+    async fn browser_deadline_preserves_observed_cloudflare_challenge() {
+        let (url, server) = serve_challenge("").await;
+        let error = fetch_rendered_html_after_with_timeout(&url, None, Duration::from_secs(8))
+            .await
+            .unwrap_err();
+        server.await.unwrap();
+        assert_eq!(
+            error,
+            "access_blocked: 瀏覽器等待 Cloudflare 驗證頁逾時（8 秒）"
+        );
+    }
+
+    async fn serve_challenge(script: &str) -> (String, tokio::task::JoinHandle<()>) {
         use tokio::io::{AsyncReadExt, AsyncWriteExt};
         let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
         let address = listener.local_addr().unwrap();
-        let body = r#"<!doctype html><html><head><title>請稍候...</title></head><body>
-        <script>window._cf_chl_opt = {}; /* /cdn-cgi/challenge-platform/ */
-        setTimeout(() => { document.title = 'Official news'; document.body.innerHTML = '<main id="official-news">News</main>'; }, 4000);
-        </script></body></html>"#;
+        let body = format!(
+            r#"<!doctype html><html><head><title>請稍候...</title></head><body>
+        <script>window._cf_chl_opt = {{}}; /* /cdn-cgi/challenge-platform/ */
+        {script}
+        </script></body></html>"#
+        );
         let server = tokio::spawn(async move {
             let (mut stream, _) = listener.accept().await.unwrap();
             let mut request = [0_u8; 4096];
@@ -1048,17 +1092,7 @@ mod tests {
             stream.write_all(response.as_bytes()).await.unwrap();
             stream.shutdown().await.unwrap();
         });
-        let script = "(() => { const news = document.querySelector('#official-news'); if (!news) throw new Error('script ran before official document'); news.dataset.checked = 'yes'; })()";
-        let captured = fetch_rendered_html_after_with_timeout(
-            &format!("http://{address}/news"),
-            Some(script),
-            Duration::from_secs(30),
-        )
-        .await
-        .unwrap();
-        server.await.unwrap();
-        assert!(captured.contains("data-checked=\"yes\""));
-        assert!(!captured.contains("請稍候..."));
+        (format!("http://{address}/news"), server)
     }
 
     #[tokio::test]

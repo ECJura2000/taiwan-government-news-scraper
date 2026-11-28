@@ -303,6 +303,7 @@ impl HttpClient {
             .send()
             .await
             .map_err(classify_request_error)?;
+        validate_challenge_response(&response)?;
         let status = response.status();
         if status == StatusCode::TOO_MANY_REQUESTS {
             if let Some(delay) = response
@@ -365,6 +366,7 @@ impl HttpClient {
         }
         increment(&self.metrics.requests, 1);
         let response = request.send().await.map_err(classify_request_error)?;
+        validate_challenge_response(&response)?;
         let status = response.status();
         if status == StatusCode::NOT_MODIFIED {
             if cached.is_some() {
@@ -577,6 +579,20 @@ fn request_error_chain(error: &(dyn std::error::Error + 'static)) -> String {
     message
 }
 
+fn validate_challenge_response(response: &reqwest::Response) -> Result<(), ScraperError> {
+    if response
+        .headers()
+        .get("cf-mitigated")
+        .is_some_and(|value| value.as_bytes().eq_ignore_ascii_case(b"challenge"))
+    {
+        return Err(ScraperError::AccessBlocked(format!(
+            "HTTP {} (Cloudflare challenge)",
+            response.status()
+        )));
+    }
+    Ok(())
+}
+
 pub(crate) fn validate_status(status: StatusCode) -> Result<(), ScraperError> {
     if status == StatusCode::FORBIDDEN || status == StatusCode::UNAUTHORIZED {
         return Err(ScraperError::AccessBlocked(format!("HTTP {status}")));
@@ -596,6 +612,52 @@ pub(crate) fn validate_status(status: StatusCode) -> Result<(), ScraperError> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[tokio::test]
+    async fn cloudflare_challenge_responses_are_neither_cached_nor_retried() {
+        use std::io::{Read, Write};
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let url = format!("http://{}/news", listener.local_addr().unwrap());
+        let server = std::thread::spawn(move || {
+            for (status, headers) in [
+                (
+                    "200 OK",
+                    "ETag: \"challenge\"\r\ncf-mitigated: challenge\r\n",
+                ),
+                ("503 Service Unavailable", "cf-mitigated: challenge\r\n"),
+                ("200 OK", "Server: cloudflare\r\n"),
+            ] {
+                let (mut socket, _) = listener.accept().unwrap();
+                let mut request = [0; 4096];
+                let count = socket.read(&mut request).unwrap();
+                assert!(!String::from_utf8_lossy(&request[..count])
+                    .to_ascii_lowercase()
+                    .contains("if-none-match"));
+                write!(
+                    socket,
+                    "HTTP/1.1 {status}\r\n{headers}Content-Length: 4\r\nConnection: close\r\n\r\nnews"
+                )
+                .unwrap();
+            }
+        });
+        let client = HttpClient::new().unwrap();
+        let policy = TransportPolicy::list_default();
+        let list_error = client.fetch_text(&url, &policy).await.unwrap_err();
+        let range_error = client
+            .fetch_range_prefix(&url, &policy, 3)
+            .await
+            .unwrap_err();
+        for (error, status) in [(list_error, "200"), (range_error, "503")] {
+            let ScraperError::AccessBlocked(message) = error else {
+                panic!("expected Cloudflare access failure, got {error}");
+            };
+            assert!(message.contains(status));
+            assert!(message.contains("Cloudflare challenge"));
+        }
+        assert_eq!(client.fetch_text(&url, &policy).await.unwrap(), "news");
+        assert_eq!(client.metrics()["retry_count"], 0);
+        server.join().unwrap();
+    }
 
     #[tokio::test]
     async fn follows_valid_redirects_and_retries_incomplete_upstream_redirects() {
