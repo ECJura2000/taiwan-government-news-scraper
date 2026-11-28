@@ -10,8 +10,23 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 0
+      - name: Classify changed files
+        id: scope
+        shell: bash
+        env:
+          CI_BASE: ${{ github.event.pull_request.base.sha }}
+          CI_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+          CI_BEFORE: ${{ github.event.before }}
+        run: |
+          bash .github/ci-scope.sh --self-test
+          bash .github/ci-scope.sh
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        if: steps.scope.outputs.mode != 'docs'
         with:
           node-version: '22'
       - run: node --test scripts/cloud-delivery.checks.mjs
+        if: steps.scope.outputs.mode != 'docs'
       - run: bash -n scripts/upload-cloud-drive.sh
+        if: steps.scope.outputs.mode != 'docs'

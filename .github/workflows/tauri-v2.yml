@@ -20,6 +20,8 @@ on:
       - "*.js"
       - "index.html"
 
+  workflow_dispatch:
+
 permissions:
   contents: read
 
@@ -29,35 +31,70 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Classify changed files
+        id: scope
+        shell: bash
+        env:
+          CI_BASE: ${{ github.event.pull_request.base.sha }}
+          CI_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+          CI_BEFORE: ${{ github.event.before }}
+        run: |
+          bash .github/ci-scope.sh --self-test
+          bash .github/ci-scope.sh
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        if: steps.scope.outputs.mode == 'full'
         with:
           node-version: 22
           cache: npm
           cache-dependency-path: package-lock.json
       - run: npm ci
+        if: steps.scope.outputs.mode == 'full'
       - run: npm test
+        if: steps.scope.outputs.mode == 'full'
       - run: npm run check
+        if: steps.scope.outputs.mode == 'full'
       - run: npm run build
+        if: steps.scope.outputs.mode == 'full'
 
   rust:
     name: Rust quality and tests
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Classify changed files
+        id: scope
+        shell: bash
+        env:
+          CI_BASE: ${{ github.event.pull_request.base.sha }}
+          CI_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+          CI_BEFORE: ${{ github.event.before }}
+        run: |
+          bash .github/ci-scope.sh --self-test
+          bash .github/ci-scope.sh
       - name: Install Linux dependencies
+        if: steps.scope.outputs.mode == 'full'
         run: |
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
       - uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # master
+        if: steps.scope.outputs.mode == 'full'
         with:
           toolchain: stable
           components: rustfmt, clippy
       - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2
+        if: steps.scope.outputs.mode == 'full'
         with:
           key: tauri-v2-rust-quality-${{ runner.os }}
       - run: cargo fmt --all -- --check
+        if: steps.scope.outputs.mode == 'full'
       - run: cargo test --workspace
+        if: steps.scope.outputs.mode == 'full'
       - run: cargo clippy --workspace --all-targets --all-features -- -D warnings
+        if: steps.scope.outputs.mode == 'full'
 
   linux-smoke:
     name: Build Linux Tauri smoke
@@ -65,25 +102,44 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Classify changed files
+        id: scope
+        shell: bash
+        env:
+          CI_BASE: ${{ github.event.pull_request.base.sha }}
+          CI_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+          CI_BEFORE: ${{ github.event.before }}
+        run: |
+          bash .github/ci-scope.sh --self-test
+          bash .github/ci-scope.sh
       - name: Install Linux dependencies
+        if: steps.scope.outputs.mode == 'full'
         run: |
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        if: steps.scope.outputs.mode == 'full'
         with:
           node-version: 22
           cache: npm
           cache-dependency-path: package-lock.json
       - run: npm ci
+        if: steps.scope.outputs.mode == 'full'
       - uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # master
+        if: steps.scope.outputs.mode == 'full'
         with:
           toolchain: stable
       - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2
+        if: steps.scope.outputs.mode == 'full'
         with:
           key: tauri-v2-linux-smoke-${{ runner.os }}
       - name: Build Linux Tauri bundle smoke
+        if: steps.scope.outputs.mode == 'full'
         run: npm run tauri build
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: steps.scope.outputs.mode == 'full'
         with:
           name: tauri-linux-smoke
           path: |
