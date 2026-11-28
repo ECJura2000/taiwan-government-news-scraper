@@ -5,6 +5,8 @@ on:
   push:
     branches: [main]
 
+  workflow_dispatch:
+
 permissions:
   contents: read
 
@@ -13,6 +15,18 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Classify changed files
+        id: scope
+        shell: bash
+        env:
+          CI_BASE: ${{ github.event.pull_request.base.sha }}
+          CI_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+          CI_BEFORE: ${{ github.event.before }}
+        run: |
+          bash .github/ci-scope.sh --self-test
+          bash .github/ci-scope.sh
       - name: Install Linux Tauri dependencies
         run: |
           sudo apt-get update
@@ -31,12 +45,19 @@ jobs:
           cache-dependency-path: package-lock.json
       - run: npm ci
       - run: npm test
+        if: steps.scope.outputs.mode != 'docs'
       - run: npm run check
+        if: steps.scope.outputs.mode != 'docs'
       - run: npm run build
+        if: steps.scope.outputs.mode != 'docs'
       - run: cargo fmt --all -- --check
+        if: steps.scope.outputs.mode == 'full'
       - run: cargo test --workspace --all-targets
+        if: steps.scope.outputs.mode == 'full'
       - run: cargo clippy --workspace --all-targets --all-features -- -D warnings
+        if: steps.scope.outputs.mode == 'full'
       - name: Verify the exact approved source catalog
+        if: steps.scope.outputs.mode == 'full'
         shell: bash
         run: |
           cargo run --quiet --bin news-scraper -- list-sources > sources.txt

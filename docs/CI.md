@@ -1,0 +1,5 @@
+# CI change routing
+
+PR checks keep their existing names and triggers (including Tauri required checks); only costly steps are gated. A docs-only change checks the Git diff for whitespace/conflict errors (Markdown hard breaks allowed), skips compile/test/build steps, and retains dependency audits and the legacy-runtime guard. A change restricted to the cloud delivery scripts runs npm checks and cloud delivery contracts, without unnecessary Tauri/Rust compilation. Mixed or unknown changes, dependencies, source catalog changes, workflow changes, and manual runs use the complete original checks. If the Git comparison is unavailable, the full scope is used.
+
+Release, live-source verification, source-smoke schedules, source network probes and mobile/cloud delivery workflows are unchanged. Code changes must still pass the existing complete validation contract. No required check names or branch protection settings are changed.
